@@ -267,6 +267,52 @@ async def run_smoke() -> dict:
             conflict_message = json.loads(await asyncio.wait_for(admin_ws.recv(), timeout=3))
             assert conflict_message.get("event") == "assignment.conflict", conflict_message
 
+        # Phase 4 analytics + audit checks
+        overtime = await manager.get(
+            "/api/v1/analytics/overtime-dashboard",
+            params={"location_id": location_id, "week_start": monday.isoformat()},
+        )
+        assert overtime.status_code == 200, overtime.text
+        overtime_json = overtime.json()
+        assert overtime_json["location_id"] == location_id
+
+        fairness = await manager.get(
+            "/api/v1/analytics/fairness-report",
+            params={
+                "location_id": location_id,
+                "start_date": day_1.isoformat(),
+                "end_date": day_4.isoformat(),
+            },
+        )
+        assert fairness.status_code == 200, fairness.text
+        fairness_json = fairness.json()
+        assert fairness_json["location_id"] == location_id
+
+        distribution = await manager.get(
+            "/api/v1/analytics/hours-distribution",
+            params={
+                "location_id": location_id,
+                "start_date": day_1.isoformat(),
+                "end_date": day_4.isoformat(),
+            },
+        )
+        assert distribution.status_code == 200, distribution.text
+
+        on_duty = await manager.get("/api/v1/on-duty", params={"location_id": location_id})
+        assert on_duty.status_code == 200, on_duty.text
+
+        audit_list = await manager.get("/api/v1/audit-logs", params={"location_id": location_id})
+        assert audit_list.status_code == 200, audit_list.text
+        audit_json = audit_list.json()
+        assert len(audit_json["logs"]) >= 1
+
+        audit_export = await admin.get(
+            "/api/v1/audit-logs/export",
+            params={"start_date": day_1.isoformat(), "end_date": day_4.isoformat()},
+        )
+        assert audit_export.status_code == 200, audit_export.text
+        assert "text/csv" in audit_export.headers.get("content-type", "")
+
         return {
             "phase1": {
                 "users": len(users),
@@ -283,6 +329,14 @@ async def run_smoke() -> dict:
                 "notifications_checked": True,
                 "websocket_checked": True,
                 "assignment_conflict_checked": True,
+            },
+            "phase4": {
+                "overtime_rows": len(overtime_json.get("staff", [])),
+                "fairness_rows": len(fairness_json.get("staff", [])),
+                "hours_distribution_checked": True,
+                "on_duty_checked": True,
+                "audit_logs_count": len(audit_json.get("logs", [])),
+                "audit_csv_checked": True,
             },
         }
 

@@ -70,6 +70,9 @@ async def seed() -> None:
 
     try:
         # Keep seed deterministic across reruns.
+        await db.auditlog.delete_many()
+        await db.notification.delete_many()
+        await db.swaprequest.delete_many()
         await db.shiftassignment.delete_many()
         await db.shift.delete_many()
 

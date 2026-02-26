@@ -94,6 +94,7 @@ model User {
   swap_requests_pickup         SwapRequest[]               @relation("SwapPickupUser")
   swap_requests_resolved       SwapRequest[]               @relation("SwapResolvedBy")
   notifications                Notification[]
+  audit_logs                   AuditLog[]                  @relation("AuditActor")
 
   @@map("users")
   @@index([role], map: "idx_users_role")
@@ -110,6 +111,7 @@ model Location {
   user_location_certifications UserLocationCertification[]
   manager_location_assignments ManagerLocationAssignment[]
   shifts                        Shift[]
+  audit_logs                    AuditLog[]                 @relation("AuditLocation")
 
   @@map("locations")
 }
@@ -271,4 +273,24 @@ model Notification {
   @@map("notifications")
   @@index([user_id, created_at], map: "idx_notif_user_created")
   @@index([user_id, read_at], map: "idx_notif_unread")
+}
+
+model AuditLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  actor_id     String    @db.Uuid
+  action_type  String    @db.VarChar(60)
+  entity_type  String    @db.VarChar(60)
+  entity_id    String    @db.Uuid
+  before_state Json?
+  after_state  Json?
+  reason       String?
+  location_id  String?   @db.Uuid
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  actor        User      @relation("AuditActor", fields: [actor_id], references: [id])
+  location     Location? @relation("AuditLocation", fields: [location_id], references: [id])
+
+  @@map("audit_logs")
+  @@index([location_id, created_at], map: "idx_audit_location_time")
+  @@index([entity_type, entity_id, created_at], map: "idx_audit_entity")
+  @@index([actor_id, created_at], map: "idx_audit_actor")
 }

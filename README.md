@@ -35,6 +35,7 @@ ShiftSync supports:
 - Phase 1: Foundation API and auth implemented
 - Phase 2: Constraint engine + shifts + assignments implemented
 - Phase 3: Swap/drop workflows + notifications + realtime implemented
+- Phase 4: Analytics (`overtime`, `fairness`, `hours distribution`, `on-duty`) + audit log APIs implemented
 
 ## Technology Stack
 - Backend: Python 3.11, FastAPI, Uvicorn
@@ -161,6 +162,8 @@ Core route groups:
 - Assignments: `/api/v1/shifts/{shift_id}/assignments*`
 - Swaps/Drops: `/api/v1/swap-requests*`, `/api/v1/drop-requests*`
 - Notifications: `/api/v1/notifications*`
+- Analytics: `/api/v1/analytics/*`, `/api/v1/on-duty`
+- Audit: `/api/v1/audit-logs*`
 - Realtime WebSocket: `/api/v1/ws`
 
 ## Smoke Testing

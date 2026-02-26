@@ -26,6 +26,7 @@ from app.services.constraint_engine import (
     UserSnapshot,
     evaluate_assignment,
 )
+from app.services.audit import create_audit_log
 from app.services.notifications import create_notification
 
 
@@ -410,6 +411,20 @@ async def create_assignment(
         payload={"shiftId": shift_id, "locationId": shift.location_id},
         ws_manager=ws_manager,
     )
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="shift.assign",
+        entity_type="assignment",
+        entity_id=assignment.id,
+        location_id=shift.location_id,
+        after_state={
+            "shift_id": assignment.shift_id,
+            "user_id": assignment.user_id,
+            "status": assignment.status,
+            "assigned_by": assignment.assigned_by,
+        },
+        reason=payload.override_reason,
+    )
     return AssignmentResponse(**_to_assignment_response(assignment).model_dump())
 
 
@@ -446,5 +461,19 @@ async def delete_assignment(
         message="You have been removed from a shift.",
         payload={"shiftId": shift_id, "locationId": shift.location_id},
         ws_manager=ws_manager,
+    )
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="shift.unassign",
+        entity_type="assignment",
+        entity_id=assignment.id,
+        location_id=shift.location_id,
+        before_state={
+            "shift_id": assignment.shift_id,
+            "user_id": assignment.user_id,
+            "status": assignment.status,
+            "assigned_by": assignment.assigned_by,
+        },
+        after_state={"status": "removed"},
     )
     return {"deleted": True}

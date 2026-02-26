@@ -20,6 +20,7 @@ from app.schemas.user import (
     UserSkillResponse,
     UserUpdateRequest,
 )
+from app.services.audit import create_audit_log
 from app.services.user_access import get_manager_user_scope
 
 
@@ -114,7 +115,7 @@ async def list_users(
 @router.post("", response_model=UserResponse)
 async def create_user(
     payload: UserCreateRequest,
-    _: CurrentUser = Depends(require_roles("admin")),
+    current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> UserResponse:
     existing = await prisma.user.find_unique(where={"email": payload.email})
     if existing is not None:
@@ -124,6 +125,18 @@ async def create_user(
     password = data.pop("password")
     data["password_hash"] = hash_password(password)
     user = await prisma.user.create(data=data)
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="user.create",
+        entity_type="user",
+        entity_id=user.id,
+        after_state={
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "is_active": user.is_active,
+        },
+    )
     return _to_user_response(user)
 
 
@@ -157,18 +170,48 @@ async def update_user(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Field update is not allowed.")
 
     updated = await prisma.user.update(where={"id": user_id}, data=data)
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="user.update",
+        entity_type="user",
+        entity_id=user_id,
+        before_state={
+            "name": user.name,
+            "home_timezone": user.home_timezone,
+            "desired_hours_per_week": user.desired_hours_per_week,
+            "hourly_rate": float(user.hourly_rate or 0) if user.hourly_rate is not None else None,
+            "notification_pref": user.notification_pref,
+            "is_active": user.is_active,
+        },
+        after_state={
+            "name": updated.name,
+            "home_timezone": updated.home_timezone,
+            "desired_hours_per_week": updated.desired_hours_per_week,
+            "hourly_rate": float(updated.hourly_rate or 0) if updated.hourly_rate is not None else None,
+            "notification_pref": updated.notification_pref,
+            "is_active": updated.is_active,
+        },
+    )
     return _to_user_response(updated)
 
 
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: str,
-    _: CurrentUser = Depends(require_roles("admin")),
+    current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> dict[str, bool]:
     user = await prisma.user.find_unique(where={"id": user_id})
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
     await prisma.user.update(where={"id": user_id}, data={"is_active": False})
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="user.deactivate",
+        entity_type="user",
+        entity_id=user_id,
+        before_state={"is_active": user.is_active},
+        after_state={"is_active": False},
+    )
     return {"deleted": True}
 
 
@@ -246,7 +289,7 @@ async def list_user_certifications(
 async def add_user_certification(
     user_id: str,
     payload: CertificationAttachRequest,
-    _: CurrentUser = Depends(require_roles("admin")),
+    current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> UserCertificationResponse:
     location = await prisma.location.find_unique(where={"id": payload.location_id})
     if location is None:
@@ -263,6 +306,18 @@ async def add_user_certification(
                 "revoked_at": None,
                 "revoked_by": None,
             },
+        },
+    )
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="cert.grant",
+        entity_type="certification",
+        entity_id=user_id,
+        location_id=payload.location_id,
+        after_state={
+            "user_id": user_id,
+            "location_id": payload.location_id,
+            "revoked_at": None,
         },
     )
     return UserCertificationResponse(
@@ -285,12 +340,22 @@ async def remove_user_certification(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certification not found.")
 
+    revoked_at = datetime.now(timezone.utc)
     await prisma.userlocationcertification.update(
         where={"user_id_location_id": {"user_id": user_id, "location_id": location_id}},
         data={
-            "revoked_at": datetime.now(timezone.utc),
+            "revoked_at": revoked_at,
             "revoked_by": current_user.id,
         },
+    )
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="cert.revoke",
+        entity_type="certification",
+        entity_id=user_id,
+        location_id=location_id,
+        before_state={"revoked_at": record.revoked_at},
+        after_state={"revoked_at": revoked_at.isoformat()},
     )
     return {"revoked": True}
 

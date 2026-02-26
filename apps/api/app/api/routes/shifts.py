@@ -21,6 +21,7 @@ from app.schemas.shift import (
     ShiftUpdateRequest,
     UnpublishShiftRequest,
 )
+from app.services.audit import create_audit_log
 from app.services.notifications import create_notification
 from app.services.timezone_utils import format_local_iso, parse_shift_local_range, week_start_monday
 
@@ -164,6 +165,22 @@ async def create_shift(
         },
         include={"required_skill": True, "location": True},
     )
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="shift.create",
+        entity_type="shift",
+        entity_id=shift.id,
+        location_id=location_id,
+        after_state={
+            "location_id": shift.location_id,
+            "required_skill_id": shift.required_skill_id,
+            "shift_date": _date_as_date(shift.shift_date).isoformat(),
+            "start_utc": shift.start_utc.isoformat(),
+            "end_utc": shift.end_utc.isoformat(),
+            "status": shift.status,
+            "headcount_needed": shift.headcount_needed,
+        },
+    )
     return _to_shift_response(shift, location.iana_timezone)
 
 
@@ -256,6 +273,30 @@ async def update_shift(
         data=update_data,
         include={"required_skill": True, "location": True},
     )
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="shift.update",
+        entity_type="shift",
+        entity_id=shift_id,
+        location_id=location_id,
+        before_state={
+            "shift_date": _date_as_date(shift.shift_date).isoformat(),
+            "start_utc": shift.start_utc.isoformat(),
+            "end_utc": shift.end_utc.isoformat(),
+            "required_skill_id": shift.required_skill_id,
+            "headcount_needed": shift.headcount_needed,
+            "status": shift.status,
+        },
+        after_state={
+            "shift_date": _date_as_date(updated.shift_date).isoformat(),
+            "start_utc": updated.start_utc.isoformat(),
+            "end_utc": updated.end_utc.isoformat(),
+            "required_skill_id": updated.required_skill_id,
+            "headcount_needed": updated.headcount_needed,
+            "status": updated.status,
+        },
+        reason=payload.override_reason,
+    )
 
     if shift.status == "published":
         await request.app.state.ws_manager.emit_to_location(
@@ -292,6 +333,15 @@ async def delete_shift(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shift not found.")
 
     await prisma.shift.update(where={"id": shift_id}, data={"status": "cancelled"})
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="shift.cancel",
+        entity_type="shift",
+        entity_id=shift_id,
+        location_id=location_id,
+        before_state={"status": shift.status},
+        after_state={"status": "cancelled"},
+    )
     await request.app.state.ws_manager.emit_to_location(
         location_id,
         "schedule.updated",
@@ -337,6 +387,15 @@ async def publish_week(
                 "published_at": now,
                 "edit_cutoff_utc": cutoff,
             },
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="shift.publish",
+            entity_type="shift",
+            entity_id=shift.id,
+            location_id=location_id,
+            before_state={"status": shift.status},
+            after_state={"status": "published", "edit_cutoff_utc": cutoff.isoformat()},
         )
 
     shift_ids = [shift.id for shift in shifts]
@@ -401,6 +460,16 @@ async def unpublish_shift(
         where={"id": shift_id},
         data={"status": "draft", "published_at": None},
         include={"required_skill": True, "location": True},
+    )
+    await create_audit_log(
+        actor_id=current_user.id,
+        action_type="shift.unpublish",
+        entity_type="shift",
+        entity_id=shift_id,
+        location_id=location_id,
+        before_state={"status": shift.status},
+        after_state={"status": "draft"},
+        reason=payload.override_reason,
     )
     await request.app.state.ws_manager.emit_to_location(
         location_id,
