@@ -39,7 +39,7 @@ ShiftSync supports:
 
 ## Technology Stack
 - Backend: Python 3.11, FastAPI, Uvicorn
-- ORM and migrations: Prisma + `prisma-client-py`
+- ORM and migrations: SQLAlchemy 2.0 + Alembic
 - Database: PostgreSQL
 - Session/cache: Redis (with in-memory fallback for local dev if Redis is unavailable)
 - Frontend: React 18, TypeScript, Vite, React Query
@@ -51,7 +51,6 @@ ShiftSync/
   apps/
     api/                  # FastAPI service
     web/                  # React application
-  prisma/                 # Prisma schema and SQL migrations
   scripts/                # Prisma and smoke-test scripts
   seed/                   # Seed script
   01_ShiftSync_PRD.md
