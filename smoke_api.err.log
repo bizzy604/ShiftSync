@@ -1,0 +1,15 @@
+INFO:     Started server process [3328]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8015 (Press CTRL+C to quit)
+C:\Users\Admin\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\pydantic\_internal\_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'alias' attribute with value 'date' was provided to the `Field()` function, which has no effect in the context it was used. 'alias' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+INFO:     127.0.0.1:55710 - "WebSocket /api/v1/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNTJlOGU0YS0zY2ViLTRjYjMtOTgzNy1jZjQxZmI3OTU0Y2QiLCJyb2xlIjoibWFuYWdlciIsImxvY2F0aW9uX2lkcyI6WyI2N2RhNGZiMy0yZjhhLTQxMjgtODAxMC01YWFkMTI4NjM3MTciLCI3OTk3NThmYy1kOWE2LTRiYTUtOTgxNi03MGNkNzA0YTlhM2MiXSwic2lkIjoiNGQ0YzViYWEtM2NjZC00OGE1LTlhY2MtZWU3MGRlNDIwZGU1IiwiaWF0IjoxNzcyMDY2OTI2LCJleHAiOjE3NzIwOTU3MjZ9.meIIKaBNJbZP52YO2yMr9MN83zfFvTXaup3kgFX2meg" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:55711 - "WebSocket /api/v1/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NThkZTI2YS04ZGIxLTQ5YzItODkwZi1hZjBhODlhMmUwOWIiLCJyb2xlIjoic3RhZmYiLCJsb2NhdGlvbl9pZHMiOltdLCJzaWQiOiI3YzVjNmQzMC01OWY3LTQ2NGQtYjAyZC00MGU2ODVhNDE1YjkiLCJpYXQiOjE3NzIwNjY5MjcsImV4cCI6MTc3MjA5NTcyN30.LaKAZAsBbyUe_-_MIUAR--euMCeRJ5qVCRiGEa2L9bw" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     connection closed
+INFO:     127.0.0.1:55713 - "WebSocket /api/v1/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MThlNGU3My01NTFhLTRmYWItYTdkZS1jMjBkNDJiOTMyYmQiLCJyb2xlIjoiYWRtaW4iLCJsb2NhdGlvbl9pZHMiOltdLCJzaWQiOiJkNTU5YTAyNC1kM2YwLTRkNGQtOTNmNC0wMjlkNWUxNjZlMDkiLCJpYXQiOjE3NzIwNjY5MjYsImV4cCI6MTc3MjA5NTcyNn0.nGXtyK_ltpI2D1Y_yKuoOCMluUVDdX0MtXkDQj1WkNc" [accepted]
+INFO:     connection open
+INFO:     connection closed

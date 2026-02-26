@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.api.deps import (
     CurrentUser,
@@ -21,6 +21,7 @@ from app.schemas.shift import (
     ShiftUpdateRequest,
     UnpublishShiftRequest,
 )
+from app.services.notifications import create_notification
 from app.services.timezone_utils import format_local_iso, parse_shift_local_range, week_start_monday
 
 
@@ -197,6 +198,7 @@ async def update_shift(
     location_id: str,
     shift_id: str,
     payload: ShiftUpdateRequest,
+    request: Request,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> ShiftResponse:
     location = await _get_location_or_404(location_id)
@@ -254,6 +256,24 @@ async def update_shift(
         data=update_data,
         include={"required_skill": True, "location": True},
     )
+
+    if shift.status == "published":
+        await request.app.state.ws_manager.emit_to_location(
+            location_id,
+            "schedule.updated",
+            {
+                "locationId": location_id,
+                "shiftId": shift_id,
+                "changes": {
+                    "shiftDate": new_date.isoformat(),
+                    "startUtc": start_utc.isoformat(),
+                    "endUtc": end_utc.isoformat(),
+                    "requiredSkillId": required_skill_id,
+                    "headcountNeeded": update_data["headcount_needed"],
+                },
+            },
+        )
+
     return _to_shift_response(updated, location.iana_timezone)
 
 
@@ -261,6 +281,7 @@ async def update_shift(
 async def delete_shift(
     location_id: str,
     shift_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> dict[str, bool]:
     if current_user.role == "manager":
@@ -271,6 +292,15 @@ async def delete_shift(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shift not found.")
 
     await prisma.shift.update(where={"id": shift_id}, data={"status": "cancelled"})
+    await request.app.state.ws_manager.emit_to_location(
+        location_id,
+        "schedule.updated",
+        {
+            "locationId": location_id,
+            "shiftId": shift_id,
+            "changes": {"status": "cancelled"},
+        },
+    )
     return {"deleted": True}
 
 
@@ -278,6 +308,7 @@ async def delete_shift(
 async def publish_week(
     location_id: str,
     payload: PublishWeekRequest,
+    request: Request,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> PublishWeekResponse:
     if current_user.role == "manager":
@@ -308,10 +339,33 @@ async def publish_week(
             },
         )
 
+    shift_ids = [shift.id for shift in shifts]
+    assignments = await prisma.shiftassignment.find_many(
+        where={"shift_id": {"in": shift_ids}, "status": "assigned"},
+    )
+    affected_user_ids = sorted({item.user_id for item in assignments})
+    ws_manager = request.app.state.ws_manager
+    event_payload = {
+        "locationId": location_id,
+        "weekStart": payload.week_start.isoformat(),
+        "affectedUserIds": affected_user_ids,
+    }
+    await ws_manager.emit_to_location(location_id, "schedule.published", event_payload)
+    if affected_user_ids:
+        await ws_manager.emit_to_users(affected_user_ids, "schedule.published", event_payload)
+        for user_id in affected_user_ids:
+            await create_notification(
+                user_id=user_id,
+                notif_type="schedule.published",
+                message=f"Schedule published for week of {payload.week_start.isoformat()}.",
+                payload={"locationId": location_id, "weekStart": payload.week_start.isoformat()},
+                ws_manager=ws_manager,
+            )
+
     return PublishWeekResponse(
         published_shifts=len(shifts),
         edit_cutoff_utc=cutoff,
-        notified_staff_count=0,
+        notified_staff_count=len(affected_user_ids),
     )
 
 
@@ -320,6 +374,7 @@ async def unpublish_shift(
     location_id: str,
     shift_id: str,
     payload: UnpublishShiftRequest,
+    request: Request,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> ShiftResponse:
     location = await _get_location_or_404(location_id)
@@ -346,5 +401,14 @@ async def unpublish_shift(
         where={"id": shift_id},
         data={"status": "draft", "published_at": None},
         include={"required_skill": True, "location": True},
+    )
+    await request.app.state.ws_manager.emit_to_location(
+        location_id,
+        "schedule.updated",
+        {
+            "locationId": location_id,
+            "shiftId": shift_id,
+            "changes": {"status": "draft"},
+        },
     )
     return _to_shift_response(updated, location.iana_timezone)

@@ -1,5 +1,7 @@
 from typing import Any
 
+from prisma import Json
+
 from app.core.database import prisma
 
 
@@ -11,12 +13,13 @@ async def create_notification(
     payload: dict[str, Any] | None = None,
     ws_manager: Any = None,
 ) -> object:
+    safe_payload = Json(payload or {})
     record = await prisma.notification.create(
         data={
             "user_id": user_id,
             "type": notif_type,
             "message": message,
-            "payload": payload or {},
+            "payload": safe_payload,
         }
     )
 

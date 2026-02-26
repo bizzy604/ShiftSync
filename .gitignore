@@ -24,3 +24,4 @@ prisma/dev.db
 Thumbs.db
 .idea/
 .vscode/
+venv/

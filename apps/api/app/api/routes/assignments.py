@@ -307,6 +307,23 @@ async def create_assignment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff user not found.")
 
     async with request.app.state.assignment_locks.user_lock(user.id):
+        existing_assignment = await prisma.shiftassignment.find_unique(
+            where={"shift_id_user_id": {"shift_id": shift_id, "user_id": user.id}},
+        )
+        if existing_assignment:
+            await _emit_assignment_conflict(
+                request,
+                manager_user_id=current_user.id,
+                shift_id=shift_id,
+                conflicting_user_id=user.id,
+                message=f"{user.name} is already assigned to this shift.",
+            )
+            return _json_error(
+                status_code=status.HTTP_409_CONFLICT,
+                code="CONCURRENT_CONFLICT",
+                message=f"{user.name} is already assigned to this shift.",
+            )
+
         headcount_used = await prisma.shiftassignment.count(
             where={"shift_id": shift_id, "status": "assigned"},
         )
@@ -347,23 +364,6 @@ async def create_assignment(
                 message="Assignment requires manager override reason.",
                 details=_constraint_details(result.violations),
                 suggestions=suggestion_dicts,
-            )
-
-        existing_assignment = await prisma.shiftassignment.find_unique(
-            where={"shift_id_user_id": {"shift_id": shift_id, "user_id": user.id}},
-        )
-        if existing_assignment:
-            await _emit_assignment_conflict(
-                request,
-                manager_user_id=current_user.id,
-                shift_id=shift_id,
-                conflicting_user_id=user.id,
-                message=f"{user.name} is already assigned to this shift.",
-            )
-            return _json_error(
-                status_code=status.HTTP_409_CONFLICT,
-                code="CONCURRENT_CONFLICT",
-                message=f"{user.name} is already assigned to this shift.",
             )
 
         try:

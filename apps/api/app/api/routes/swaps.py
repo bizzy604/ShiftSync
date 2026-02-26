@@ -15,7 +15,13 @@ from app.schemas.swap import (
     SwapRequestListResponse,
     SwapRequestResponse,
 )
-from app.services.constraint_engine import AssignmentSnapshot, ShiftSnapshot, UserSnapshot, evaluate_assignment
+from app.services.constraint_engine import (
+    AssignmentSnapshot,
+    AvailabilityRule,
+    ShiftSnapshot,
+    UserSnapshot,
+    evaluate_assignment,
+)
 from app.services.notifications import create_notification
 from app.services.timezone_utils import format_local_iso
 
@@ -48,14 +54,14 @@ def user_snapshot(user: object) -> UserSnapshot:
         skills={x.skill_id for x in user.user_skills},
         active_location_ids={x.location_id for x in user.user_location_certifications if x.revoked_at is None},
         availability=[
-            {
-                "avail_type": x.avail_type,
-                "day_of_week": x.day_of_week,
-                "specific_date": x.specific_date.date() if hasattr(x.specific_date, "date") else x.specific_date,
-                "start_clock": x.start_clock,
-                "end_clock": x.end_clock,
-                "is_available": x.is_available,
-            }
+            AvailabilityRule(
+                avail_type=x.avail_type,
+                day_of_week=x.day_of_week,
+                specific_date=x.specific_date.date() if hasattr(x.specific_date, "date") else x.specific_date,
+                start_clock=x.start_clock,
+                end_clock=x.end_clock,
+                is_available=x.is_available,
+            )
             for x in user.availability
         ],
         hourly_rate=float(user.hourly_rate or 0),
