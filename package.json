@@ -1,0 +1,22 @@
+{
+  "name": "shiftsync",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ShiftSync monorepo",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "web:dev": "npm --workspace apps/web run dev",
+    "web:build": "npm --workspace apps/web run build",
+    "prisma:generate": "python scripts/prisma_generate.py",
+    "prisma:migrate": "python scripts/prisma_migrate.py dev",
+    "prisma:deploy": "python scripts/prisma_migrate.py deploy"
+  },
+  "dependencies": {
+    "docx": "^9.6.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.17.0"
+  }
+}

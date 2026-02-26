@@ -1,0 +1,122 @@
+:root {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #1f2937;
+  background: linear-gradient(145deg, #f0f4f8, #e6ecf4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.center-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.auth-card {
+  width: min(420px, 100%);
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.15);
+  display: grid;
+  gap: 0.8rem;
+}
+
+.auth-card h1 {
+  margin: 0 0 0.4rem;
+}
+
+.auth-card label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.94rem;
+}
+
+.auth-card input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+}
+
+.auth-card button {
+  border: 0;
+  border-radius: 9px;
+  padding: 0.65rem;
+  font-weight: 600;
+  background: #0f766e;
+  color: white;
+  cursor: pointer;
+}
+
+.auth-card button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.error-text {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.92rem;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.app-header {
+  background: #0b1324;
+  color: #f8fafc;
+  padding: 1rem 1.3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.app-header p {
+  margin: 0.2rem 0 0;
+  color: #93c5fd;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-actions a,
+.header-actions button {
+  color: #f8fafc;
+  background: transparent;
+  border: 1px solid #334155;
+  text-decoration: none;
+  border-radius: 7px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+.app-content {
+  padding: 1.2rem;
+}
+
+.panel {
+  background: white;
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}

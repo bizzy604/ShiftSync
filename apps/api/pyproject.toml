@@ -1,0 +1,10 @@
+[project]
+name = "shiftsync-api"
+version = "0.1.0"
+description = "ShiftSync backend foundation (Phase 1)"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
