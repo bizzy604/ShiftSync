@@ -332,7 +332,7 @@ async def preview_assignment(
 async def list_shift_suggestions(
     shift_id: str,
     limit: int = Query(10, ge=1, le=50),
-    current_user: CurrentUser = Depends(require_roles("admin", "manager")),
+    current_user: CurrentUser = Depends(require_roles("admin", "manager", "staff")),
 ) -> list[ConstraintSuggestion]:
     shift = await _get_shift_with_access(shift_id, current_user)
     shift_snapshot = _to_shift_snapshot(shift)

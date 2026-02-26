@@ -8,6 +8,7 @@ import { Badge } from "../../components/Badge";
 import { useLocations, useShifts, useUsers, useAssignments, usePublishWeek, useOvertimeDashboard } from "../../lib/api/hooks";
 import { ShiftResponse } from "../../lib/api/types";
 import { AssignmentModal } from "./AssignmentModal";
+import { CreateShiftModal } from "./CreateShiftModal";
 
 /* ========== Helpers ========== */
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -149,6 +150,11 @@ export function ScheduleBuilder() {
     const [locationId, setLocationId] = useState<string>("");
     const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
 
+    // Create Shift State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [createDate, setCreateDate] = useState("");
+    const [createPeriodIndex, setCreatePeriodIndex] = useState(0);
+
     const { data: locationsData } = useLocations();
     const locations = locationsData?.locations || [];
 
@@ -268,7 +274,14 @@ export function ScheduleBuilder() {
                                                             ))}
                                                         </div>
                                                     ) : (
-                                                        <div className="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-base cursor-pointer">
+                                                        <div
+                                                            onClick={() => {
+                                                                setCreateDate(format(addDays(weekStart, di), "yyyy-MM-dd"));
+                                                                setCreatePeriodIndex(pi);
+                                                                setIsCreateModalOpen(true);
+                                                            }}
+                                                            className="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-base cursor-pointer"
+                                                        >
                                                             <button className="w-8 h-8 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-teal hover:text-teal transition-base">
                                                                 <Plus size={16} />
                                                             </button>
@@ -312,6 +325,15 @@ export function ScheduleBuilder() {
                     onClose={() => setSelectedShiftId(null)}
                 />
             )}
+
+            {/* Create Shift Modal */}
+            <CreateShiftModal
+                open={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                locationId={locationId}
+                defaultDateStr={createDate}
+                defaultPeriodIndex={createPeriodIndex}
+            />
         </AppLayout>
     );
 }

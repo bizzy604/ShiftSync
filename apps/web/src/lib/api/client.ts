@@ -129,6 +129,12 @@ export async function updateUserAvailability(userId: string, data: AvailabilityR
     return response.data;
 }
 
+// --- Skills ---
+export async function getSkills(): Promise<{ id: string; name: string }[]> {
+    const response = await api.get("/skills");
+    return response.data;
+}
+
 // --- Shifts ---
 export async function getShifts(locationId: string, weekStart: string): Promise<ShiftListResponse> {
     const response = await api.get(`/shifts`, {
@@ -228,6 +234,10 @@ export async function approveSwap(requestId: string, data: SwapActionRequest): P
     await api.post(`/swaps/${requestId}/approve`, data);
 }
 
+export async function declineSwap(requestId: string, data: SwapActionRequest): Promise<void> {
+    await api.post(`/swaps/${requestId}/decline`, data);
+}
+
 export async function getAvailableDrops(): Promise<AvailableDropListResponse> {
     const response = await api.get(`/swaps/drops/available`);
     return response.data;
@@ -242,11 +252,15 @@ export async function pickupDrop(requestId: string, data: DropPickupRequest): Pr
 }
 
 export async function approveDrop(requestId: string, data: SwapActionRequest): Promise<void> {
-    await api.put(`/swaps/drop-requests/${requestId}/approve`, data);
+    await api.post(`/swaps/drops/${requestId}/approve`, data);
+}
+
+export async function declineDrop(requestId: string, data: SwapActionRequest): Promise<void> {
+    await api.post(`/swaps/drops/${requestId}/decline`, data);
 }
 
 export async function notifyQualifiedStaff(requestId: string): Promise<{ notified: number }> {
-    const response = await api.post(`/swaps/drop-requests/${requestId}/notify-qualified`);
+    const response = await api.post(`/swaps/drops/${requestId}/notify-qualified`);
     return response.data;
 }
 

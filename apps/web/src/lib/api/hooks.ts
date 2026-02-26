@@ -10,6 +10,8 @@ import {
     createShift,
     createSwapRequest,
     createUser,
+    declineDrop,
+    declineSwap,
     deleteAssignment,
     deleteShift,
     deleteUser,
@@ -42,6 +44,7 @@ import {
     updateShift,
     updateUser,
     updateUserAvailability,
+    getSkills,
 } from "./client";
 import {
     AssignmentCreateRequest,
@@ -81,6 +84,7 @@ export const keys = {
     swaps: ["swaps"] as const,
     swap: (id: string) => ["swaps", id] as const,
     drops: ["drops"] as const,
+    skills: ["skills"] as const,
     onDuty: (locationId?: string) => ["analytics", "onDuty", locationId] as const,
     overtime: (locationId: string, weekStart: string) => ["analytics", "overtime", locationId, weekStart] as const,
     fairness: (locationId: string, startDate: string, endDate: string) => ["analytics", "fairness", locationId, startDate, endDate] as const,
@@ -145,6 +149,14 @@ export function useUserAvailability(id: string) {
         queryKey: keys.availability(id),
         queryFn: () => getUserAvailability(id),
         enabled: !!id,
+    });
+}
+
+// --- Skills ---
+export function useSkills() {
+    return useQuery({
+        queryKey: keys.skills,
+        queryFn: getSkills,
     });
 }
 
@@ -394,7 +406,7 @@ export function useSwapAction(action: "accept" | "reject" | "approve" | "decline
         mutationFn: ({ id, data, isDrop = false }: { id: string; data: SwapActionRequest; isDrop?: boolean }) => {
             if (isDrop) {
                 if (action === "approve") return approveDrop(id, data);
-                if (action === "decline") return rejectSwap(id, data);
+                if (action === "decline") return declineDrop(id, data);
                 throw new Error("Invalid drop action");
             }
 
@@ -406,7 +418,7 @@ export function useSwapAction(action: "accept" | "reject" | "approve" | "decline
                 case "approve":
                     return approveSwap(id, data);
                 case "decline":
-                    return rejectSwap(id, data);
+                    return declineSwap(id, data);
                 default:
                     throw new Error("Unknown action");
             }

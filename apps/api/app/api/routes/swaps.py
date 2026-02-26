@@ -265,7 +265,7 @@ async def create_swap_request(payload: SwapCreateRequest, request: Request, curr
     return to_resp(row)
 
 
-@router.put("/{request_id}/accept", response_model=SwapRequestResponse)
+@router.post("/{request_id}/accept", response_model=SwapRequestResponse)
 async def accept_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None or row.type != "swap":
@@ -301,7 +301,7 @@ async def accept_swap(request_id: str, body: SwapActionRequest, request: Request
     return to_resp(row)
 
 
-@router.put("/{request_id}/reject", response_model=SwapRequestResponse)
+@router.post("/{request_id}/reject", response_model=SwapRequestResponse)
 async def reject_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id})
     if row is None or row.type != "swap":
@@ -335,7 +335,7 @@ async def reject_swap(request_id: str, body: SwapActionRequest, request: Request
     return to_resp(row)
 
 
-@router.put("/{request_id}/cancel", response_model=SwapRequestResponse)
+@router.post("/{request_id}/cancel", response_model=SwapRequestResponse)
 async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id})
     if row is None:
@@ -434,7 +434,7 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
     return row, [notif_1, notif_2], a.shift.location_id
 
 
-@router.put("/{request_id}/approve", response_model=SwapRequestResponse)
+@router.post("/{request_id}/approve", response_model=SwapRequestResponse)
 async def approve_swap_like(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None:
@@ -447,7 +447,7 @@ async def approve_swap_like(request_id: str, body: SwapActionRequest, request: R
     return to_resp(row)
 
 
-@router.put("/{request_id}/decline", response_model=SwapRequestResponse)
+@router.post("/{request_id}/decline", response_model=SwapRequestResponse)
 async def decline_swap_like(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None:
@@ -616,7 +616,7 @@ async def pickup_drop(request_id: str, body: DropPickupRequest, request: Request
     return to_resp(row)
 
 
-@router.put("/drop-requests/{request_id}/approve", response_model=SwapRequestResponse)
+@router.post("/drops/{request_id}/approve", response_model=SwapRequestResponse)
 async def approve_drop(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None or row.type != "drop":
@@ -629,7 +629,7 @@ async def approve_drop(request_id: str, body: SwapActionRequest, request: Reques
     return to_resp(row)
 
 
-@router.put("/drop-requests/{request_id}/decline", response_model=SwapRequestResponse)
+@router.post("/drops/{request_id}/decline", response_model=SwapRequestResponse)
 async def decline_drop(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None or row.type != "drop":
@@ -679,7 +679,7 @@ async def decline_drop(request_id: str, body: SwapActionRequest, request: Reques
     return to_resp(row)
 
 
-@router.post("/drop-requests/{request_id}/notify-qualified")
+@router.post("/drops/{request_id}/notify-qualified")
 async def notify_qualified_staff(
     request_id: str,
     request: Request,
