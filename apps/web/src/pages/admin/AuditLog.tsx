@@ -54,20 +54,20 @@ function DetailPanel({ entry, open, onClose }: { entry: AuditLogResponse | null;
                 </div>
 
                 {/* State Diff */}
-                {entry.state_before && entry.state_after && (
+                {entry.before_state && entry.after_state && (
                     <div>
                         <span className="text-xs text-gray-500 block mb-2">State Change</span>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-danger-50 rounded-lg p-4 border border-danger/10">
                                 <p className="text-[10px] font-bold uppercase text-danger mb-2">Before</p>
                                 <pre className="text-[10px] font-mono text-danger whitespace-pre-wrap overflow-x-auto max-h-[200px]">
-                                    {JSON.stringify(entry.state_before, null, 2)}
+                                    {JSON.stringify(entry.before_state, null, 2)}
                                 </pre>
                             </div>
                             <div className="bg-success-50 rounded-lg p-4 border border-success/10">
                                 <p className="text-[10px] font-bold uppercase text-success mb-2">After</p>
                                 <pre className="text-[10px] font-mono text-success whitespace-pre-wrap overflow-x-auto max-h-[200px]">
-                                    {JSON.stringify(entry.state_after, null, 2)}
+                                    {JSON.stringify(entry.after_state, null, 2)}
                                 </pre>
                             </div>
                         </div>

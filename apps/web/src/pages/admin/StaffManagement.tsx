@@ -9,30 +9,6 @@ import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useLocations, us
 import { Loader2, Plus, Trash2, Shield, User as UserIcon } from 'lucide-react';
 import { UserResponse } from '../../lib/api/types';
 
-/* ========== Mock Data ========== */
-
-interface StaffMember {
-    id: string;
-    name: string;
-    email: string;
-    role: 'Staff' | 'Manager';
-    locations: string[];
-    skills: string[];
-    status: 'Active' | 'Inactive';
-}
-
-const mockStaff: StaffMember[] = [
-    { id: '1', name: 'Carlos M.', email: 'carlos@coastaleats.com', role: 'Staff', locations: ['Ocean Ave', 'Beach Blvd'], skills: ['Bartender'], status: 'Active' },
-    { id: '2', name: 'Maria L.', email: 'maria@coastaleats.com', role: 'Staff', locations: ['Ocean Ave'], skills: ['Bartender', 'Server'], status: 'Active' },
-    { id: '3', name: 'Jordan T.', email: 'jordan@coastaleats.com', role: 'Manager', locations: ['Ocean Ave'], skills: [], status: 'Active' },
-    { id: '4', name: 'Sam K.', email: 'sam@coastaleats.com', role: 'Manager', locations: ['Beach Blvd', 'Downtown Miami'], skills: [], status: 'Active' },
-    { id: '5', name: 'Priya N.', email: 'priya@coastaleats.com', role: 'Staff', locations: ['Miami Beach'], skills: ['Server'], status: 'Active' },
-    { id: '6', name: 'Alex R.', email: 'alex@coastaleats.com', role: 'Staff', locations: ['Ocean Ave'], skills: ['Bartender'], status: 'Inactive' },
-    { id: '7', name: 'Dana W.', email: 'dana@coastaleats.com', role: 'Manager', locations: ['Downtown Miami'], skills: [], status: 'Active' },
-];
-
-const allLocations = ['Ocean Ave', 'Beach Blvd', 'Miami Beach', 'Downtown Miami'];
-const allSkills = ['Bartender', 'Server', 'Host', 'Cook', 'Supervisor'];
 
 /* ========== Edit Staff Drawer ========== */
 
@@ -188,6 +164,7 @@ export function StaffManagement() {
     const [inviteRole, setInviteRole] = useState('staff');
 
     const { data: usersData, isLoading } = useUsers();
+    const { data: locationsData } = useLocations();
     const inviteMutation = useCreateUser();
 
     const staff = usersData?.users || [];
@@ -248,12 +225,14 @@ export function StaffManagement() {
                     </div>
                     <select className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white">
                         <option>All Locations</option>
-                    </select>
-                    <select className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white">
-                        <option>All Skills</option>
+                        {locationsData?.locations.map(l => (
+                            <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
                     </select>
                     <select className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white">
                         <option>All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
                     </select>
                     <span className="text-xs text-gray-500">
                         Showing {filteredStaff.length} of {staff.length} staff members
@@ -293,11 +272,11 @@ export function StaffManagement() {
                                         </td>
                                         <td className="px-5 py-3.5 text-sm text-gray-600">{s.email}</td>
                                         <td className="px-5 py-3.5 text-sm text-gray-700 capitalize">{s.role}</td>
-                                        <td className="px-5 py-3.5 italic text-gray-400 text-xs">
-                                            Managed in Edit
+                                        <td className="px-5 py-3.5 text-xs font-bold text-navy">
+                                            {s.user_location_certifications?.length || 0} Locations
                                         </td>
-                                        <td className="px-5 py-3.5 italic text-gray-400 text-xs">
-                                            Managed in Edit
+                                        <td className="px-5 py-3.5 text-xs font-bold text-navy">
+                                            {s.user_skills?.length || 0} Skills
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <Badge variant={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge>
@@ -322,13 +301,13 @@ export function StaffManagement() {
                         </table>
                     </div>
 
-                    {/* Pagination */}
+                    {/* Pagination - Placeholder for now as users endpoint doesn't support skip/limit yet */}
                     <div className="px-5 py-3 bg-gray-50 border-t border-border-gray flex items-center justify-between">
-                        <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-base">
+                        <button className="flex items-center gap-1 text-sm text-gray-400 cursor-not-allowed">
                             <ChevronLeft size={16} /> Prev
                         </button>
-                        <span className="text-sm text-gray-600">Page 1 of 5</span>
-                        <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-base">
+                        <span className="text-sm text-gray-600">Page 1 of 1</span>
+                        <button className="flex items-center gap-1 text-sm text-gray-400 cursor-not-allowed">
                             Next <ChevronRight size={16} />
                         </button>
                     </div>

@@ -52,6 +52,8 @@ export interface UserResponse {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    user_skills?: UserSkillResponse[];
+    user_location_certifications?: UserCertificationResponse[];
 }
 
 export interface UserListResponse {
@@ -419,12 +421,16 @@ export interface AuditLogResponse {
     after_state: any;
     reason: string | null;
     location_id: string | null;
+    location_name: string | null;
+    details: string | null;
     created_at: string;
 }
 
 export interface AuditLogListResponse {
     logs: AuditLogResponse[];
-    pagination: Record<string, number>;
+    total: number;
+    page: number;
+    limit: number;
 }
 
 // Notifications

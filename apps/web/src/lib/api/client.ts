@@ -37,8 +37,15 @@ import {
     UserCreateRequest,
 } from "./types";
 
+// Construct dynamic base URL to match current origin (handles localhost/127.0.0.1 consistency)
+const getBaseUrl = () => {
+    if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL;
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    return `http://${hostname}:8000/api/v1`;
+};
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1",
+    baseURL: getBaseUrl(),
     withCredentials: true,
 });
 
@@ -189,7 +196,7 @@ export async function getMyAssignments(): Promise<MyAssignmentListResponse> {
     return response.data;
 }
 
-export async function getAssignmentSuggestions(shiftId: string): Promise<ConstraintSuggestion[]> {
+export async function getShiftSuggestions(shiftId: string): Promise<ConstraintSuggestion[]> {
     const response = await api.get(`/assignments/shifts/${shiftId}/suggestions`);
     return response.data;
 }
@@ -235,7 +242,12 @@ export async function pickupDrop(requestId: string, data: DropPickupRequest): Pr
 }
 
 export async function approveDrop(requestId: string, data: SwapActionRequest): Promise<void> {
-    await api.post(`/swaps/drops/${requestId}/approve`, data);
+    await api.put(`/swaps/drop-requests/${requestId}/approve`, data);
+}
+
+export async function notifyQualifiedStaff(requestId: string): Promise<{ notified: number }> {
+    const response = await api.post(`/swaps/drop-requests/${requestId}/notify-qualified`);
+    return response.data;
 }
 
 // --- Analytics ---

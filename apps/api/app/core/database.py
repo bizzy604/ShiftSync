@@ -159,12 +159,23 @@ def _build_load_options(model: type, include: dict[str, Any] | None) -> list[Any
     return options
 
 
-def _apply_order(stmt: Any, model: type, order: dict[str, str] | None) -> Any:
+def _apply_order(stmt: Any, model: type, order: dict[str, Any] | None) -> Any:
     if not order:
         return stmt
+    
+    mapper = inspect(model)
     for field, direction in order.items():
-        column = getattr(model, field)
-        stmt = stmt.order_by(column.desc() if str(direction).lower() == "desc" else column.asc())
+        if field in mapper.relationships and isinstance(direction, dict):
+            # Support one level of nested ordering via join
+            rel = mapper.relationships[field]
+            nested_model = rel.mapper.class_
+            stmt = stmt.join(getattr(model, field))
+            for sub_field, sub_direction in direction.items():
+                column = getattr(nested_model, sub_field)
+                stmt = stmt.order_by(column.desc() if str(sub_direction).lower() == "desc" else column.asc())
+        else:
+            column = getattr(model, field)
+            stmt = stmt.order_by(column.desc() if str(direction).lower() == "desc" else column.asc())
     return stmt
 
 

@@ -17,6 +17,8 @@ from app.schemas.assignment import (
     AssignmentResponse,
     AssignmentListResponse,
     ConstraintSuggestion,
+    ConstraintDetail,
+    AssignmentPreviewResponse,
     MyAssignmentResponse,
     MyAssignmentListResponse,
     AssignmentShiftInfo,
@@ -270,9 +272,9 @@ async def list_my_assignments(
     return MyAssignmentListResponse(assignments=out)
 
 
-@router.get("/shifts/{shift_id}/assignments", response_model=AssignmentListResponse)
+@router.get("", response_model=AssignmentListResponse)
 async def list_assignments(
-    shift_id: str,
+    shift_id: str = Query(...),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> AssignmentListResponse:
     await _get_shift_with_access(shift_id, current_user)
@@ -288,9 +290,9 @@ async def list_assignments(
     return AssignmentListResponse(assignments=[_to_assignment_response(item) for item in assignments])
 
 
-@router.get("/shifts/{shift_id}/assignments/preview", response_model=AssignmentPreviewResponse)
+@router.get("/preview", response_model=AssignmentPreviewResponse)
 async def preview_assignment(
-    shift_id: str,
+    shift_id: str = Query(...),
     user_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> AssignmentPreviewResponse:
@@ -326,11 +328,23 @@ async def preview_assignment(
     )
 
 
-@router.post("/shifts/{shift_id}/assignments", response_model=AssignmentResponse)
-async def create_assignment(
+@router.get("/shifts/{shift_id}/suggestions", response_model=list[ConstraintSuggestion])
+async def list_shift_suggestions(
     shift_id: str,
+    limit: int = Query(10, ge=1, le=50),
+    current_user: CurrentUser = Depends(require_roles("admin", "manager")),
+) -> list[ConstraintSuggestion]:
+    shift = await _get_shift_with_access(shift_id, current_user)
+    shift_snapshot = _to_shift_snapshot(shift)
+    suggestions = await _compute_suggestions(shift_snapshot, target_user_id="", limit=limit)
+    return suggestions
+
+
+@router.post("", response_model=AssignmentResponse)
+async def create_assignment(
     payload: AssignmentCreateRequest,
     request: Request,
+    shift_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ):
     shift = await _get_shift_with_access(shift_id, current_user)
@@ -477,11 +491,11 @@ async def create_assignment(
     return AssignmentResponse(**_to_assignment_response(assignment).model_dump())
 
 
-@router.delete("/shifts/{shift_id}/assignments/{assignment_id}")
+@router.delete("/{assignment_id}")
 async def delete_assignment(
-    shift_id: str,
     assignment_id: str,
     request: Request,
+    shift_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> dict[str, bool]:
     shift = await _get_shift_with_access(shift_id, current_user)

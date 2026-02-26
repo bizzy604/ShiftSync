@@ -3,7 +3,7 @@ import { Check, ArrowLeft, X, Loader2, Info, UserPlus } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
-import { useAssignmentSuggestions, useCreateSwapRequest } from '../../lib/api/hooks';
+import { useShiftSuggestions, useCreateSwapRequest } from '../../lib/api/hooks';
 import { MyAssignmentResponse } from '../../lib/api/types';
 import { format, parseISO } from 'date-fns';
 
@@ -78,10 +78,10 @@ export function SwapRequestFlow({ open, onClose, myAssignment }: SwapRequestFlow
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [note, setNote] = useState('');
 
-    const { data: suggestions, isLoading: isLoadingSuggestions } = useAssignmentSuggestions(myAssignment?.shift.id || '');
+    const { data: suggestions, isLoading: isLoadingSuggestions } = useShiftSuggestions(myAssignment?.shift.id || '');
     const createSwapMutation = useCreateSwapRequest();
 
-    const selectedStaff = suggestions?.find((s) => s.user_id === selectedStaffId);
+    const selectedStaff = suggestions?.find((s: any) => s.user_id === selectedStaffId);
     const selectedName = selectedStaff?.name || 'Staff Member';
 
     const handleSubmit = () => {
@@ -243,7 +243,7 @@ export function SwapRequestFlow({ open, onClose, myAssignment }: SwapRequestFlow
                         <span className="text-[10px] font-black uppercase tracking-widest">Finding available staff…</span>
                     </div>
                 ) : (
-                    suggestions?.map((s) => {
+                    suggestions?.map((s: any) => {
                         const isSelected = selectedStaffId === s.user_id;
 
                         return (

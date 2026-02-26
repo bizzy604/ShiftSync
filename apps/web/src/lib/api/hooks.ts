@@ -14,7 +14,7 @@ import {
     deleteShift,
     deleteUser,
     getAssignments,
-    getAssignmentSuggestions,
+    getShiftSuggestions,
     getAuditLogs,
     getAvailableDrops,
     getFairnessReport,
@@ -32,6 +32,7 @@ import {
     getUserAvailability,
     getUsers,
     markAllNotificationsRead,
+    notifyQualifiedStaff,
     pickupDrop,
     previewAssignment,
     publishWeek,
@@ -85,6 +86,7 @@ export const keys = {
     fairness: (locationId: string, startDate: string, endDate: string) => ["analytics", "fairness", locationId, startDate, endDate] as const,
     audit: (page: number) => ["audit", page] as const,
     notifications: (unreadOnly: boolean) => ["notifications", { unreadOnly }] as const,
+    suggestions: (shiftId: string) => ["shifts", shiftId, "suggestions"] as const,
 };
 
 // --- Locations ---
@@ -283,11 +285,17 @@ export function useMyAssignments() {
     });
 }
 
-export function useAssignmentSuggestions(shiftId: string) {
+export function useShiftSuggestions(shiftId: string) {
     return useQuery({
-        queryKey: keys.assignmentSuggestions(shiftId),
-        queryFn: () => getAssignmentSuggestions(shiftId),
+        queryKey: keys.suggestions(shiftId),
+        queryFn: () => getShiftSuggestions(shiftId),
         enabled: !!shiftId,
+    });
+}
+
+export function useNotifyQualifiedStaff() {
+    return useMutation({
+        mutationFn: (requestId: string) => notifyQualifiedStaff(requestId),
     });
 }
 

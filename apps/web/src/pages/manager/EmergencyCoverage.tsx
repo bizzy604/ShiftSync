@@ -6,8 +6,8 @@ import { SidePanel } from '../../components/SidePanel';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 
-import { useSwapRequest, useUsers, useAssignmentPreview, useSwapAction } from '../../lib/api/hooks';
-import { SwapRequestResponse, UserResponse } from '../../lib/api/types';
+import { useSwapRequest, useUsers, useAssignmentPreview, useSwapAction, useShiftSuggestions, useNotifyQualifiedStaff } from '../../lib/api/hooks';
+import { SwapRequestResponse, UserResponse, ConstraintSuggestion } from '../../lib/api/types';
 
 /* ========== Sub-Components ========== */
 
@@ -70,6 +70,9 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
 
     const approveMutation = useSwapAction('approve');
     const declineMutation = useSwapAction('decline');
+    const notifyMutation = useNotifyQualifiedStaff();
+
+    const { data: suggestions, isLoading: isLoadingSuggestions } = useShiftSuggestions(request?.requester_assignment_id || '');
 
     const handleApprove = () => {
         if (!request) return;
@@ -83,7 +86,19 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
         onClose();
     };
 
-    const isLoading = isLoadingRequest || isLoadingUsers;
+    const handleNotifyAll = () => {
+        if (!request) return;
+        notifyMutation.mutate(request.id, {
+            onSuccess: (data) => {
+                alert(`Broadcasted notifications to ${data.notified} qualified staff members.`);
+            },
+            onError: () => {
+                alert('Failed to send notifications. Please try again.');
+            }
+        });
+    };
+
+    const isLoading = isLoadingRequest || isLoadingUsers || isLoadingSuggestions;
 
     // Derived values
     const shiftDate = request?.shift_date ? format(parseISO(request.shift_date), 'eeee, MMM d') : '';
@@ -95,10 +110,10 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
     const isUrgent = expiresAt && minutesLeft < 60 && minutesLeft > 0;
 
     const filteredUsers = useMemo(() => {
-        if (!usersData?.users) return [];
-        // Only staff for coverage
-        return usersData.users.filter(u => u.role === 'staff' && u.id !== request?.initiated_by);
-    }, [usersData, request]);
+        if (!usersData?.users || !suggestions) return [];
+        const suggestionIds = new Set(suggestions.map(s => s.user_id));
+        return usersData.users.filter(u => suggestionIds.has(u.id));
+    }, [usersData, suggestions]);
 
     if (!requestId) return null;
 
@@ -211,8 +226,13 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
 
                         {/* Actions */}
                         <div className="space-y-3 pt-4 border-t border-border-gray">
-                            <button className="w-full py-3 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy/90 transition-all shadow-lg flex items-center justify-center gap-2 group">
-                                <Bell size={18} className="group-hover:animate-bounce" /> Notify All Qualified
+                            <button
+                                onClick={handleNotifyAll}
+                                disabled={notifyMutation.isPending || filteredUsers.length === 0}
+                                className="w-full py-3 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy/90 transition-all shadow-lg flex items-center justify-center gap-2 group disabled:opacity-50"
+                            >
+                                <Bell size={18} className={notifyMutation.isPending ? 'animate-spin' : 'group-hover:animate-bounce'} />
+                                {notifyMutation.isPending ? 'Sending Notifications...' : 'Notify All Qualified'}
                             </button>
                             <button
                                 onClick={onClose}

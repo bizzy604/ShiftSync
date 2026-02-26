@@ -168,7 +168,7 @@ async def emit_notifications(ws_manager: object, notifications: list[object]) ->
         )
 
 
-@router.get("/swap-requests", response_model=SwapRequestListResponse)
+@router.get("", response_model=SwapRequestListResponse)
 async def list_swap_requests(current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestListResponse:
     rows = await prisma.swaprequest.find_many(
         include={
@@ -195,7 +195,7 @@ async def list_swap_requests(current_user: CurrentUser = Depends(get_current_use
     return SwapRequestListResponse(requests=[to_resp(x) for x in out])
 
 
-@router.get("/swap-requests/{request_id}", response_model=SwapRequestResponse)
+@router.get("/{request_id}", response_model=SwapRequestResponse)
 async def get_swap_request(request_id: str, current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(
         where={"id": request_id},
@@ -220,7 +220,7 @@ async def get_swap_request(request_id: str, current_user: CurrentUser = Depends(
     return to_resp(row)
 
 
-@router.post("/swap-requests", response_model=SwapRequestResponse)
+@router.post("", response_model=SwapRequestResponse)
 async def create_swap_request(payload: SwapCreateRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
     await enforce_pending_limit(current_user.id)
     a = await prisma.shiftassignment.find_unique(where={"id": payload.my_assignment_id}, include={"shift": True})
@@ -265,7 +265,7 @@ async def create_swap_request(payload: SwapCreateRequest, request: Request, curr
     return to_resp(row)
 
 
-@router.put("/swap-requests/{request_id}/accept", response_model=SwapRequestResponse)
+@router.put("/{request_id}/accept", response_model=SwapRequestResponse)
 async def accept_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None or row.type != "swap":
@@ -301,7 +301,7 @@ async def accept_swap(request_id: str, body: SwapActionRequest, request: Request
     return to_resp(row)
 
 
-@router.put("/swap-requests/{request_id}/reject", response_model=SwapRequestResponse)
+@router.put("/{request_id}/reject", response_model=SwapRequestResponse)
 async def reject_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id})
     if row is None or row.type != "swap":
@@ -335,7 +335,7 @@ async def reject_swap(request_id: str, body: SwapActionRequest, request: Request
     return to_resp(row)
 
 
-@router.put("/swap-requests/{request_id}/cancel", response_model=SwapRequestResponse)
+@router.put("/{request_id}/cancel", response_model=SwapRequestResponse)
 async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id})
     if row is None:
@@ -434,7 +434,7 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
     return row, [notif_1, notif_2], a.shift.location_id
 
 
-@router.put("/swap-requests/{request_id}/approve", response_model=SwapRequestResponse)
+@router.put("/{request_id}/approve", response_model=SwapRequestResponse)
 async def approve_swap_like(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None:
@@ -447,7 +447,7 @@ async def approve_swap_like(request_id: str, body: SwapActionRequest, request: R
     return to_resp(row)
 
 
-@router.put("/swap-requests/{request_id}/decline", response_model=SwapRequestResponse)
+@router.put("/{request_id}/decline", response_model=SwapRequestResponse)
 async def decline_swap_like(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None:
@@ -487,7 +487,7 @@ async def decline_swap_like(request_id: str, body: SwapActionRequest, request: R
     return to_resp(row)
 
 
-@router.post("/drop-requests", response_model=SwapRequestResponse)
+@router.post("/drops", response_model=SwapRequestResponse)
 async def create_drop(payload: DropCreateRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
     await enforce_pending_limit(current_user.id)
     a = await prisma.shiftassignment.find_unique(where={"id": payload.assignment_id}, include={"shift": True})
@@ -520,7 +520,7 @@ async def create_drop(payload: DropCreateRequest, request: Request, current_user
     return to_resp(row)
 
 
-@router.get("/drop-requests/available", response_model=AvailableDropListResponse)
+@router.get("/drops/available", response_model=AvailableDropListResponse)
 async def available_drops(current_user: CurrentUser = Depends(require_roles("staff"))) -> AvailableDropListResponse:
     now = datetime.now(tz=timezone.utc)
     expired = await prisma.swaprequest.find_many(where={"type": "drop", "status": {"in": ["OPEN", "PENDING_MANAGER"]}, "expires_at": {"lt": now}})
@@ -560,7 +560,7 @@ async def available_drops(current_user: CurrentUser = Depends(require_roles("sta
     return AvailableDropListResponse(available=out)
 
 
-@router.post("/drop-requests/{request_id}/pickup", response_model=SwapRequestResponse)
+@router.post("/drops/{request_id}/pickup", response_model=SwapRequestResponse)
 async def pickup_drop(request_id: str, body: DropPickupRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": {"include": {"location": True, "required_skill": True}}}}})
     if row is None or row.type != "drop":
@@ -677,3 +677,68 @@ async def decline_drop(request_id: str, body: SwapActionRequest, request: Reques
     await emit_notifications(ws, notifications)
     await ws.emit_to_users([row.initiated_by] + ([row.pickup_user_id] if row.pickup_user_id else []), "swap.status_changed", {"swapRequestId": row.id, "newStatus": "REJECTED"})
     return to_resp(row)
+
+
+@router.post("/drop-requests/{request_id}/notify-qualified")
+async def notify_qualified_staff(
+    request_id: str,
+    request: Request,
+    current_user: CurrentUser = Depends(require_roles("admin", "manager")),
+) -> dict[str, int]:
+    row = await prisma.swaprequest.find_unique(
+        where={"id": request_id},
+        include={"requester_assignment": {"include": {"shift": {"include": {"location": True, "required_skill": True}}}}}
+    )
+    if row is None or row.type != "drop":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Drop request not found.")
+    
+    a = row.requester_assignment
+    if a is None or a.shift is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment/Shift context missing.")
+
+    # Find all active staff candidates (certified + skilled)
+    skill_links = await prisma.userskill.find_many(where={"skill_id": a.shift.required_skill_id})
+    cert_links = await prisma.userlocationcertification.find_many(
+        where={"location_id": a.shift.location_id, "revoked_at": None}
+    )
+    skill_uids = {link.user_id for link in skill_links}
+    cert_uids = {link.user_id for link in cert_links}
+    candidate_ids = list(skill_uids.intersection(cert_uids))
+    
+    # Remove initiator
+    if row.initiated_by in candidate_ids:
+        candidate_ids.remove(row.initiated_by)
+
+    candidates = await prisma.user.find_many(
+        where={"id": {"in": candidate_ids}, "role": "staff", "is_active": True},
+        include={"user_skills": True, "user_location_certifications": True, "availability": True}
+    )
+
+    count = 0
+    ws = request.app.state.ws_manager
+    async with prisma.tx() as tx:
+        for u in candidates:
+            # Quick qualification check
+            res = evaluate_assignment(
+                shift_snapshot(a.shift),
+                user_snapshot(u),
+                await existing_assignments(u.id, a.shift.id)
+            )
+            if res.valid and not res.requires_override:
+                notif = await create_notification(
+                    user_id=u.id,
+                    notif_type="drop.available",
+                    message=f"Urgent coverage needed for {a.shift.required_skill.name} at {a.shift.location.name}.",
+                    payload={"dropRequestId": row.id},
+                    db=tx,
+                    ws_manager=None
+                )
+                if ws:
+                    await ws.emit_to_user(u.id, "notification.new", {
+                        "notificationId": notif.id,
+                        "type": notif.type,
+                        "message": notif.message
+                    })
+                count += 1
+
+    return {"notified": count}

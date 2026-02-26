@@ -82,9 +82,9 @@ async def _ensure_staff_location_access(user_id: str, location_id: str) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
 
-@router.get("/locations/{location_id}/shifts", response_model=ShiftListResponse)
+@router.get("", response_model=ShiftListResponse)
 async def list_shifts(
-    location_id: str,
+    location_id: str = Query(...),
     week_start: date = Query(...),
     status_filter: str | None = Query(default=None, alias="status"),
     current_user: CurrentUser = Depends(get_current_user),
@@ -129,10 +129,10 @@ async def list_shifts(
     return ShiftListResponse(shifts=[_to_shift_response(shift, location.iana_timezone) for shift in shifts])
 
 
-@router.post("/locations/{location_id}/shifts", response_model=ShiftResponse)
+@router.post("", response_model=ShiftResponse)
 async def create_shift(
-    location_id: str,
     payload: ShiftCreateRequest,
+    location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> ShiftResponse:
     location = await _get_location_or_404(location_id)
@@ -186,10 +186,10 @@ async def create_shift(
     return _to_shift_response(shift, location.iana_timezone)
 
 
-@router.get("/locations/{location_id}/shifts/{shift_id}", response_model=ShiftResponse)
+@router.get("/{shift_id}", response_model=ShiftResponse)
 async def get_shift(
-    location_id: str,
     shift_id: str,
+    location_id: str = Query(...),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ShiftResponse:
     location = await _get_location_or_404(location_id)
@@ -212,12 +212,12 @@ async def get_shift(
     return _to_shift_response(shift, location.iana_timezone)
 
 
-@router.put("/locations/{location_id}/shifts/{shift_id}", response_model=ShiftResponse)
+@router.put("/{shift_id}", response_model=ShiftResponse)
 async def update_shift(
-    location_id: str,
     shift_id: str,
     payload: ShiftUpdateRequest,
     request: Request,
+    location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> ShiftResponse:
     location = await _get_location_or_404(location_id)
@@ -322,11 +322,11 @@ async def update_shift(
     return _to_shift_response(updated, location.iana_timezone)
 
 
-@router.delete("/locations/{location_id}/shifts/{shift_id}")
+@router.delete("/{shift_id}")
 async def delete_shift(
-    location_id: str,
     shift_id: str,
     request: Request,
+    location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> dict[str, bool]:
     if current_user.role == "manager":
@@ -360,11 +360,11 @@ async def delete_shift(
     return {"deleted": True}
 
 
-@router.post("/locations/{location_id}/shifts/publish-week", response_model=PublishWeekResponse)
+@router.post("/publish", response_model=PublishWeekResponse)
 async def publish_week(
-    location_id: str,
     payload: PublishWeekRequest,
     request: Request,
+    location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> PublishWeekResponse:
     if current_user.role == "manager":

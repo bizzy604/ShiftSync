@@ -11,13 +11,14 @@ router = APIRouter()
 async def websocket_endpoint(websocket: WebSocket):
     settings = get_settings()
     token = websocket.query_params.get("token") or websocket.cookies.get(settings.token_cookie_name)
+    
     if not token:
         await websocket.close(code=4401)
         return
 
     try:
         payload = decode_access_token(token)
-    except ValueError:
+    except Exception:
         await websocket.close(code=4401)
         return
 

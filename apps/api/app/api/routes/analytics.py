@@ -62,7 +62,7 @@ async def _location_or_404(location_id: str) -> object:
     return location
 
 
-@router.get("/analytics/overtime-dashboard", response_model=OvertimeDashboardResponse)
+@router.get("/overtime-dashboard", response_model=OvertimeDashboardResponse)
 async def overtime_dashboard(
     location_id: str = Query(...),
     week_start: date = Query(...),
@@ -165,7 +165,7 @@ async def overtime_dashboard(
     )
 
 
-@router.get("/analytics/fairness-report", response_model=FairnessReportResponse)
+@router.get("/fairness-report", response_model=FairnessReportResponse)
 async def fairness_report(
     location_id: str = Query(...),
     start_date: date = Query(...),
@@ -263,7 +263,7 @@ async def fairness_report(
     )
 
 
-@router.get("/analytics/hours-distribution", response_model=HoursDistributionResponse)
+@router.get("/hours-distribution", response_model=HoursDistributionResponse)
 async def hours_distribution(
     location_id: str = Query(...),
     start_date: date = Query(...),

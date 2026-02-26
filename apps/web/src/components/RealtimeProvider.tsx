@@ -33,9 +33,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
         const connect = () => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host;
-            // The backend router has prefix /api/v1 and realtime router has prefix /realtime, and endpoint is /ws
-            const wsUrl = `${protocol}//${host}/api/v1/realtime/ws`;
+            // Use window.location.hostname:8000 to ensure we match the backend port and have consistent cookies
+            const backendHost = `${window.location.hostname}:8000`;
+
+            const wsUrl = `${protocol}//${backendHost}/api/v1/realtime/ws`;
 
             console.log(`[Realtime] Connecting to ${wsUrl}...`);
             const socket = new WebSocket(wsUrl);
