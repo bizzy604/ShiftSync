@@ -1,12 +1,20 @@
-import { AppLayout } from "../../components/AppLayout";
+import React, { useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { MySchedule } from './MySchedule';
+import { NotificationCentre } from './NotificationCentre';
 
 export function StaffDashboard() {
-  return (
-    <AppLayout title="Staff Dashboard">
-      <section className="panel">
-        <h2>My Schedule (Phase 2)</h2>
-        <p>Phase 1 provides login and role-based navigation for staff users.</p>
-      </section>
-    </AppLayout>
-  );
+  const location = useLocation();
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  if (location.pathname === '/staff') {
+    return (
+      <>
+        <MySchedule />
+        <NotificationCentre open={showNotifications} onClose={() => setShowNotifications(false)} />
+      </>
+    );
+  }
+
+  return <Outlet />;
 }

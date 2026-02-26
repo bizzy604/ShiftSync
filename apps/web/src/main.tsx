@@ -5,10 +5,23 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
+
+// Admin screens
 import { AdminDashboard } from "./pages/admin/Dashboard";
+import { StaffManagement } from "./pages/admin/StaffManagement";
+import { AuditLog } from "./pages/admin/AuditLog";
+
+// Manager screens
 import { ManagerDashboard } from "./pages/manager/Dashboard";
-import { LoginPage } from "./pages/LoginPage";
+import { SwapApprovalQueue } from "./pages/manager/SwapApprovalQueue";
+import { OvertimeFairness } from "./pages/manager/OvertimeFairness";
+
+// Staff screens
 import { StaffDashboard } from "./pages/staff/Dashboard";
+import { AvailabilitySetup } from "./pages/staff/AvailabilitySetup";
+
+// Shared
+import { LoginPage } from "./pages/LoginPage";
 import "./styles.css";
 
 const queryClient = new QueryClient();
@@ -30,16 +43,24 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<IndexRedirect />} />
 
+            {/* Admin Routes */}
             <Route element={<ProtectedRoute allowRoles={["admin"]} />}>
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/staff" element={<StaffManagement />} />
+              <Route path="/admin/audit" element={<AuditLog />} />
             </Route>
 
+            {/* Manager Routes */}
             <Route element={<ProtectedRoute allowRoles={["manager"]} />}>
               <Route path="/manager" element={<ManagerDashboard />} />
+              <Route path="/manager/swaps" element={<SwapApprovalQueue />} />
+              <Route path="/manager/analytics" element={<OvertimeFairness />} />
             </Route>
 
+            {/* Staff Routes */}
             <Route element={<ProtectedRoute allowRoles={["staff"]} />}>
               <Route path="/staff" element={<StaffDashboard />} />
+              <Route path="/staff/availability" element={<AvailabilitySetup />} />
             </Route>
           </Routes>
         </BrowserRouter>

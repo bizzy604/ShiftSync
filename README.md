@@ -138,6 +138,8 @@ Default local URLs:
 - API: `http://localhost:8000`
 - Health: `http://localhost:8000/health`
 - API base: `http://localhost:8000/api/v1`
+- WebSocket: `ws://localhost:8000/api/v1/ws`
+- Swagger: `http://localhost:8000/docs`
 - Web: `http://localhost:5173`
 
 ## Operational Commands
