@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { Save, Plus, X, Info, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Plus, X, Info, Clock, Loader2 } from 'lucide-react';
 import { AppLayout } from '../../components/NavBar';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
+import { NotificationCentre } from './NotificationCentre';
+import { useMe, useUserAvailability, useUpdateAvailability, useNotifications } from '../../lib/api/hooks';
+import { format, parseISO } from 'date-fns';
 
-/* ========== Types & Mock Data ========== */
+/* ========== Types & Utils ========== */
 
 interface DayAvailability {
     day: string;
+    dayNum: number;
     available: boolean;
     startTime: string;
     endTime: string;
@@ -21,18 +25,14 @@ interface Exception {
     endTime?: string;
 }
 
-const initialAvailability: DayAvailability[] = [
-    { day: 'Monday', available: true, startTime: '09:00', endTime: '17:00' },
-    { day: 'Tuesday', available: true, startTime: '12:00', endTime: '22:00' },
-    { day: 'Wednesday', available: false, startTime: '09:00', endTime: '17:00' },
-    { day: 'Thursday', available: true, startTime: '09:00', endTime: '17:00' },
-    { day: 'Friday', available: true, startTime: '14:00', endTime: '23:00' },
-    { day: 'Saturday', available: true, startTime: '10:00', endTime: '20:00' },
-    { day: 'Sunday', available: false, startTime: '09:00', endTime: '17:00' },
-];
-
-const initialExceptions: Exception[] = [
-    { id: '1', date: 'Aug 20, 2025', type: 'unavailable' },
+const DAYS = [
+    { name: 'Monday', num: 0 },
+    { name: 'Tuesday', num: 1 },
+    { name: 'Wednesday', num: 2 },
+    { name: 'Thursday', num: 3 },
+    { name: 'Friday', num: 4 },
+    { name: 'Saturday', num: 5 },
+    { name: 'Sunday', num: 6 },
 ];
 
 const timeOptions: string[] = [];
@@ -44,21 +44,72 @@ for (let h = 0; h < 24; h++) {
 }
 
 function formatTime(time: string): string {
+    if (!time) return '';
     const [h, m] = time.split(':').map(Number);
     const ampm = h >= 12 ? 'PM' : 'AM';
     const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
     return `${displayH}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
+const DEFAULT_START = '09:00';
+const DEFAULT_END = '17:00';
+
 /* ========== Main Component ========== */
 
 export function AvailabilitySetup() {
-    const [availability, setAvailability] = useState(initialAvailability);
-    const [exceptions, setExceptions] = useState(initialExceptions);
+    const { data: me } = useMe();
+    const { data: availData, isLoading } = useUserAvailability(me?.id || '');
+    const updateAvailability = useUpdateAvailability();
+
+    const [availability, setAvailability] = useState<DayAvailability[]>([]);
+    const [exceptions, setExceptions] = useState<Exception[]>([]);
     const [hasChanges, setHasChanges] = useState(false);
     const [showAddException, setShowAddException] = useState(false);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+    // Notifications data
+    const { data: notificationsData } = useNotifications();
+    const unreadCount = notificationsData?.unread_count || 0;
+
     const [newExceptionDate, setNewExceptionDate] = useState('');
     const [newExceptionType, setNewExceptionType] = useState<'unavailable' | 'available'>('unavailable');
+
+    // Initialize state from API data
+    useEffect(() => {
+        if (!availData) return;
+
+        // Map recurring
+        const recurringMap = new Map();
+        availData.recurring.forEach(r => {
+            if (r.day_of_week !== null) {
+                recurringMap.set(r.day_of_week, r);
+            }
+        });
+
+        const initialAvail = DAYS.map(d => {
+            const entry = recurringMap.get(d.num);
+            return {
+                day: d.name,
+                dayNum: d.num,
+                available: !!entry,
+                startTime: entry?.start_clock || DEFAULT_START,
+                endTime: entry?.end_clock || DEFAULT_END,
+            };
+        });
+        setAvailability(initialAvail);
+
+        // Map exceptions
+        const initialExceptions: Exception[] = availData.exceptions.map(ex => ({
+            id: ex.id,
+            date: ex.specific_date ? format(parseISO(ex.specific_date), 'MMM d, yyyy') : 'Unknown',
+            rawDate: ex.specific_date,
+            type: (ex.is_available ? 'available' : 'unavailable') as 'available' | 'unavailable',
+            startTime: ex.start_clock || undefined,
+            endTime: ex.end_clock || undefined,
+        }));
+        setExceptions(initialExceptions);
+        setHasChanges(false);
+    }, [availData]);
 
     const toggleDay = (index: number) => {
         setAvailability((prev) => {
@@ -87,88 +138,143 @@ export function AvailabilitySetup() {
         if (!newExceptionDate) return;
         setExceptions((prev) => [
             ...prev,
-            { id: Date.now().toString(), date: newExceptionDate, type: newExceptionType },
+            {
+                id: `temp-${Date.now()}`,
+                date: format(parseISO(newExceptionDate), 'MMM d, yyyy'),
+                rawDate: newExceptionDate,
+                type: newExceptionType
+            },
         ]);
         setShowAddException(false);
         setNewExceptionDate('');
         setHasChanges(true);
     };
 
+    const handleSave = () => {
+        if (!me) return;
+
+        const payload = {
+            recurring: availability
+                .filter(a => a.available)
+                .map(a => ({
+                    day_of_week: a.dayNum,
+                    start_clock_time: a.startTime,
+                    end_clock_time: a.endTime
+                })),
+            exceptions: exceptions.map(ex => ({
+                date: (ex as any).rawDate.split('T')[0],
+                is_available: ex.type === 'available',
+                start_clock_time: ex.type === 'available' ? (ex.startTime || '09:00') : undefined,
+                end_clock_time: ex.type === 'available' ? (ex.endTime || '17:00') : undefined
+            }))
+        };
+
+        updateAvailability.mutate({ id: me.id, data: payload as any }, {
+            onSuccess: () => {
+                setHasChanges(false);
+                alert('Availability updated successfully!');
+            }
+        });
+    };
+
+    if (isLoading) {
+        return (
+            <AppLayout title="Availability" role="staff" notificationCount={0}>
+                <div className="flex items-center justify-center py-40">
+                    <Loader2 className="animate-spin text-staff-purple" size={40} />
+                </div>
+            </AppLayout>
+        );
+    }
+
     return (
-        <AppLayout title="Availability" role="staff" notificationCount={2}>
+        <AppLayout
+            title="Availability"
+            role="staff"
+            notificationCount={unreadCount}
+            onBellClick={() => setIsNotificationOpen(true)}
+        >
             <div className="max-w-3xl mx-auto p-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-navy">My Availability</h1>
+                        <h1 className="text-2xl font-black text-navy uppercase tracking-tight">My Availability</h1>
                         <p className="text-sm text-gray-500 mt-1">
-                            Your availability is shown in your home timezone: America/Los_Angeles (Pacific Time)
+                            Current Timezone: <span className="font-bold text-staff-purple">{me?.home_timezone || 'America/Los_Angeles'}</span>
                         </p>
                     </div>
                     <button
-                        disabled={!hasChanges}
-                        className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-base flex items-center gap-2 ${hasChanges
-                                ? 'bg-teal text-white hover:bg-teal-dark shadow-md'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        onClick={handleSave}
+                        disabled={!hasChanges || updateAvailability.isPending}
+                        className={`px-6 py-2.5 text-sm font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95 ${hasChanges
+                            ? 'bg-teal text-white hover:bg-teal-dark'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                             }`}
                     >
-                        <Save size={16} /> Save Changes
+                        {updateAvailability.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        {updateAvailability.isPending ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
 
                 {/* Weekly Recurring Availability */}
-                <div className="bg-white rounded-xl border border-border-gray shadow-sm mb-6 overflow-hidden">
-                    <div className="px-5 py-4 bg-gray-50 border-b border-border-gray">
-                        <h2 className="text-sm font-bold text-navy">Weekly Recurring Availability</h2>
+                <div className="bg-white rounded-2xl border border-border-gray shadow-sm mb-6 overflow-hidden">
+                    <div className="px-6 py-4 bg-gray-50 border-b border-border-gray">
+                        <h2 className="text-xs font-black text-navy uppercase tracking-widest">Weekly Recurring Availability</h2>
                     </div>
                     <div className="divide-y divide-border-gray">
                         {availability.map((day, i) => (
                             <div
                                 key={day.day}
-                                className={`flex items-center gap-4 px-5 py-4 ${!day.available ? 'bg-gray-50' : ''}`}
+                                className={`flex items-center gap-4 px-6 py-5 ${!day.available ? 'bg-gray-50/50 opacity-60' : ''}`}
                             >
-                                <span className="w-24 text-sm font-semibold text-navy">{day.day}</span>
+                                <span className="w-24 text-sm font-black text-navy uppercase">{day.day}</span>
 
                                 {/* Toggle */}
                                 <button
                                     onClick={() => toggleDay(i)}
-                                    className={`relative w-11 h-6 rounded-full transition-colors ${day.available ? 'bg-staff-purple' : 'bg-gray-300'
+                                    className={`relative w-12 h-6 rounded-full transition-all duration-300 ${day.available ? 'bg-staff-purple' : 'bg-gray-300'
                                         }`}
                                 >
                                     <span
-                                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${day.available ? 'translate-x-5' : 'translate-x-0'
+                                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-300 ${day.available ? 'translate-x-6' : 'translate-x-0'
                                             }`}
                                     />
                                 </button>
 
                                 {day.available ? (
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <select
-                                            value={day.startTime}
-                                            onChange={(e) => updateTime(i, 'startTime', e.target.value)}
-                                            className="px-3 py-2 rounded-lg border border-border-gray bg-white text-sm text-navy focus:outline-none focus:ring-2 focus:ring-staff-purple/40 transition-base"
-                                        >
-                                            {timeOptions.map((t) => (
-                                                <option key={t} value={t}>
-                                                    {formatTime(t)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <span className="text-gray-400">–</span>
-                                        <select
-                                            value={day.endTime}
-                                            onChange={(e) => updateTime(i, 'endTime', e.target.value)}
-                                            className="px-3 py-2 rounded-lg border border-border-gray bg-white text-sm text-navy focus:outline-none focus:ring-2 focus:ring-staff-purple/40 transition-base"
-                                        >
-                                            {timeOptions.map((t) => (
-                                                <option key={t} value={t}>
-                                                    {formatTime(t)}
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <div className="flex items-center gap-2 flex-1 animate-fade-in">
+                                        <div className="relative">
+                                            <select
+                                                value={day.startTime}
+                                                onChange={(e) => updateTime(i, 'startTime', e.target.value)}
+                                                className="pl-3 pr-8 py-2 rounded-xl border border-border-gray bg-white text-xs font-bold text-navy appearance-none focus:ring-2 focus:ring-staff-purple/20 transition-all outline-none"
+                                            >
+                                                {timeOptions.map((t) => (
+                                                    <option key={t} value={t}>
+                                                        {formatTime(t)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Clock size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        </div>
+                                        <span className="text-gray-300 font-bold">—</span>
+                                        <div className="relative">
+                                            <select
+                                                value={day.endTime}
+                                                onChange={(e) => updateTime(i, 'endTime', e.target.value)}
+                                                className="pl-3 pr-8 py-2 rounded-xl border border-border-gray bg-white text-xs font-bold text-navy appearance-none focus:ring-2 focus:ring-staff-purple/20 transition-all outline-none"
+                                            >
+                                                {timeOptions.map((t) => (
+                                                    <option key={t} value={t}>
+                                                        {formatTime(t)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Clock size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                 ) : (
-                                    <span className="text-sm text-gray-400 italic">Unavailable</span>
+                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest italic">Unavailable</span>
                                 )}
                             </div>
                         ))}
@@ -176,52 +282,67 @@ export function AvailabilitySetup() {
                 </div>
 
                 {/* Info callout */}
-                <div className="flex items-start gap-2 mb-6 px-4 py-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <Info size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-blue-700">
-                        ℹ Changes take effect for future schedules. Shifts already assigned are not affected.
+                <div className="flex items-start gap-3 mb-8 px-5 py-4 bg-navy/5 border border-navy/10 rounded-2xl">
+                    <Info size={18} className="text-staff-purple flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-navy font-medium leading-relaxed">
+                        Changes take effect for future schedules. Regular shifts already assigned to you will not be automatically updated. Contact your manager for immediate schedule changes.
                     </p>
                 </div>
 
                 {/* One-Time Exceptions */}
-                <div className="bg-white rounded-xl border border-border-gray shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 bg-gray-50 border-b border-border-gray flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-navy">One-Time Exceptions</h2>
+                <div className="bg-white rounded-2xl border border-border-gray shadow-sm overflow-hidden mb-12">
+                    <div className="px-6 py-4 bg-gray-50 border-b border-border-gray flex items-center justify-between">
+                        <h2 className="text-xs font-black text-navy uppercase tracking-widest">One-Time Exceptions</h2>
                     </div>
-                    <div className="p-5">
-                        <p className="text-xs text-gray-500 mb-4">Override your regular availability for specific dates</p>
+                    <div className="p-6">
+                        <p className="text-xs text-gray-500 mb-6 font-medium">Use exceptions to override your regular availability for vacations or personal days.</p>
 
-                        {exceptions.length > 0 && (
-                            <div className="space-y-2 mb-4">
+                        {exceptions.length > 0 ? (
+                            <div className="space-y-3 mb-6">
                                 {exceptions.map((ex) => (
                                     <div
                                         key={ex.id}
-                                        className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg border border-border-gray"
+                                        className={`flex items-center justify-between px-5 py-4 rounded-xl border border-border-gray animate-fade-in ${ex.type === 'available' ? 'bg-success/5 border-success/10' : 'bg-danger/5 border-danger/10'
+                                            }`}
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <Clock size={14} className="text-gray-400" />
-                                            <span className="text-sm text-navy font-medium">{ex.date}</span>
-                                            <span className="text-sm text-gray-500">—</span>
-                                            <span className="text-sm text-gray-600">
-                                                {ex.type === 'unavailable' ? 'Unavailable all day' : 'Available'}
-                                            </span>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`p-2 rounded-lg ${ex.type === 'available' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                                                <Clock size={14} />
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-navy font-black tracking-tight">{ex.date}</span>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <Badge variant={ex.type === 'available' ? 'green' : 'red'}>
+                                                        {ex.type === 'available' ? 'Available' : 'Unavailable'}
+                                                    </Badge>
+                                                    {ex.startTime && (
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                                            {formatTime(ex.startTime)} - {formatTime(ex.endTime || '')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                         <button
                                             onClick={() => removeException(ex.id)}
-                                            className="p-1 text-gray-400 hover:text-danger transition-base"
+                                            className="p-2 text-gray-400 hover:text-danger hover:bg-danger/5 rounded-lg transition-all"
                                         >
-                                            <X size={16} />
+                                            <X size={18} />
                                         </button>
                                     </div>
                                 ))}
+                            </div>
+                        ) : (
+                            <div className="py-10 text-center bg-gray-50/50 rounded-2xl border border-dashed border-border-gray mb-6">
+                                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No exceptions added</p>
                             </div>
                         )}
 
                         <button
                             onClick={() => setShowAddException(true)}
-                            className="flex items-center gap-2 text-sm text-staff-purple font-semibold hover:text-staff-purple-light transition-base"
+                            className="flex items-center justify-center gap-2 w-full py-3.5 bg-staff-purple/5 text-staff-purple font-black text-xs uppercase tracking-widest rounded-xl hover:bg-staff-purple/10 border border-staff-purple/10 transition-all active:scale-95"
                         >
-                            <Plus size={16} /> Add Exception
+                            <Plus size={16} /> Add One-Time Exception
                         </button>
                     </div>
                 </div>
@@ -231,62 +352,69 @@ export function AvailabilitySetup() {
             <Modal
                 open={showAddException}
                 onClose={() => setShowAddException(false)}
-                title="Add Exception"
-                subtitle="Override your regular availability for a specific date"
+                title="Schedule Exception"
+                subtitle="Override your recurring schedule for a specific date"
                 width="max-w-md"
                 footer={
                     <div className="flex justify-end gap-3">
                         <button
                             onClick={() => setShowAddException(false)}
-                            className="px-4 py-2 text-sm text-gray-600 hover:text-navy transition-base"
+                            className="px-6 py-2.5 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-navy transition-all"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={addException}
                             disabled={!newExceptionDate}
-                            className="px-5 py-2 text-sm font-semibold bg-staff-purple text-white rounded-lg hover:bg-staff-purple-light disabled:opacity-50 transition-base"
+                            className="px-8 py-2.5 text-xs font-black uppercase tracking-widest bg-staff-purple text-white rounded-xl hover:bg-staff-purple-light shadow-lg hover:shadow-staff-purple/20 transition-all disabled:opacity-50 active:scale-95"
                         >
-                            Save Exception
+                            Add Exception
                         </button>
                     </div>
                 }
             >
-                <div className="space-y-4">
+                <div className="space-y-6 pt-2">
                     <div>
-                        <label className="block text-sm font-medium text-navy mb-1.5">Date</label>
+                        <label className="block text-[10px] font-black text-navy uppercase tracking-widest mb-2 opacity-60">Select Date</label>
                         <input
                             type="date"
                             value={newExceptionDate}
                             onChange={(e) => setNewExceptionDate(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-lg border border-border-gray bg-gray-50 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-staff-purple/40 transition-base"
+                            className="w-full px-4 py-3 rounded-xl border border-border-gray bg-white text-sm font-bold text-navy focus:ring-2 focus:ring-staff-purple/20 transition-all outline-none"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-navy mb-1.5">Type</label>
-                        <div className="flex gap-3">
+                        <label className="block text-[10px] font-black text-navy uppercase tracking-widest mb-2 opacity-60">Availability Type</label>
+                        <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={() => setNewExceptionType('unavailable')}
-                                className={`flex-1 py-2.5 text-sm font-medium rounded-lg border transition-base ${newExceptionType === 'unavailable'
-                                        ? 'bg-staff-purple-50 border-staff-purple text-staff-purple'
-                                        : 'border-border-gray text-gray-600 hover:bg-gray-50'
+                                className={`py-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${newExceptionType === 'unavailable'
+                                    ? 'bg-danger/5 border-danger text-danger'
+                                    : 'border-border-gray text-gray-400 hover:bg-gray-50'
                                     }`}
                             >
-                                Unavailable
+                                <X size={20} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Unavailable</span>
                             </button>
                             <button
                                 onClick={() => setNewExceptionType('available')}
-                                className={`flex-1 py-2.5 text-sm font-medium rounded-lg border transition-base ${newExceptionType === 'available'
-                                        ? 'bg-staff-purple-50 border-staff-purple text-staff-purple'
-                                        : 'border-border-gray text-gray-600 hover:bg-gray-50'
+                                className={`py-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${newExceptionType === 'available'
+                                    ? 'bg-success/5 border-success text-success'
+                                    : 'border-border-gray text-gray-400 hover:bg-gray-50'
                                     }`}
                             >
-                                Available
+                                <Plus size={20} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Available</span>
                             </button>
                         </div>
                     </div>
                 </div>
             </Modal>
+
+            <NotificationCentre
+                open={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+            />
         </AppLayout>
     );
 }

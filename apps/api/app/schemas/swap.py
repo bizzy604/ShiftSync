@@ -27,18 +27,26 @@ class DropPickupRequest(BaseModel):
 
 
 class SwapRequestResponse(BaseModel):
-    id: str
+    request_id: str = Field(alias="id") # ID of the swap request
     type: SwapType
     status: SwapStatus
     requester_assignment_id: str
-    target_user_id: str | None
-    candidate_assignment_id: str | None
-    pickup_user_id: str | None
+    requester_name: str | None = None
+    target_user_id: str | None = None
+    target_name: str | None = None
+    candidate_assignment_id: str | None = None
+    pickup_user_id: str | None = None
+    pickup_name: str | None = None
     initiated_by: str
-    expires_at: datetime | None
+    expires_at: datetime | None = None
     created_at: datetime
-    resolved_at: datetime | None
-    resolution_note: str | None
+    resolved_at: datetime | None = None
+    resolution_note: str | None = None
+    
+    # Nested info for UI convenience
+    shift_date: str | None = None
+    shift_time: str | None = None
+    shift_label: str | None = None
 
 
 class SwapRequestListResponse(BaseModel):

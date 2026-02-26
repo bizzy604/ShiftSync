@@ -1,106 +1,63 @@
 import React, { useState } from 'react';
 import {
     ArrowLeftRight,
-    ArrowDown,
     Clock,
     Check,
     X,
     AlertTriangle,
     CheckCircle,
     MessageSquare,
-    Users,
+    Loader2,
 } from 'lucide-react';
+import { format, parseISO, isBefore, addHours } from 'date-fns';
+
 import { AppLayout } from '../../components/NavBar';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
 
-/* ========== Types & Mock Data ========== */
-
-interface SwapRequest {
-    id: string;
-    type: 'swap' | 'drop';
-    status: 'awaiting-staff' | 'awaiting-manager' | 'open-pickup' | 'urgent-no-claims';
-    from: string;
-    to?: string;
-    shift: string;
-    date: string;
-    time: string;
-    note?: string;
-    timeAgo: string;
-    constraintOk?: boolean;
-    acceptedBy?: string;
-    notifiedCount?: number;
-    qualifiedCount?: number;
-    expiresIn?: string;
-}
-
-const mockRequests: SwapRequest[] = [
-    {
-        id: '1',
-        type: 'swap',
-        status: 'awaiting-staff',
-        from: 'Carlos M.',
-        to: 'Maria L.',
-        shift: 'Bartender',
-        date: 'Friday, Aug 15',
-        time: '6pm – 11pm',
-        note: 'Family emergency, need coverage',
-        timeAgo: '2 hours ago',
-    },
-    {
-        id: '2',
-        type: 'swap',
-        status: 'awaiting-manager',
-        from: 'Jordan T.',
-        to: 'Sam K.',
-        shift: 'Server',
-        date: 'Saturday, Aug 16',
-        time: '2pm – 10pm',
-        note: 'Jordan and Sam mutually agreed to swap',
-        timeAgo: '4 hours ago',
-        constraintOk: true,
-        acceptedBy: 'Sam',
-    },
-    {
-        id: '3',
-        type: 'drop',
-        status: 'open-pickup',
-        from: 'Alex R.',
-        shift: 'Bartender',
-        date: 'Sunday, Aug 17',
-        time: '4pm – 11pm',
-        notifiedCount: 2,
-        qualifiedCount: 3,
-        expiresIn: 'in 6 hours (before 6pm Sunday)',
-        timeAgo: '5 hours ago',
-    },
-    {
-        id: '4',
-        type: 'drop',
-        status: 'urgent-no-claims',
-        from: 'Priya N.',
-        shift: 'Bartender',
-        date: 'Sunday, Aug 17',
-        time: '7pm – 11pm',
-        expiresIn: 'in 1 hour',
-        timeAgo: '8 hours ago',
-    },
-];
+import { useSwapRequests, useSwapAction } from '../../lib/api/hooks';
+import { SwapRequestResponse, SwapStatus } from '../../lib/api/types';
 
 /* ========== Sub-Components ========== */
 
-function RequestCard({ request }: { request: SwapRequest }) {
-    const isUrgent = request.status === 'urgent-no-claims';
+interface RequestCardProps {
+    request: SwapRequestResponse;
+    onAction: (id: string, action: 'approve' | 'decline' | 'reject', note?: string, isDrop?: boolean) => void;
+    isPending: boolean;
+}
 
-    const statusConfig = {
-        'awaiting-staff': { label: 'AWAITING STAFF ACCEPTANCE', variant: 'gray' as const },
-        'awaiting-manager': { label: 'AWAITING YOUR APPROVAL', variant: 'amber' as const },
-        'open-pickup': { label: 'OPEN FOR PICKUP', variant: 'green' as const },
-        'urgent-no-claims': { label: 'URGENT — NO CLAIMS', variant: 'red' as const },
+function RequestCard({ request, onAction, isPending }: RequestCardProps) {
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [showApproveModal, setShowApproveModal] = useState(false);
+    const [note, setNote] = useState('');
+
+    const isDrop = request.type === 'drop';
+    const expiresAt = request.expires_at ? parseISO(request.expires_at) : null;
+    const isUrgent = expiresAt && isBefore(expiresAt, addHours(new Date(), 4)) && request.status !== 'APPROVED';
+
+    const getStatusConfig = (status: SwapStatus) => {
+        switch (status) {
+            case 'PENDING_ACCEPTEE': return { label: 'AWAITING STAFF ACCEPTANCE', variant: 'gray' as const };
+            case 'PENDING_MANAGER': return { label: 'AWAITING YOUR APPROVAL', variant: 'amber' as const };
+            case 'OPEN': return { label: 'OPEN FOR PICKUP', variant: 'green' as const };
+            case 'APPROVED': return { label: 'APPROVED', variant: 'green' as const };
+            case 'REJECTED': return { label: 'REJECTED', variant: 'red' as const };
+            case 'EXPIRED': return { label: 'EXPIRED', variant: 'gray' as const };
+            case 'CANCELLED': return { label: 'CANCELLED', variant: 'gray' as const };
+            default: return { label: status, variant: 'gray' as const };
+        }
     };
 
-    const statusInfo = statusConfig[request.status];
+    const statusInfo = getStatusConfig(request.status);
+    const dateFormatted = request.shift_date ? format(parseISO(request.shift_date), 'eeee, MMM d') : 'Unknown Date';
+
+    const handleConfirmAction = (action: 'approve' | 'decline' | 'reject') => {
+        onAction(request.id, action, note, isDrop);
+        setShowRejectModal(false);
+        setShowApproveModal(false);
+        setNote('');
+    };
 
     return (
         <div
@@ -111,7 +68,7 @@ function RequestCard({ request }: { request: SwapRequest }) {
             {isUrgent && (
                 <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-danger-50 rounded-lg">
                     <AlertTriangle size={14} className="text-danger" />
-                    <span className="text-xs font-bold text-danger uppercase">Urgent — Expires {request.expiresIn}</span>
+                    <span className="text-xs font-bold text-danger uppercase">Urgent — Expires soon</span>
                 </div>
             )}
 
@@ -127,101 +84,131 @@ function RequestCard({ request }: { request: SwapRequest }) {
             <div className="mb-3">
                 {request.type === 'swap' ? (
                     <div className="flex items-center gap-2 mb-2">
-                        <Avatar name={request.from} size="sm" />
-                        <span className="font-semibold text-navy">{request.from}</span>
+                        <Avatar name={request.requester_name || 'Staff'} size="sm" />
+                        <span className="font-semibold text-navy">{request.requester_name}</span>
                         <ArrowLeftRight size={14} className="text-gray-400" />
-                        <Avatar name={request.to ?? ''} size="sm" />
-                        <span className="font-semibold text-navy">{request.to}</span>
+                        {request.target_name ? (
+                            <>
+                                <Avatar name={request.target_name} size="sm" />
+                                <span className="font-semibold text-navy">{request.target_name}</span>
+                            </>
+                        ) : (
+                            <span className="text-sm text-gray-400">Open Swap</span>
+                        )}
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 mb-2">
-                        <Avatar name={request.from} size="sm" />
-                        <span className="font-semibold text-navy">{request.from} dropped</span>
+                        <Avatar name={request.requester_name || 'Staff'} size="sm" />
+                        <span className="font-semibold text-navy">{request.requester_name} dropped</span>
                     </div>
                 )}
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
-                        <Clock size={13} /> {request.date} · {request.shift} · {request.time}
+                        <Clock size={13} /> {dateFormatted} · {request.shift_label} · {request.shift_time}
                     </span>
                 </div>
             </div>
 
             {/* Note */}
-            {request.note && (
+            {request.resolution_note && (
                 <div className="flex items-start gap-2 mb-3 px-3 py-2 bg-gray-50 rounded-lg">
                     <MessageSquare size={13} className="text-gray-400 mt-0.5" />
-                    <p className="text-sm text-gray-600 italic">"{request.note}"</p>
+                    <p className="text-sm text-gray-600 italic">"{request.resolution_note}"</p>
                 </div>
             )}
 
-            {/* Accepted badge */}
-            {request.acceptedBy && (
+            {/* Pickup/Acceptee Badge */}
+            {(request.pickup_name || (request.status === 'PENDING_MANAGER' && request.target_name)) && (
                 <div className="flex items-center gap-2 mb-3">
                     <Badge variant="green">
-                        <Check size={12} className="mr-1" /> {request.acceptedBy} accepted
+                        <Check size={12} className="mr-1" /> {request.pickup_name || request.target_name} accepted
                     </Badge>
-                    {request.constraintOk && (
-                        <span className="flex items-center gap-1 text-xs text-success">
-                            <CheckCircle size={13} /> All constraints pass
-                        </span>
-                    )}
                 </div>
-            )}
-
-            {/* Notified count for drops */}
-            {request.notifiedCount !== undefined && (
-                <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
-                    <Users size={14} />
-                    <span>
-                        {request.notifiedCount} of {request.qualifiedCount} qualified staff notified
-                    </span>
-                </div>
-            )}
-
-            {/* Expiry for non-urgent */}
-            {request.expiresIn && !isUrgent && (
-                <p className="text-xs text-gray-500 mb-3">Expires: {request.expiresIn}</p>
             )}
 
             {/* Requested time */}
-            <p className="text-xs text-gray-400 mb-4">Requested: {request.timeAgo}</p>
+            <p className="text-xs text-gray-400 mb-4">Requested: {format(parseISO(request.created_at), 'MMM d, h:mm a')}</p>
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-gray">
-                {request.status === 'awaiting-staff' && (
+                {isPending && <Loader2 size={16} className="animate-spin text-teal mr-auto" />}
+
+                {request.status === 'PENDING_ACCEPTEE' && (
+                    <span className="text-xs text-gray-500 mr-auto">Awaiting {request.target_name}'s acceptance</span>
+                )}
+
+                {request.status === 'PENDING_MANAGER' && (
                     <>
-                        <span className="text-xs text-gray-500 mr-auto">Awaiting {request.to}'s acceptance</span>
-                        <button className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base">
-                            Reject
+                        <button
+                            onClick={() => setShowRejectModal(true)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base"
+                        >
+                            Decline
+                        </button>
+                        <button
+                            onClick={() => setShowApproveModal(true)}
+                            className="px-4 py-1.5 text-xs font-bold bg-teal text-white rounded-lg hover:bg-teal-dark transition-base"
+                        >
+                            Approve {isDrop ? 'Drop' : 'Swap'}
                         </button>
                     </>
                 )}
-                {request.status === 'awaiting-manager' && (
-                    <>
-                        <button className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base">
-                            Reject
-                        </button>
-                        <button className="px-4 py-1.5 text-xs font-bold bg-teal text-white rounded-lg hover:bg-teal-dark transition-base">
-                            Approve Swap
-                        </button>
-                    </>
-                )}
-                {request.status === 'open-pickup' && (
-                    <button className="px-4 py-1.5 text-xs font-semibold border border-teal text-teal rounded-lg hover:bg-teal-50 transition-base">
-                        Force-Assign Staff
-                    </button>
-                )}
-                {request.status === 'urgent-no-claims' && (
-                    <>
-                        <button className="px-3 py-1.5 text-xs font-semibold border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-base">
-                            Reject Drop
-                        </button>
-                        <button className="px-4 py-1.5 text-xs font-bold bg-danger text-white rounded-lg hover:bg-danger/90 transition-base">
-                            Emergency Coverage
-                        </button>
-                    </>
+
+                {request.status === 'OPEN' && (
+                    <span className="text-xs text-teal font-medium">Available for pickup by other staff</span>
                 )}
             </div>
+
+            {/* Approve Modal */}
+            <Modal open={showApproveModal} onClose={() => setShowApproveModal(false)} title={`Approve ${isDrop ? 'Drop' : 'Swap'}`} width="max-w-md">
+                <div className="p-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                        Are you sure you want to approve this {request.type}? This will update the schedule immediately.
+                    </p>
+                    <textarea
+                        placeholder="Resolution note (optional)…"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-teal/40 resize-none"
+                        rows={2}
+                    />
+                    <div className="flex justify-end gap-3 mt-6">
+                        <button onClick={() => setShowApproveModal(false)} className="text-sm text-gray-500">Cancel</button>
+                        <button
+                            onClick={() => handleConfirmAction('approve')}
+                            className="px-6 py-2 bg-teal text-white font-bold rounded-lg hover:bg-teal-dark transition-base"
+                        >
+                            Confirm Approval
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Decline Modal */}
+            <Modal open={showRejectModal} onClose={() => setShowRejectModal(false)} title="Decline Request" width="max-w-md">
+                <div className="p-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                        Provide a reason why this {request.type} request is being declined. This will be visible to the staff.
+                    </p>
+                    <textarea
+                        placeholder="Decline reason…"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-danger/40 resize-none"
+                        rows={2}
+                    />
+                    <div className="flex justify-end gap-3 mt-6">
+                        <button onClick={() => setShowRejectModal(false)} className="text-sm text-gray-500">Cancel</button>
+                        <button
+                            onClick={() => handleConfirmAction('decline')}
+                            disabled={!note}
+                            className="px-6 py-2 bg-danger text-white font-bold rounded-lg hover:bg-danger/90 disabled:opacity-50 transition-base"
+                        >
+                            Confirm Decline
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
@@ -233,31 +220,61 @@ function EmptyState() {
                 <CheckCircle size={40} className="text-success" />
             </div>
             <h3 className="text-lg font-bold text-navy mb-1">All caught up!</h3>
-            <p className="text-sm text-gray-500">No pending swap or drop requests right now.</p>
+            <p className="text-sm text-gray-500">No requests in this category.</p>
         </div>
     );
 }
 
 /* ========== Main Component ========== */
 
-type Tab = 'pending' | 'approved' | 'rejected' | 'expired';
+type Tab = 'pending' | 'approved' | 'resolved' | 'expired';
 
 export function SwapApprovalQueue() {
     const [activeTab, setActiveTab] = useState<Tab>('pending');
 
+    const { data, isLoading } = useSwapRequests();
+    const approveMutation = useSwapAction('approve');
+    const declineMutation = useSwapAction('decline');
+    const rejectMutation = useSwapAction('reject');
+
+    const handleAction = (id: string, action: 'approve' | 'decline' | 'reject', note?: string, isDrop?: boolean) => {
+        const mutation = action === 'approve' ? approveMutation : action === 'decline' ? declineMutation : rejectMutation;
+        mutation.mutate({ id, data: { note }, isDrop });
+    };
+
+    const requests = data?.requests || [];
+
+    // Filter requests for tabs
+    const pendingRequests = requests.filter(r => ['PENDING_ACCEPTEE', 'PENDING_MANAGER', 'OPEN'].includes(r.status));
+    const approvedRequests = requests.filter(r => r.status === 'APPROVED');
+    const resolvedRequests = requests.filter(r => ['REJECTED', 'CANCELLED'].includes(r.status));
+    const expiredRequests = requests.filter(r => r.status === 'EXPIRED');
+
+    const getTabContent = () => {
+        switch (activeTab) {
+            case 'pending': return pendingRequests;
+            case 'approved': return approvedRequests;
+            case 'resolved': return resolvedRequests;
+            case 'expired': return expiredRequests;
+            default: return [];
+        }
+    };
+
+    const currentRequests = getTabContent();
+
     const tabs: { key: Tab; label: string; count?: number }[] = [
-        { key: 'pending', label: 'Pending', count: mockRequests.length },
-        { key: 'approved', label: 'Approved' },
-        { key: 'rejected', label: 'Rejected' },
+        { key: 'pending', label: 'Pending', count: pendingRequests.length },
+        { key: 'approved', label: 'Approved', count: approvedRequests.length > 0 ? approvedRequests.length : undefined },
+        { key: 'resolved', label: 'Resolved' },
         { key: 'expired', label: 'Expired' },
     ];
 
     return (
-        <AppLayout title="Swap & Drop Requests" role="manager" notificationCount={4}>
+        <AppLayout title="Swap & Drop Requests" role="manager">
             <div className="p-6 max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="mb-6">
+                <div className="mb-6 flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-navy">Swap & Drop Requests</h1>
+                    {isLoading && <Loader2 size={24} className="animate-spin text-teal" />}
                 </div>
 
                 {/* Tabs */}
@@ -267,8 +284,8 @@ export function SwapApprovalQueue() {
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
                             className={`px-5 py-3 text-sm font-medium border-b-2 transition-base ${activeTab === tab.key
-                                    ? 'border-teal text-teal'
-                                    : 'border-transparent text-gray-500 hover:text-navy'
+                                ? 'border-teal text-teal'
+                                : 'border-transparent text-gray-500 hover:text-navy'
                                 }`}
                         >
                             {tab.label}
@@ -282,14 +299,23 @@ export function SwapApprovalQueue() {
                 </div>
 
                 {/* Content */}
-                {activeTab === 'pending' ? (
+                {isLoading ? (
+                    <div className="py-20 flex justify-center">
+                        <Loader2 size={32} className="animate-spin text-teal/40" />
+                    </div>
+                ) : currentRequests.length === 0 ? (
+                    <EmptyState />
+                ) : (
                     <div className="space-y-4">
-                        {mockRequests.map((r) => (
-                            <RequestCard key={r.id} request={r} />
+                        {currentRequests.map((r) => (
+                            <RequestCard
+                                key={r.id}
+                                request={r}
+                                onAction={handleAction}
+                                isPending={approveMutation.isPending || declineMutation.isPending || rejectMutation.isPending}
+                            />
                         ))}
                     </div>
-                ) : (
-                    <EmptyState />
                 )}
             </div>
         </AppLayout>

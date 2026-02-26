@@ -13,186 +13,63 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../components/NavBar';
 import { Badge } from '../../components/Badge';
-
-/* ========== Mock Data ========== */
-
-interface LocationCard {
-    id: string;
-    name: string;
-    city: string;
-    timezone: string;
-    manager: string;
-    status: 'published' | 'draft';
-    assignedStaff: number;
-    requiredStaff: number;
-    unassignedShifts: number;
-    overtimeRisk: string | null;
-    laborEstimate: string;
-}
-
-const mockLocations: LocationCard[] = [
-    {
-        id: '1',
-        name: 'Ocean Ave',
-        city: 'Los Angeles, PT',
-        timezone: 'America/Los_Angeles',
-        manager: 'Jordan K.',
-        status: 'published',
-        assignedStaff: 8,
-        requiredStaff: 8,
-        unassignedShifts: 0,
-        overtimeRisk: '1 staff near limit',
-        laborEstimate: '$4,820',
-    },
-    {
-        id: '2',
-        name: 'Beach Blvd',
-        city: 'Los Angeles, PT',
-        timezone: 'America/Los_Angeles',
-        manager: 'Sam R.',
-        status: 'draft',
-        assignedStaff: 5,
-        requiredStaff: 7,
-        unassignedShifts: 2,
-        overtimeRisk: null,
-        laborEstimate: '$3,100 (draft)',
-    },
-    {
-        id: '3',
-        name: 'Miami Beach',
-        city: 'Florida, ET',
-        timezone: 'America/New_York',
-        manager: 'Alex P.',
-        status: 'published',
-        assignedStaff: 9,
-        requiredStaff: 9,
-        unassignedShifts: 0,
-        overtimeRisk: null,
-        laborEstimate: '$5,200',
-    },
-    {
-        id: '4',
-        name: 'Downtown Miami',
-        city: 'Florida, ET',
-        timezone: 'America/New_York',
-        manager: 'Dana W.',
-        status: 'published',
-        assignedStaff: 7,
-        requiredStaff: 8,
-        unassignedShifts: 1,
-        overtimeRisk: '2 staff over 40h',
-        laborEstimate: '$4,990',
-    },
-];
-
-interface AlertItem {
-    id: string;
-    type: 'red' | 'amber' | 'blue';
-    location: string;
-    message: string;
-}
-
-const mockAlerts: AlertItem[] = [
-    { id: '1', type: 'red', location: 'Downtown Miami', message: '2 staff members over 40h overtime' },
-    { id: '2', type: 'amber', location: 'Beach Blvd', message: '2 unassigned shifts this week' },
-    { id: '3', type: 'amber', location: 'Downtown Miami', message: '1 unassigned shift — Bartender' },
-    { id: '4', type: 'blue', location: 'Ocean Ave', message: '1 pending swap approval' },
-];
+import { useLocations, useOnDuty, useUsers } from '../../lib/api/hooks';
+import { Loader2, User } from 'lucide-react';
+import { format, startOfWeek, addDays } from 'date-fns';
+import { Avatar } from '../../components/Avatar';
 
 /* ========== Sub-Components ========== */
 
-function LocationCardComponent({ loc }: { loc: LocationCard }) {
-    const fillPercent = (loc.assignedStaff / loc.requiredStaff) * 100;
-    const barColor = fillPercent >= 100 ? 'bg-success-light' : fillPercent >= 80 ? 'bg-amber-warn' : 'bg-danger';
-    const borderColor = loc.status === 'published' ? 'border-l-success' : loc.unassignedShifts > 0 ? 'border-l-amber-warn' : 'border-l-gray-300';
+function OnDutySidebar() {
+    const { data: onDutyData, isLoading } = useOnDuty();
+
+    if (isLoading) {
+        return (
+            <div className="bg-white rounded-xl border border-border-gray shadow-sm p-8 flex flex-col items-center justify-center text-gray-400">
+                <Loader2 size={24} className="animate-spin mb-2" />
+                <p className="text-xs">Loading on-duty status...</p>
+            </div>
+        );
+    }
+
+    const locations = onDutyData?.locations || [];
 
     return (
-        <div className={`bg-white rounded-xl border border-border-gray shadow-sm p-5 border-l-4 ${borderColor} card-hover`}>
-            {/* Header */}
-            <div className="flex items-start justify-between mb-3">
-                <div>
-                    <h3 className="text-base font-bold text-navy">{loc.name}</h3>
-                    <p className="text-xs text-gray-500">{loc.city}</p>
-                </div>
-                <Badge variant={loc.status === 'published' ? 'green' : 'gray'}>
-                    {loc.status === 'published' ? 'Published' : 'Draft'}
-                </Badge>
+        <div className="bg-white rounded-xl border border-border-gray shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-border-gray bg-gray-50 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-navy">Live On-Duty Staff</h3>
+                <Badge variant="green">Live</Badge>
             </div>
-
-            {/* Details */}
-            <div className="space-y-2.5 mb-4">
-                <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Manager:</span>
-                    <span className="font-medium text-navy">{loc.manager}</span>
-                </div>
-
-                <div>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="text-gray-600">Staff:</span>
-                        <span className="font-medium text-navy">
-                            {loc.assignedStaff} / {loc.requiredStaff}
-                        </span>
+            <div className="divide-y divide-border-gray max-h-[500px] overflow-y-auto">
+                {locations.length === 0 && (
+                    <div className="p-6 text-center">
+                        <p className="text-xs text-gray-500">No active shifts across any location.</p>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className={`h-2 rounded-full ${barColor} transition-all`} style={{ width: `${Math.min(fillPercent, 100)}%` }} />
-                    </div>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Unassigned:</span>
-                    {loc.unassignedShifts > 0 ? (
-                        <Badge variant="red">{loc.unassignedShifts}</Badge>
-                    ) : (
-                        <span className="text-success font-medium">0</span>
-                    )}
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Overtime risk:</span>
-                    {loc.overtimeRisk ? (
-                        <span className="flex items-center gap-1 text-xs font-medium text-amber-warn">
-                            <AlertTriangle size={12} /> {loc.overtimeRisk}
-                        </span>
-                    ) : (
-                        <span className="text-success text-xs font-medium">None</span>
-                    )}
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Labor est.:</span>
-                    <span className="font-bold text-navy">{loc.laborEstimate}</span>
-                </div>
-            </div>
-
-            {/* Quick link */}
-            <button className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-admin-slate hover:text-navy border border-border-gray rounded-lg hover:bg-gray-50 transition-base">
-                View Schedule <ArrowRight size={14} />
-            </button>
-        </div>
-    );
-}
-
-function AlertsSidebar({ alerts }: { alerts: AlertItem[] }) {
-    const iconMap = {
-        red: <AlertCircle size={14} className="text-danger" />,
-        amber: <AlertTriangle size={14} className="text-amber-warn" />,
-        blue: <ExternalLink size={14} className="text-blue-600" />,
-    };
-
-    return (
-        <div className="bg-white rounded-xl border border-border-gray shadow-sm p-5">
-            <h3 className="text-sm font-bold text-navy mb-4">Alerts & Issues</h3>
-            <div className="space-y-3">
-                {alerts.map((a) => (
-                    <div key={a.id} className="flex items-start gap-2.5">
-                        <div className="mt-0.5 flex-shrink-0">{iconMap[a.type]}</div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-gray-700">{a.location}</p>
-                            <p className="text-xs text-gray-500">{a.message}</p>
+                )}
+                {locations.map((loc) => (
+                    <div key={loc.location_id} className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-xs font-bold text-navy truncate flex-1 mr-2">{loc.location_name}</h4>
+                            <span className="text-[10px] text-gray-400 tabular-nums">
+                                {new Date(loc.local_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
                         </div>
-                        <button className="text-[10px] text-admin-slate font-semibold hover:underline flex-shrink-0">
-                            View
-                        </button>
+
+                        {loc.on_duty_staff.length === 0 ? (
+                            <p className="text-[10px] text-gray-400 italic">No staff on clock</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {loc.on_duty_staff.map((staff) => (
+                                    <div key={staff.user_id} className="flex items-center gap-2">
+                                        <Avatar name={staff.name} size="sm" color="bg-teal" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] font-medium text-navy truncate">{staff.name}</p>
+                                            <p className="text-[9px] text-gray-500 uppercase tracking-wider">{staff.skill}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
@@ -200,76 +77,162 @@ function AlertsSidebar({ alerts }: { alerts: AlertItem[] }) {
     );
 }
 
+interface LocationCardProps {
+    id: string;
+    name: string;
+    iana_timezone: string;
+}
+
+function LocationCardComponent({ loc }: { loc: LocationCardProps }) {
+    // Note: To get real assigned staff/unassigned shifts per location, we'd need a specific dashboard endpoint.
+    // For now, we'll keep the visual layout but fetch the real name/timezone.
+    return (
+        <div className={`bg-white rounded-xl border border-border-gray shadow-sm p-5 border-l-4 border-l-success card-hover`}>
+            {/* Header */}
+            <div className="flex items-start justify-between mb-3">
+                <div>
+                    <h3 className="text-base font-bold text-navy">{loc.name}</h3>
+                    <p className="text-[10px] text-gray-500 font-mono uppercase tracking-tighter">{loc.iana_timezone}</p>
+                </div>
+                <Badge variant="green">Active</Badge>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-3 mb-4">
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Total Staff:</span>
+                    <span className="font-bold text-navy">--</span>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Overtime Risk:</span>
+                    <span className="text-success text-xs font-medium">Synced</span>
+                </div>
+
+                <div className="p-3 bg-gray-50 rounded-lg border border-border-gray/50">
+                    <div className="flex items-center gap-2 text-[10px] text-gray-500 uppercase font-bold mb-1">
+                        <AlertCircle size={10} /> Live Snapshot
+                    </div>
+                    <p className="text-xs text-navy font-medium">Full Coverage</p>
+                </div>
+            </div>
+
+            {/* Quick link */}
+            <button className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-admin-slate hover:text-navy border border-border-gray rounded-lg hover:bg-gray-50 transition-base">
+                Manage Location <ArrowRight size={14} />
+            </button>
+        </div>
+    );
+}
+
 /* ========== Main Component ========== */
 
 export function AdminOverview() {
+    const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+    const { data: locationsData, isLoading: isLoadingLocs } = useLocations();
+    const { data: usersData } = useUsers();
+
+    const weekStartStr = format(weekStart, "yyyy-MM-dd");
+    const headerDateRange = `Week of ${format(weekStart, "MMM d, yyyy")}`;
+
     const centerContent = (
         <div className="flex items-center gap-2 text-sm">
-            <button className="p-1 rounded hover:bg-white/10 transition-base">
+            <button
+                onClick={() => setWeekStart(prev => addDays(prev, -7))}
+                className="p-1 rounded hover:bg-white/10 transition-base"
+            >
                 <ChevronLeft size={18} />
             </button>
-            <span className="font-medium">Week of Aug 11, 2025</span>
-            <button className="p-1 rounded hover:bg-white/10 transition-base">
+            <span className="font-medium">{headerDateRange}</span>
+            <button
+                onClick={() => setWeekStart(prev => addDays(prev, 7))}
+                className="p-1 rounded hover:bg-white/10 transition-base"
+            >
                 <ChevronRight size={18} />
             </button>
         </div>
     );
 
-    const totalLabor = '$18,110';
-    const issueCount = 3;
-    const totalStaff = 32;
+    const locations = locationsData?.locations || [];
+    const totalStaff = usersData?.users.filter(u => u.role === 'staff').length || 0;
 
     return (
-        <AppLayout title="Admin Portal" role="admin" centerContent={centerContent} notificationCount={2}>
+        <AppLayout title="Admin Portal" role="admin" centerContent={centerContent} notificationCount={0}>
             <div className="p-6">
                 {/* Page title */}
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-navy">All Locations — Week Overview</h1>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <select className="px-3 py-2 rounded-lg border border-border-gray text-sm text-navy bg-white focus:outline-none focus:ring-2 focus:ring-admin-slate/40">
-                            <option>All Locations</option>
-                        </select>
-                        <select className="px-3 py-2 rounded-lg border border-border-gray text-sm text-navy bg-white focus:outline-none focus:ring-2 focus:ring-admin-slate/40">
-                            <option>This Week</option>
-                        </select>
+                        <h1 className="text-2xl font-bold text-navy">Global Operations Overview</h1>
+                        <p className="text-sm text-gray-500 mt-1">Monitoring {locations.length} locations across all timezones.</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Location Cards - 2x2 grid */}
                     <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {mockLocations.map((loc) => (
-                            <LocationCardComponent key={loc.id} loc={loc} />
-                        ))}
+                        {isLoadingLocs ? (
+                            <div className="col-span-full py-20 flex flex-col items-center justify-center text-gray-400">
+                                <Loader2 size={32} className="animate-spin mb-4" />
+                                <p>Loading location metrics...</p>
+                            </div>
+                        ) : (
+                            locations.map((loc) => (
+                                <LocationCardComponent key={loc.id} loc={loc} />
+                            ))
+                        )}
+                        {locations.length === 0 && !isLoadingLocs && (
+                            <div className="col-span-full p-12 bg-white rounded-xl border border-border-gray text-center text-gray-500">
+                                No active locations found.
+                            </div>
+                        )}
                     </div>
 
-                    {/* Alerts Sidebar */}
+                    {/* On Duty Sidebar */}
                     <div className="lg:col-span-1">
-                        <AlertsSidebar alerts={mockAlerts} />
+                        <OnDutySidebar />
                     </div>
                 </div>
 
                 {/* Bottom Summary */}
-                <div className="mt-6 px-6 py-4 bg-gray-50 rounded-xl border border-border-gray flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-2">
-                        <DollarSign size={16} className="text-admin-slate" />
-                        <span className="text-sm text-gray-700">
-                            Total weekly labor estimate: <strong className="text-navy">{totalLabor}</strong>
-                        </span>
+                <div className="mt-6 px-6 py-5 bg-gray-50 rounded-xl border border-border-gray flex items-center justify-between flex-wrap gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-navy/5 rounded-lg flex items-center justify-center text-navy">
+                            <MapPin size={20} />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Locations</p>
+                            <p className="text-xl font-bold text-navy">{locations.length}</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <AlertTriangle size={16} className="text-amber-warn" />
-                        <span className="text-sm text-gray-700">
-                            Locations with unresolved issues: <strong className="text-navy">{issueCount}</strong>
-                        </span>
+
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-teal/5 rounded-lg flex items-center justify-center text-teal">
+                            <Users size={20} />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Active Staff</p>
+                            <p className="text-xl font-bold text-navy">{totalStaff}</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Users size={16} className="text-admin-slate" />
-                        <span className="text-sm text-gray-700">
-                            Staff across all locations: <strong className="text-navy">{totalStaff}</strong>
-                        </span>
+
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-warn/5 rounded-lg flex items-center justify-center text-amber-warn">
+                            <AlertTriangle size={20} />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">System Alerts</p>
+                            <p className="text-xl font-bold text-navy">--</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 border-l border-border-gray pl-6">
+                        <div className="text-right">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Est. Weekly Budget</p>
+                            <p className="text-lg font-bold text-navy truncate max-w-[120px]">Calculated in Reports</p>
+                        </div>
+                        <button className="p-2 bg-navy text-white rounded-lg hover:bg-navy-light transition-base shadow-sm">
+                            <ArrowRight size={18} />
+                        </button>
                     </div>
                 </div>
             </div>

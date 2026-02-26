@@ -13,6 +13,18 @@ class AssignmentCreateRequest(BaseModel):
     override_reason: str | None = None
 
 
+class AssignmentShiftInfo(BaseModel):
+    id: str
+    location_id: str
+    location_name: str
+    shift_date: datetime
+    start_utc: datetime
+    end_utc: datetime
+    start_local: str
+    end_local: str
+    required_skill: str
+
+
 class AssignmentResponse(BaseModel):
     id: str
     shift_id: str
@@ -22,6 +34,17 @@ class AssignmentResponse(BaseModel):
     version: int
     assigned_by: str
     assigned_at: datetime
+    shift: AssignmentShiftInfo | None = None
+
+
+class MyAssignmentResponse(BaseModel):
+    id: str
+    status: AssignmentStatus
+    shift: AssignmentShiftInfo
+
+
+class MyAssignmentListResponse(BaseModel):
+    assignments: list[MyAssignmentResponse]
 
 
 class AssignmentListResponse(BaseModel):

@@ -14,10 +14,12 @@ from app.api.deps import (
 from app.core.database import prisma
 from app.schemas.assignment import (
     AssignmentCreateRequest,
-    AssignmentListResponse,
-    AssignmentPreviewResponse,
     AssignmentResponse,
+    AssignmentListResponse,
     ConstraintSuggestion,
+    MyAssignmentResponse,
+    MyAssignmentListResponse,
+    AssignmentShiftInfo,
 )
 from app.services.constraint_engine import (
     AssignmentSnapshot,
@@ -227,6 +229,45 @@ async def _compute_suggestions(shift_snapshot: ShiftSnapshot, target_user_id: st
         if len(suggestions) >= limit:
             break
     return suggestions
+
+
+@router.get("/me", response_model=MyAssignmentListResponse)
+async def list_my_assignments(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> MyAssignmentListResponse:
+    assignments = await prisma.shiftassignment.find_many(
+        where={"user_id": current_user.id, "status": "assigned"},
+        include={"shift": {"include": {"location": True, "required_skill": True}}},
+        order={"shift": {"start_utc": "asc"}},
+    )
+    
+    out = []
+    for a in assignments:
+        if not a.shift:
+            continue
+        
+        from app.services.timezone_utils import format_local_iso
+        tz = a.shift.location.iana_timezone
+        
+        shift_info = AssignmentShiftInfo(
+            id=a.shift.id,
+            location_id=a.shift.location_id,
+            location_name=a.shift.location.name,
+            shift_date=a.shift.shift_date,
+            start_utc=a.shift.start_utc,
+            end_utc=a.shift.end_utc,
+            start_local=format_local_iso(a.shift.start_utc, tz),
+            end_local=format_local_iso(a.shift.end_utc, tz),
+            required_skill=a.shift.required_skill.name if a.shift.required_skill else "Staff",
+        )
+        
+        out.append(MyAssignmentResponse(
+            id=a.id,
+            status=a.status,
+            shift=shift_info
+        ))
+        
+    return MyAssignmentListResponse(assignments=out)
 
 
 @router.get("/shifts/{shift_id}/assignments", response_model=AssignmentListResponse)

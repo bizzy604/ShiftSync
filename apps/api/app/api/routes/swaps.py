@@ -31,19 +31,54 @@ PENDING = {"OPEN", "PENDING_ACCEPTEE", "PENDING_MANAGER"}
 
 
 def to_resp(row: object) -> SwapRequestResponse:
+    requester_name = None
+    target_name = None
+    pickup_name = None
+    shift_date = None
+    shift_time = None
+    shift_label = None
+
+    if hasattr(row, "requester_assignment") and row.requester_assignment:
+        a = row.requester_assignment
+        if hasattr(a, "user") and a.user:
+            requester_name = a.user.name
+        if hasattr(a, "shift") and a.shift:
+            s = a.shift
+            shift_date = s.shift_date.isoformat() if hasattr(s.shift_date, "isoformat") else str(s.shift_date)
+            # Simple time formatting
+            start_local = format_local_iso(s.start_utc, s.location.iana_timezone) if hasattr(s, "location") and s.location else s.start_utc.isoformat()
+            end_local = format_local_iso(s.end_utc, s.location.iana_timezone) if hasattr(s, "location") and s.location else s.end_utc.isoformat()
+            
+            # Extract time part for UI convenience
+            shift_time = f"{start_local[11:16]} – {end_local[11:16]}"
+            if hasattr(s, "required_skill") and s.required_skill:
+                shift_label = s.required_skill.name
+
+    if hasattr(row, "target_user") and row.target_user:
+        target_name = row.target_user.name
+    
+    if hasattr(row, "pickup_user") and row.pickup_user:
+        pickup_name = row.pickup_user.name
+
     return SwapRequestResponse(
         id=row.id,
         type=row.type,
         status=row.status,
         requester_assignment_id=row.requester_assignment_id,
+        requester_name=requester_name,
         target_user_id=row.target_user_id,
+        target_name=target_name,
         candidate_assignment_id=row.candidate_assignment_id,
         pickup_user_id=row.pickup_user_id,
+        pickup_name=pickup_name,
         initiated_by=row.initiated_by,
         expires_at=row.expires_at,
         created_at=row.created_at,
         resolved_at=row.resolved_at,
         resolution_note=row.resolution_note,
+        shift_date=shift_date,
+        shift_time=shift_time,
+        shift_label=shift_label,
     )
 
 
@@ -136,7 +171,16 @@ async def emit_notifications(ws_manager: object, notifications: list[object]) ->
 @router.get("/swap-requests", response_model=SwapRequestListResponse)
 async def list_swap_requests(current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestListResponse:
     rows = await prisma.swaprequest.find_many(
-        include={"requester_assignment": {"include": {"shift": True}}},
+        include={
+            "requester_assignment": {
+                "include": {
+                    "shift": {"include": {"location": True, "required_skill": True}},
+                    "user": True
+                }
+            },
+            "target_user": True,
+            "pickup_user": True,
+        },
         order={"created_at": "desc"},
     )
     out = []
@@ -155,7 +199,16 @@ async def list_swap_requests(current_user: CurrentUser = Depends(get_current_use
 async def get_swap_request(request_id: str, current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestResponse:
     row = await prisma.swaprequest.find_unique(
         where={"id": request_id},
-        include={"requester_assignment": {"include": {"shift": True}}},
+        include={
+            "requester_assignment": {
+                "include": {
+                    "shift": {"include": {"location": True, "required_skill": True}},
+                    "user": True
+                }
+            },
+            "target_user": True,
+            "pickup_user": True,
+        },
     )
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")

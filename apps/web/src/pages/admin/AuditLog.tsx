@@ -4,114 +4,15 @@ import { AppLayout } from '../../components/NavBar';
 import { Badge } from '../../components/Badge';
 import { SidePanel } from '../../components/SidePanel';
 import { Modal } from '../../components/Modal';
+import { useAuditLogs } from '../../lib/api/hooks';
+import { Loader2 } from 'lucide-react';
+import { AuditLogResponse } from '../../lib/api/types';
 
 /* ========== Mock Data ========== */
 
-interface AuditEntry {
-    id: string;
-    timestamp: string;
-    actor: string;
-    role: 'Manager' | 'Staff' | 'Admin';
-    action: string;
-    entity: string;
-    details: string;
-    location: string;
-    isOverride?: boolean;
-    beforeState?: Record<string, string>;
-    afterState?: Record<string, string>;
-}
-
-const mockEntries: AuditEntry[] = [
-    {
-        id: '1',
-        timestamp: 'Aug 17 2025 11:42:03 UTC',
-        actor: 'Jordan K.',
-        role: 'Manager',
-        action: 'shift.assign',
-        entity: 'Assignment #A-991',
-        details: 'Assigned Carlos M. to Fri Aug 15 · Bartender 6pm–11pm',
-        location: 'Ocean Ave',
-        beforeState: { assignee: 'Unassigned', status: 'Open' },
-        afterState: { assignee: 'Carlos M.', status: 'Assigned' },
-    },
-    {
-        id: '2',
-        timestamp: 'Aug 17 2025 11:40:17 UTC',
-        actor: 'Carlos M.',
-        role: 'Staff',
-        action: 'swap.request',
-        entity: 'SwapRequest #SR-142',
-        details: 'Carlos requested swap with Maria L. for Wed Aug 13',
-        location: 'Ocean Ave',
-    },
-    {
-        id: '3',
-        timestamp: 'Aug 17 2025 10:15:00 UTC',
-        actor: 'Jordan K.',
-        role: 'Manager',
-        action: 'schedule.publish',
-        entity: 'Schedule #S-88',
-        details: 'Published week Aug 11–17 for Ocean Ave',
-        location: 'Ocean Ave',
-    },
-    {
-        id: '4',
-        timestamp: 'Aug 16 2025 18:30:44 UTC',
-        actor: 'Admin',
-        role: 'Admin',
-        action: 'cert.revoke',
-        entity: 'UserCert #UC-55',
-        details: "Revoked Alex R.'s Beach Blvd certification",
-        location: 'System',
-    },
-    {
-        id: '5',
-        timestamp: 'Aug 16 2025 14:22:11 UTC',
-        actor: 'Sam R.',
-        role: 'Manager',
-        action: 'shift.assign.override',
-        entity: 'Assignment #A-987',
-        details: 'Override: Jordan T. assigned to 7th consecutive day. Reason: Emergency staffing.',
-        location: 'Beach Blvd',
-        isOverride: true,
-        beforeState: { assignee: 'Unassigned', consecutiveDays: '6', overrideApplied: 'false' },
-        afterState: { assignee: 'Jordan T.', consecutiveDays: '7', overrideApplied: 'true' },
-    },
-    {
-        id: '6',
-        timestamp: 'Aug 15 2025 09:10:05 UTC',
-        actor: 'Admin',
-        role: 'Admin',
-        action: 'user.create',
-        entity: 'User #U-33',
-        details: 'Created staff account for Priya N.',
-        location: 'System',
-    },
-    {
-        id: '7',
-        timestamp: 'Aug 14 2025 22:01:33 UTC',
-        actor: 'Jordan K.',
-        role: 'Manager',
-        action: 'swap.approve',
-        entity: 'SwapRequest #SR-138',
-        details: 'Approved swap: Jordan T. ↔ Sam K. for Sat Aug 16',
-        location: 'Ocean Ave',
-    },
-    {
-        id: '8',
-        timestamp: 'Aug 14 2025 16:44:20 UTC',
-        actor: 'Maria L.',
-        role: 'Staff',
-        action: 'swap.accept',
-        entity: 'SwapRequest #SR-142',
-        details: 'Maria L. accepted swap request from Carlos M.',
-        location: 'Ocean Ave',
-    },
-];
-
 /* ========== Detail Panel ========== */
 
-function DetailPanel({ entry, open, onClose }: { entry: AuditEntry | null; open: boolean; onClose: () => void }) {
+function DetailPanel({ entry, open, onClose }: { entry: AuditLogResponse | null; open: boolean; onClose: () => void }) {
     if (!entry) return null;
 
     return (
@@ -119,7 +20,7 @@ function DetailPanel({ entry, open, onClose }: { entry: AuditEntry | null; open:
             open={open}
             onClose={onClose}
             title="Audit Entry Detail"
-            subtitle={entry.entity}
+            subtitle={`${entry.action_type} - ${entry.entity_type}`}
             width="w-[480px]"
             headerColor="bg-admin-slate"
         >
@@ -127,42 +28,46 @@ function DetailPanel({ entry, open, onClose }: { entry: AuditEntry | null; open:
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                         <span className="text-xs text-gray-500 block mb-0.5">Timestamp</span>
-                        <span className="text-sm font-medium text-navy font-mono">{entry.timestamp}</span>
+                        <span className="text-sm font-medium text-navy font-mono">
+                            {new Date(entry.created_at).toLocaleString()}
+                        </span>
                     </div>
                     <div>
                         <span className="text-xs text-gray-500 block mb-0.5">Actor</span>
-                        <span className="text-sm font-medium text-navy">{entry.actor} ({entry.role})</span>
+                        <span className="text-sm font-medium text-navy">{entry.actor_name}</span>
                     </div>
                     <div>
                         <span className="text-xs text-gray-500 block mb-0.5">Action</span>
-                        <Badge variant={entry.isOverride ? 'amber' : 'slate'}>{entry.action}</Badge>
+                        <Badge variant="slate">{entry.action_type}</Badge>
                     </div>
                     <div>
                         <span className="text-xs text-gray-500 block mb-0.5">Location</span>
-                        <span className="text-sm font-medium text-navy">{entry.location}</span>
+                        <span className="text-sm font-medium text-navy">{entry.location_name || 'System'}</span>
                     </div>
                 </div>
 
                 <div>
                     <span className="text-xs text-gray-500 block mb-1">Details</span>
-                    <p className="text-sm text-navy bg-gray-50 px-4 py-3 rounded-lg">{entry.details}</p>
+                    <p className="text-sm text-navy bg-gray-50 px-4 py-3 rounded-lg">
+                        {entry.details || 'No additional details provided.'}
+                    </p>
                 </div>
 
-                {/* Before/After Diff */}
-                {entry.beforeState && entry.afterState && (
+                {/* State Diff */}
+                {entry.state_before && entry.state_after && (
                     <div>
                         <span className="text-xs text-gray-500 block mb-2">State Change</span>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-danger-50 rounded-lg p-4 border border-danger/10">
                                 <p className="text-[10px] font-bold uppercase text-danger mb-2">Before</p>
-                                <pre className="text-xs font-mono text-danger whitespace-pre-wrap">
-                                    {JSON.stringify(entry.beforeState, null, 2)}
+                                <pre className="text-[10px] font-mono text-danger whitespace-pre-wrap overflow-x-auto max-h-[200px]">
+                                    {JSON.stringify(entry.state_before, null, 2)}
                                 </pre>
                             </div>
                             <div className="bg-success-50 rounded-lg p-4 border border-success/10">
                                 <p className="text-[10px] font-bold uppercase text-success mb-2">After</p>
-                                <pre className="text-xs font-mono text-success whitespace-pre-wrap">
-                                    {JSON.stringify(entry.afterState, null, 2)}
+                                <pre className="text-[10px] font-mono text-success whitespace-pre-wrap overflow-x-auto max-h-[200px]">
+                                    {JSON.stringify(entry.state_after, null, 2)}
                                 </pre>
                             </div>
                         </div>
@@ -176,15 +81,21 @@ function DetailPanel({ entry, open, onClose }: { entry: AuditEntry | null; open:
 /* ========== Main Component ========== */
 
 export function AuditLog() {
+    const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+    const [selectedEntry, setSelectedEntry] = useState<AuditLogResponse | null>(null);
     const [showExportModal, setShowExportModal] = useState(false);
 
-    const filteredEntries = mockEntries.filter(
+    const { data: auditData, isLoading } = useAuditLogs(page);
+    const logs = auditData?.logs || [];
+    const totalCount = auditData?.total || 0;
+    const totalPages = Math.ceil(totalCount / 50);
+
+    const filteredEntries = logs.filter(
         (e) =>
-            e.actor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            e.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            e.entity.toLowerCase().includes(searchQuery.toLowerCase())
+            e.actor_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            e.action_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            e.entity_type.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const roleColor = (role: string) => {
@@ -242,9 +153,16 @@ export function AuditLog() {
                         <option>All Locations</option>
                     </select>
                     <span className="text-xs text-gray-500">
-                        Showing {filteredEntries.length} of 1,247 entries
+                        Showing {filteredEntries.length} of {totalCount} entries
                     </span>
                 </div>
+
+                {isLoading && (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                        <Loader2 size={32} className="animate-spin mb-4" />
+                        <p>Accessing secure audit records...</p>
+                    </div>
+                )}
 
                 {/* Table */}
                 <div className="bg-white rounded-xl border border-border-gray shadow-sm overflow-hidden">
@@ -266,25 +184,23 @@ export function AuditLog() {
                                     <tr
                                         key={entry.id}
                                         onClick={() => setSelectedEntry(entry)}
-                                        className={`border-b border-border-gray cursor-pointer transition-base ${entry.isOverride
-                                                ? 'bg-amber-warn-50 border-l-4 border-l-amber-warn hover:bg-amber-warn-50/80'
-                                                : i % 2 === 0
-                                                    ? 'bg-white hover:bg-gray-50'
-                                                    : 'bg-gray-50/50 hover:bg-gray-100'
+                                        className={`border-b border-border-gray cursor-pointer transition-base ${i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/50 hover:bg-gray-100'
                                             }`}
                                     >
-                                        <td className="px-4 py-3 text-xs font-mono text-gray-600 whitespace-nowrap">{entry.timestamp}</td>
-                                        <td className="px-4 py-3 text-sm font-medium text-navy whitespace-nowrap">{entry.actor}</td>
+                                        <td className="px-4 py-3 text-xs font-mono text-gray-600 whitespace-nowrap">
+                                            {new Date(entry.created_at).toLocaleString()}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm font-medium text-navy whitespace-nowrap">{entry.actor_name}</td>
                                         <td className="px-4 py-3">
-                                            <span className={`text-xs font-semibold ${roleColor(entry.role)}`}>{entry.role}</span>
+                                            <span className="text-xs font-semibold text-admin-slate">System</span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <code className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono text-navy">{entry.action}</code>
+                                            <code className="text-[10px] bg-gray-100 px-2 py-0.5 rounded font-mono text-navy font-bold uppercase">{entry.action_type}</code>
                                         </td>
-                                        <td className="px-4 py-3 text-xs text-gray-600 font-mono whitespace-nowrap">{entry.entity}</td>
-                                        <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate">{entry.details}</td>
+                                        <td className="px-4 py-3 text-xs text-gray-400 font-mono whitespace-nowrap">{entry.entity_type}</td>
+                                        <td className="px-4 py-3 text-xs text-navy max-w-xs truncate">{entry.details}</td>
                                         <td className="px-4 py-3">
-                                            <Badge variant="gray">{entry.location}</Badge>
+                                            <Badge variant="gray">{entry.location_name || 'Global'}</Badge>
                                         </td>
                                     </tr>
                                 ))}
@@ -295,14 +211,22 @@ export function AuditLog() {
                     {/* Footer */}
                     <div className="px-5 py-3 bg-gray-50 border-t border-border-gray flex items-center justify-between">
                         <p className="text-[11px] text-gray-400 italic">
-                            Exported logs are immutable. No entries can be edited or deleted.
+                            Audit logs are immutable and permanent.
                         </p>
                         <div className="flex items-center gap-4">
-                            <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-base">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-base disabled:opacity-30"
+                            >
                                 <ChevronLeft size={16} /> Prev
                             </button>
-                            <span className="text-sm text-gray-600">Page 1 of 25</span>
-                            <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-base">
+                            <span className="text-sm text-gray-600">Page {page} of {totalPages || 1}</span>
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                className="flex items-center gap-1 text-sm text-gray-500 hover:text-navy transition-base disabled:opacity-30"
+                            >
                                 Next <ChevronRight size={16} />
                             </button>
                         </div>
@@ -340,16 +264,12 @@ export function AuditLog() {
                 <div className="space-y-4">
                     <div className="p-4 bg-gray-50 rounded-lg space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Date range:</span>
-                            <span className="font-medium text-navy">Aug 1 – Aug 17, 2025</span>
+                            <span className="text-gray-600">Total records:</span>
+                            <span className="font-medium text-navy">{totalCount} entries</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Records:</span>
-                            <span className="font-medium text-navy">1,247 entries</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Columns:</span>
-                            <span className="font-medium text-navy">Timestamp, Actor, Role, Action, Entity, Details, Location</span>
+                            <span className="text-gray-600">Export format:</span>
+                            <span className="font-medium text-navy">CSV (UTF-8)</span>
                         </div>
                     </div>
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">

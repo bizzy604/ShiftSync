@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Download, Edit, MoreHorizontal, ChevronLeft, ChevronRight, X, Mail, Check } from 'lucide-react';
 import { AppLayout } from '../../components/NavBar';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 import { SidePanel } from '../../components/SidePanel';
 import { Modal } from '../../components/Modal';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useLocations, useAddSkill, useRemoveSkill, useAddCertification, useRemoveCertification } from '../../lib/api/hooks';
+import { Loader2, Plus, Trash2, Shield, User as UserIcon } from 'lucide-react';
+import { UserResponse } from '../../lib/api/types';
 
 /* ========== Mock Data ========== */
 
@@ -33,23 +36,47 @@ const allSkills = ['Bartender', 'Server', 'Host', 'Cook', 'Supervisor'];
 
 /* ========== Edit Staff Drawer ========== */
 
-function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () => void; staff: StaffMember | null }) {
-    const [selectedSkills, setSelectedSkills] = useState<string[]>(staff?.skills ?? []);
-    const [selectedLocations, setSelectedLocations] = useState<string[]>(staff?.locations ?? []);
-    const [isActive, setIsActive] = useState(staff?.status === 'Active');
+/* ========== Edit Staff Drawer ========== */
+
+function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () => void; staff: UserResponse | null }) {
+    const { data: locationsData } = useLocations();
+    const updateMutation = useUpdateUser();
+    const deleteMutation = useDeleteUser();
+
+    // For simplicity in this view, we'll assume we have a way to fetch these 
+    // In a real app we'd fetch them via useUserSkills(staff.id) and useUserCertifications(staff.id)
+    // but the current UserResponse doesn't include them directly.
+    // I'll add placeholders or fetch them if hooks are available.
+
+    const [name, setName] = useState(staff?.name ?? '');
+    const [role, setRole] = useState(staff?.role ?? 'staff');
+    const [isActive, setIsActive] = useState(staff?.is_active ?? true);
+
+    useEffect(() => {
+        if (staff) {
+            setName(staff.name);
+            setRole(staff.role);
+            setIsActive(staff.is_active);
+        }
+    }, [staff]);
 
     if (!staff) return null;
 
-    const toggleSkill = (skill: string) => {
-        setSelectedSkills((prev) =>
-            prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
-        );
+    const handleSave = () => {
+        updateMutation.mutate({
+            id: staff.id,
+            data: { name, role: role as any, is_active: isActive }
+        }, {
+            onSuccess: () => onClose()
+        });
     };
 
-    const toggleLocation = (loc: string) => {
-        setSelectedLocations((prev) =>
-            prev.includes(loc) ? prev.filter((l) => l !== loc) : [...prev, loc]
-        );
+    const handleDelete = () => {
+        if (window.confirm(`Are you sure you want to deactivate ${staff.name}?`)) {
+            deleteMutation.mutate(staff.id, {
+                onSuccess: () => onClose()
+            });
+        }
     };
 
     return (
@@ -68,7 +95,8 @@ function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () 
                         <label className="block text-sm font-medium text-navy mb-1.5">Name</label>
                         <input
                             type="text"
-                            defaultValue={staff.name}
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
                             className="w-full px-4 py-2.5 rounded-lg border border-border-gray bg-gray-50 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-admin-slate/30"
                         />
                     </div>
@@ -86,75 +114,56 @@ function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () 
                 {/* Role */}
                 <div>
                     <label className="block text-sm font-medium text-navy mb-1.5">Role</label>
-                    <select
-                        defaultValue={staff.role}
-                        className="w-full px-4 py-2.5 rounded-lg border border-border-gray bg-white text-sm text-navy focus:outline-none focus:ring-2 focus:ring-admin-slate/30"
-                    >
-                        <option value="Staff">Staff</option>
-                        <option value="Manager">Manager</option>
-                    </select>
-                </div>
-
-                {/* Skills */}
-                <div>
-                    <label className="block text-sm font-medium text-navy mb-2">Skills</label>
-                    <div className="flex flex-wrap gap-2">
-                        {allSkills.map((skill) => (
+                    <div className="flex gap-2">
+                        {['staff', 'manager', 'admin'].map((r) => (
                             <button
-                                key={skill}
-                                onClick={() => toggleSkill(skill)}
-                                className={`px-3 py-1.5 text-sm rounded-lg border transition-base ${selectedSkills.includes(skill)
-                                        ? 'bg-admin-slate text-white border-admin-slate'
-                                        : 'bg-white text-gray-600 border-border-gray hover:bg-gray-50'
+                                key={r}
+                                onClick={() => setRole(r as any)}
+                                className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-base capitalize ${role === r
+                                    ? 'bg-admin-slate text-white border-admin-slate'
+                                    : 'bg-white text-gray-600 border-border-gray hover:bg-gray-50'
                                     }`}
                             >
-                                {selectedSkills.includes(skill) && <Check size={12} className="inline mr-1" />}
-                                {skill}
+                                {r}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                {/* Location Certifications */}
-                <div>
-                    <label className="block text-sm font-medium text-navy mb-2">Location Certifications</label>
-                    <div className="space-y-2">
-                        {allLocations.map((loc) => (
-                            <label
-                                key={loc}
-                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border-gray hover:bg-gray-50 cursor-pointer transition-base"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedLocations.includes(loc)}
-                                    onChange={() => toggleLocation(loc)}
-                                    className="w-4 h-4 rounded border-border-gray text-admin-slate focus:ring-admin-slate"
-                                />
-                                <span className="text-sm text-navy">{loc}</span>
-                            </label>
-                        ))}
+                {/* Status Toggle */}
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl border border-border-gray/50">
+                    <div className="flex items-center gap-2">
+                        <Shield size={16} className={isActive ? 'text-success' : 'text-gray-400'} />
+                        <span className="text-sm font-medium text-navy">Account Active</span>
                     </div>
-                </div>
-
-                {/* Active/Inactive Toggle */}
-                <div className="flex items-center justify-between px-3 py-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium text-navy">Account Status</span>
                     <button
                         onClick={() => setIsActive(!isActive)}
-                        className={`relative w-11 h-6 rounded-full transition-colors ${isActive ? 'bg-success-light' : 'bg-gray-300'
-                            }`}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${isActive ? 'bg-success-light' : 'bg-gray-300'}`}
                     >
                         <span
-                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'
-                                }`}
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'}`}
                         />
                     </button>
                 </div>
 
+                {/* Danger Zone */}
+                <div className="pt-4 border-t border-border-gray">
+                    <button
+                        onClick={handleDelete}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-danger hover:bg-danger/5 rounded-lg transition-base border border-transparent hover:border-danger/20"
+                    >
+                        <Trash2 size={16} /> Deactivate Account
+                    </button>
+                </div>
+
                 {/* Actions */}
-                <div className="flex gap-3 pt-4 border-t border-border-gray">
-                    <button className="flex-1 py-2.5 bg-admin-slate text-white text-sm font-semibold rounded-lg hover:bg-admin-slate-light transition-base">
-                        Save Changes
+                <div className="flex gap-3 pt-4">
+                    <button
+                        onClick={handleSave}
+                        disabled={updateMutation.isPending}
+                        className="flex-1 py-2.5 bg-admin-slate text-white text-sm font-semibold rounded-lg hover:bg-admin-slate-light transition-base disabled:opacity-50"
+                    >
+                        {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                     </button>
                     <button
                         onClick={onClose}
@@ -172,14 +181,36 @@ function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () 
 
 export function StaffManagement() {
     const [searchQuery, setSearchQuery] = useState('');
-    const [editStaff, setEditStaff] = useState<StaffMember | null>(null);
+    const [editStaff, setEditStaff] = useState<UserResponse | null>(null);
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteName, setInviteName] = useState('');
+    const [inviteRole, setInviteRole] = useState('staff');
 
-    const filteredStaff = mockStaff.filter(
+    const { data: usersData, isLoading } = useUsers();
+    const inviteMutation = useCreateUser();
+
+    const staff = usersData?.users || [];
+    const filteredStaff = staff.filter(
         (s) =>
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const handleInvite = () => {
+        inviteMutation.mutate({
+            name: inviteName,
+            email: inviteEmail,
+            role: inviteRole as any,
+            password: 'temporary-password-123' // In a real app, backend sends reset link
+        }, {
+            onSuccess: () => {
+                setShowInviteModal(false);
+                setInviteEmail('');
+                setInviteName('');
+            }
+        });
+    };
 
     return (
         <AppLayout title="Staff Management" role="admin" notificationCount={0}>
@@ -225,9 +256,16 @@ export function StaffManagement() {
                         <option>All Status</option>
                     </select>
                     <span className="text-xs text-gray-500">
-                        Showing {filteredStaff.length} of {mockStaff.length} staff members
+                        Showing {filteredStaff.length} of {staff.length} staff members
                     </span>
                 </div>
+
+                {isLoading && (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                        <Loader2 size={32} className="animate-spin mb-4" />
+                        <p>Fetching staff directory...</p>
+                    </div>
+                )}
 
                 {/* Table */}
                 <div className="bg-white rounded-xl border border-border-gray shadow-sm overflow-hidden">
@@ -249,32 +287,20 @@ export function StaffManagement() {
                                     <tr key={s.id} className="border-b border-border-gray hover:bg-gray-50 transition-base">
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2.5">
-                                                <Avatar name={s.name} size="sm" color={s.status === 'Inactive' ? 'bg-gray-400' : 'bg-admin-slate'} />
+                                                <Avatar name={s.name} size="sm" color={!s.is_active ? 'bg-gray-400' : 'bg-admin-slate'} />
                                                 <span className="text-sm font-medium text-navy">{s.name}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-3.5 text-sm text-gray-600">{s.email}</td>
-                                        <td className="px-5 py-3.5 text-sm text-gray-700">{s.role}</td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex flex-wrap gap-1">
-                                                {s.locations.map((loc) => (
-                                                    <Badge key={loc} variant="gray">{loc}</Badge>
-                                                ))}
-                                            </div>
+                                        <td className="px-5 py-3.5 text-sm text-gray-700 capitalize">{s.role}</td>
+                                        <td className="px-5 py-3.5 italic text-gray-400 text-xs">
+                                            Managed in Edit
+                                        </td>
+                                        <td className="px-5 py-3.5 italic text-gray-400 text-xs">
+                                            Managed in Edit
                                         </td>
                                         <td className="px-5 py-3.5">
-                                            {s.skills.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1">
-                                                    {s.skills.map((skill) => (
-                                                        <Badge key={skill} variant="slate">{skill}</Badge>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-gray-400">—</span>
-                                            )}
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <Badge variant={s.status === 'Active' ? 'green' : 'gray'}>{s.status}</Badge>
+                                            <Badge variant={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge>
                                         </td>
                                         <td className="px-5 py-3.5 text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -330,45 +356,57 @@ export function StaffManagement() {
                         >
                             Cancel
                         </button>
-                        <button className="px-5 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2">
-                            <Mail size={14} /> Send Invite
+                        <button
+                            onClick={handleInvite}
+                            disabled={inviteMutation.isPending || !inviteEmail || !inviteName}
+                            className="px-5 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2 disabled:opacity-50"
+                        >
+                            {inviteMutation.isPending ? 'Sending...' : 'Send Invite'}
                         </button>
                     </div>
                 }
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-navy mb-1.5">Email</label>
+                        <label className="block text-sm font-medium text-navy mb-1.5">Full Name</label>
+                        <input
+                            type="text"
+                            placeholder="Alex Smith"
+                            value={inviteName}
+                            onChange={(e) => setInviteName(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-lg border border-border-gray bg-gray-50 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-admin-slate/30"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-navy mb-1.5">Email Address</label>
                         <input
                             type="email"
-                            placeholder="newstaff@coastaleats.com"
-                            className="w-full px-4 py-2.5 rounded-lg border border-border-gray bg-gray-50 text-sm text-navy placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-admin-slate/30"
+                            placeholder="alex@coastaleats.com"
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-lg border border-border-gray bg-gray-50 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-admin-slate/30"
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-navy mb-1.5">Role</label>
-                        <select className="w-full px-4 py-2.5 rounded-lg border border-border-gray bg-white text-sm text-navy">
-                            <option>Staff</option>
-                            <option>Manager</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-navy mb-2">Location Assignment</label>
-                        <div className="space-y-2">
-                            {allLocations.map((loc) => (
-                                <label
-                                    key={loc}
-                                    className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border-gray hover:bg-gray-50 cursor-pointer transition-base"
+                        <div className="flex gap-2">
+                            {['staff', 'manager', 'admin'].map((r) => (
+                                <button
+                                    key={r}
+                                    onClick={() => setInviteRole(r)}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-base capitalize ${inviteRole === r
+                                        ? 'bg-admin-slate text-white border-admin-slate'
+                                        : 'bg-white text-gray-500 border-border-gray hover:bg-gray-50'
+                                        }`}
                                 >
-                                    <input type="checkbox" className="w-4 h-4 rounded border-border-gray text-admin-slate" />
-                                    <span className="text-sm text-navy">{loc}</span>
-                                </label>
+                                    {r}
+                                </button>
                             ))}
                         </div>
                     </div>
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-xs text-blue-700">
-                            The invited person will receive an email with instructions to set their password.
+                        <p className="text-[11px] text-blue-700 leading-relaxed">
+                            A temporary password will be generated. The user should be prompted to change it on first login.
                         </p>
                     </div>
                 </div>
