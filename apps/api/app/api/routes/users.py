@@ -124,19 +124,21 @@ async def create_user(
     data = payload.model_dump()
     password = data.pop("password")
     data["password_hash"] = hash_password(password)
-    user = await prisma.user.create(data=data)
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="user.create",
-        entity_type="user",
-        entity_id=user.id,
-        after_state={
-            "name": user.name,
-            "email": user.email,
-            "role": user.role,
-            "is_active": user.is_active,
-        },
-    )
+    async with prisma.tx() as tx:
+        user = await tx.user.create(data=data)
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="user.create",
+            entity_type="user",
+            entity_id=user.id,
+            after_state={
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+                "is_active": user.is_active,
+            },
+            db=tx,
+        )
     return _to_user_response(user)
 
 
@@ -169,29 +171,31 @@ async def update_user(
         if forbidden:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Field update is not allowed.")
 
-    updated = await prisma.user.update(where={"id": user_id}, data=data)
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="user.update",
-        entity_type="user",
-        entity_id=user_id,
-        before_state={
-            "name": user.name,
-            "home_timezone": user.home_timezone,
-            "desired_hours_per_week": user.desired_hours_per_week,
-            "hourly_rate": float(user.hourly_rate or 0) if user.hourly_rate is not None else None,
-            "notification_pref": user.notification_pref,
-            "is_active": user.is_active,
-        },
-        after_state={
-            "name": updated.name,
-            "home_timezone": updated.home_timezone,
-            "desired_hours_per_week": updated.desired_hours_per_week,
-            "hourly_rate": float(updated.hourly_rate or 0) if updated.hourly_rate is not None else None,
-            "notification_pref": updated.notification_pref,
-            "is_active": updated.is_active,
-        },
-    )
+    async with prisma.tx() as tx:
+        updated = await tx.user.update(where={"id": user_id}, data=data)
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="user.update",
+            entity_type="user",
+            entity_id=user_id,
+            before_state={
+                "name": user.name,
+                "home_timezone": user.home_timezone,
+                "desired_hours_per_week": user.desired_hours_per_week,
+                "hourly_rate": float(user.hourly_rate or 0) if user.hourly_rate is not None else None,
+                "notification_pref": user.notification_pref,
+                "is_active": user.is_active,
+            },
+            after_state={
+                "name": updated.name,
+                "home_timezone": updated.home_timezone,
+                "desired_hours_per_week": updated.desired_hours_per_week,
+                "hourly_rate": float(updated.hourly_rate or 0) if updated.hourly_rate is not None else None,
+                "notification_pref": updated.notification_pref,
+                "is_active": updated.is_active,
+            },
+            db=tx,
+        )
     return _to_user_response(updated)
 
 
@@ -203,15 +207,17 @@ async def delete_user(
     user = await prisma.user.find_unique(where={"id": user_id})
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-    await prisma.user.update(where={"id": user_id}, data={"is_active": False})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="user.deactivate",
-        entity_type="user",
-        entity_id=user_id,
-        before_state={"is_active": user.is_active},
-        after_state={"is_active": False},
-    )
+    async with prisma.tx() as tx:
+        await tx.user.update(where={"id": user_id}, data={"is_active": False})
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="user.deactivate",
+            entity_type="user",
+            entity_id=user_id,
+            before_state={"is_active": user.is_active},
+            after_state={"is_active": False},
+            db=tx,
+        )
     return {"deleted": True}
 
 
@@ -232,7 +238,7 @@ async def list_user_skills(
 async def add_user_skill(
     user_id: str,
     payload: SkillAttachRequest,
-    _: CurrentUser = Depends(require_roles("admin")),
+    current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> UserSkillResponse:
     user = await prisma.user.find_unique(where={"id": user_id})
     if user is None:
@@ -246,7 +252,16 @@ async def add_user_skill(
         where={"user_id_skill_id": {"user_id": user_id, "skill_id": payload.skill_id}}
     )
     if existing is None:
-        await prisma.userskill.create(data={"user_id": user_id, "skill_id": payload.skill_id})
+        async with prisma.tx() as tx:
+            await tx.userskill.create(data={"user_id": user_id, "skill_id": payload.skill_id})
+            await create_audit_log(
+                actor_id=current_user.id,
+                action_type="skill.add",
+                entity_type="user_skill",
+                entity_id=user_id,
+                after_state={"user_id": user_id, "skill_id": payload.skill_id},
+                db=tx,
+            )
 
     return UserSkillResponse(skill_id=skill.id, skill_name=skill.name)
 
@@ -255,12 +270,21 @@ async def add_user_skill(
 async def remove_user_skill(
     user_id: str,
     skill_id: str,
-    _: CurrentUser = Depends(require_roles("admin")),
+    current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> dict[str, bool]:
     existing = await prisma.userskill.find_unique(where={"user_id_skill_id": {"user_id": user_id, "skill_id": skill_id}})
     if existing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill link not found.")
-    await prisma.userskill.delete(where={"user_id_skill_id": {"user_id": user_id, "skill_id": skill_id}})
+    async with prisma.tx() as tx:
+        await tx.userskill.delete(where={"user_id_skill_id": {"user_id": user_id, "skill_id": skill_id}})
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="skill.remove",
+            entity_type="user_skill",
+            entity_id=user_id,
+            before_state={"user_id": user_id, "skill_id": skill_id},
+            db=tx,
+        )
     return {"removed": True}
 
 
@@ -295,31 +319,33 @@ async def add_user_certification(
     if location is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found.")
 
-    record = await prisma.userlocationcertification.upsert(
-        where={"user_id_location_id": {"user_id": user_id, "location_id": payload.location_id}},
-        data={
-            "create": {
+    async with prisma.tx() as tx:
+        record = await tx.userlocationcertification.upsert(
+            where={"user_id_location_id": {"user_id": user_id, "location_id": payload.location_id}},
+            data={
+                "create": {
+                    "user_id": user_id,
+                    "location_id": payload.location_id,
+                },
+                "update": {
+                    "revoked_at": None,
+                    "revoked_by": None,
+                },
+            },
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="cert.grant",
+            entity_type="certification",
+            entity_id=user_id,
+            location_id=payload.location_id,
+            after_state={
                 "user_id": user_id,
                 "location_id": payload.location_id,
-            },
-            "update": {
                 "revoked_at": None,
-                "revoked_by": None,
             },
-        },
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="cert.grant",
-        entity_type="certification",
-        entity_id=user_id,
-        location_id=payload.location_id,
-        after_state={
-            "user_id": user_id,
-            "location_id": payload.location_id,
-            "revoked_at": None,
-        },
-    )
+            db=tx,
+        )
     return UserCertificationResponse(
         location_id=record.location_id,
         location_name=location.name,
@@ -341,22 +367,24 @@ async def remove_user_certification(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certification not found.")
 
     revoked_at = datetime.now(timezone.utc)
-    await prisma.userlocationcertification.update(
-        where={"user_id_location_id": {"user_id": user_id, "location_id": location_id}},
-        data={
-            "revoked_at": revoked_at,
-            "revoked_by": current_user.id,
-        },
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="cert.revoke",
-        entity_type="certification",
-        entity_id=user_id,
-        location_id=location_id,
-        before_state={"revoked_at": record.revoked_at},
-        after_state={"revoked_at": revoked_at.isoformat()},
-    )
+    async with prisma.tx() as tx:
+        await tx.userlocationcertification.update(
+            where={"user_id_location_id": {"user_id": user_id, "location_id": location_id}},
+            data={
+                "revoked_at": revoked_at,
+                "revoked_by": current_user.id,
+            },
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="cert.revoke",
+            entity_type="certification",
+            entity_id=user_id,
+            location_id=location_id,
+            before_state={"revoked_at": record.revoked_at},
+            after_state={"revoked_at": revoked_at.isoformat()},
+            db=tx,
+        )
     return {"revoked": True}
 
 
@@ -434,8 +462,32 @@ async def replace_user_availability(
             }
         )
 
-    await prisma.availability.delete_many(where={"user_id": user_id})
-    if create_data:
-        await prisma.availability.create_many(data=create_data)
+    previous_entries = await prisma.availability.find_many(where={"user_id": user_id})
+    previous_recurring = sum(1 for entry in previous_entries if entry.avail_type == "recurring")
+    previous_exceptions = len(previous_entries) - previous_recurring
+    next_recurring = sum(1 for row in create_data if row["avail_type"] == "recurring")
+    next_exceptions = len(create_data) - next_recurring
+
+    async with prisma.tx() as tx:
+        await tx.availability.delete_many(where={"user_id": user_id})
+        if create_data:
+            await tx.availability.create_many(data=create_data)
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="availability.replace",
+            entity_type="availability",
+            entity_id=user_id,
+            before_state={
+                "count": len(previous_entries),
+                "recurring_count": previous_recurring,
+                "exception_count": previous_exceptions,
+            },
+            after_state={
+                "count": len(create_data),
+                "recurring_count": next_recurring,
+                "exception_count": next_exceptions,
+            },
+            db=tx,
+        )
 
     return await get_user_availability(user_id=user_id, current_user=current_user)

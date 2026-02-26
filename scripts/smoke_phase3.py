@@ -83,12 +83,15 @@ async def run_smoke() -> dict:
         by_email = {item["email"]: item for item in users}
         carlos_id = by_email["carlos@coastaleats.com"]["id"]
         maria_id = by_email["maria@coastaleats.com"]["id"]
+        dana_id = by_email["dana@coastaleats.com"]["id"]
 
         locations_response = await admin.get("/api/v1/locations")
         assert locations_response.status_code == 200, locations_response.text
         locations = locations_response.json()["locations"]
         ocean = next(item for item in locations if item["name"] == "Ocean Ave")
+        pier = next(item for item in locations if item["name"] == "Pier 39")
         location_id = ocean["id"]
+        pier_id = pier["id"]
 
         get_availability = await carlos.get(f"/api/v1/users/{carlos_id}/availability")
         assert get_availability.status_code == 200, get_availability.text
@@ -152,6 +155,7 @@ async def run_smoke() -> dict:
         shift_2 = await create_shift(day_2, "10:00", "14:00")
         shift_3 = await create_shift(day_3, "18:00", "22:00")
         shift_4 = await create_shift(day_4, "10:00", "14:00")
+        shift_5 = await create_shift(day_4, "15:00", "19:00")
 
         async def assign(shift_id: str, user_id: str, client: httpx.AsyncClient) -> httpx.Response:
             return await client.post(f"/api/v1/shifts/{shift_id}/assignments", json={"user_id": user_id})
@@ -255,15 +259,16 @@ async def run_smoke() -> dict:
             assert "schedule.published" in manager_events, manager_events
             assert "schedule.published" in maria_events, maria_events
 
-        # Conflict event check
-        assignment_4 = await assign(shift_4["id"], maria_id, manager)
-        assert assignment_4.status_code == 200, assignment_4.text
-
+        # Conflict event check (real concurrent writers)
         admin_token = admin.cookies.get("shiftsync_token")
         assert admin_token
         async with websockets.connect(f"{WS_BASE}?token={admin_token}") as admin_ws:
-            duplicate = await admin.post(f"/api/v1/shifts/{shift_4['id']}/assignments", json={"user_id": maria_id})
-            assert duplicate.status_code == 409, duplicate.text
+            first, second = await asyncio.gather(
+                manager.post(f"/api/v1/shifts/{shift_5['id']}/assignments", json={"user_id": maria_id}),
+                admin.post(f"/api/v1/shifts/{shift_5['id']}/assignments", json={"user_id": maria_id}),
+            )
+            codes = sorted([first.status_code, second.status_code])
+            assert codes == [200, 409], (first.status_code, first.text, second.status_code, second.text)
             conflict_message = json.loads(await asyncio.wait_for(admin_ws.recv(), timeout=3))
             assert conflict_message.get("event") == "assignment.conflict", conflict_message
 
@@ -306,9 +311,22 @@ async def run_smoke() -> dict:
         audit_json = audit_list.json()
         assert len(audit_json["logs"]) >= 1
 
+        revoke_cert = await admin.delete(f"/api/v1/users/{dana_id}/certifications/{pier_id}")
+        assert revoke_cert.status_code == 200, revoke_cert.text
+        cert_audit = await admin.get(
+            "/api/v1/audit-logs",
+            params={"entity_type": "certification", "location_id": pier_id, "limit": 100},
+        )
+        assert cert_audit.status_code == 200, cert_audit.text
+        cert_logs = cert_audit.json()["logs"]
+        assert any(log["action_type"] == "cert.revoke" for log in cert_logs), cert_logs
+
         audit_export = await admin.get(
             "/api/v1/audit-logs/export",
-            params={"start_date": day_1.isoformat(), "end_date": day_4.isoformat()},
+            params={
+                "start_date": (date.today() - timedelta(days=30)).isoformat(),
+                "end_date": date.today().isoformat(),
+            },
         )
         assert audit_export.status_code == 200, audit_export.text
         assert "text/csv" in audit_export.headers.get("content-type", "")
@@ -329,6 +347,7 @@ async def run_smoke() -> dict:
                 "notifications_checked": True,
                 "websocket_checked": True,
                 "assignment_conflict_checked": True,
+                "concurrency_codes": codes,
             },
             "phase4": {
                 "overtime_rows": len(overtime_json.get("staff", [])),
@@ -337,6 +356,7 @@ async def run_smoke() -> dict:
                 "on_duty_checked": True,
                 "audit_logs_count": len(audit_json.get("logs", [])),
                 "audit_csv_checked": True,
+                "cert_revoke_audit_checked": True,
             },
         }
 

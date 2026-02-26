@@ -8,6 +8,7 @@ from app.schemas.location import (
     LocationResponse,
     LocationUpdateRequest,
 )
+from app.services.audit import create_audit_log
 
 
 router = APIRouter()
@@ -47,9 +48,24 @@ async def list_locations(current_user: CurrentUser = Depends(get_current_user)) 
 @router.post("", response_model=LocationResponse)
 async def create_location(
     payload: LocationCreateRequest,
-    _: CurrentUser = Depends(require_roles("admin")),
+    current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> LocationResponse:
-    location = await prisma.location.create(data=payload.model_dump())
+    async with prisma.tx() as tx:
+        location = await tx.location.create(data=payload.model_dump())
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="location.create",
+            entity_type="location",
+            entity_id=location.id,
+            location_id=location.id,
+            after_state={
+                "name": location.name,
+                "address": location.address,
+                "iana_timezone": location.iana_timezone,
+                "is_active": location.is_active,
+            },
+            db=tx,
+        )
     return _to_location_response(location)
 
 
@@ -79,12 +95,33 @@ async def get_location(
 async def update_location(
     location_id: str,
     payload: LocationUpdateRequest,
-    _: CurrentUser = Depends(require_roles("admin")),
+    current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> LocationResponse:
     existing = await prisma.location.find_unique(where={"id": location_id})
     if existing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found.")
 
     data = payload.model_dump(exclude_none=True)
-    location = await prisma.location.update(where={"id": location_id}, data=data)
+    async with prisma.tx() as tx:
+        location = await tx.location.update(where={"id": location_id}, data=data)
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="location.update",
+            entity_type="location",
+            entity_id=location_id,
+            location_id=location_id,
+            before_state={
+                "name": existing.name,
+                "address": existing.address,
+                "iana_timezone": existing.iana_timezone,
+                "is_active": existing.is_active,
+            },
+            after_state={
+                "name": location.name,
+                "address": location.address,
+                "iana_timezone": location.iana_timezone,
+                "is_active": location.is_active,
+            },
+            db=tx,
+        )
     return _to_location_response(location)

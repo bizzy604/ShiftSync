@@ -9,14 +9,13 @@
   "scripts": {
     "web:dev": "npm --workspace apps/web run dev",
     "web:build": "npm --workspace apps/web run build",
-    "prisma:generate": "python scripts/prisma_generate.py",
-    "prisma:migrate": "python scripts/prisma_migrate.py dev",
-    "prisma:deploy": "python scripts/prisma_migrate.py deploy"
+    "db:upgrade": "python scripts/alembic_migrate.py upgrade",
+    "db:downgrade": "python scripts/alembic_migrate.py downgrade",
+    "db:stamp": "python scripts/alembic_migrate.py stamp",
+    "db:revision": "python scripts/alembic_migrate.py revision",
+    "prisma:deploy": "python scripts/alembic_migrate.py upgrade"
   },
   "dependencies": {
     "docx": "^9.6.0"
-  },
-  "devDependencies": {
-    "prisma": "^6.17.0"
   }
 }

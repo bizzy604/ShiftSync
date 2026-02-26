@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
-from prisma.errors import UniqueViolationError
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import (
     CurrentUser,
@@ -368,18 +368,42 @@ async def create_assignment(
             )
 
         try:
-            assignment = await prisma.shiftassignment.create(
-                data={
-                    "shift_id": shift_id,
-                    "user_id": user.id,
-                    "assigned_by": current_user.id,
-                    "status": "assigned",
-                    "version": 1,
-                    "override_reason": payload.override_reason,
-                },
-                include={"user": True},
-            )
-        except UniqueViolationError:
+            async with prisma.tx() as tx:
+                assignment = await tx.shiftassignment.create(
+                    data={
+                        "shift_id": shift_id,
+                        "user_id": user.id,
+                        "assigned_by": current_user.id,
+                        "status": "assigned",
+                        "version": 1,
+                        "override_reason": payload.override_reason,
+                    },
+                    include={"user": True},
+                )
+                notif = await create_notification(
+                    user_id=user.id,
+                    notif_type="shift.assigned",
+                    message=f"You have been assigned to a shift at {shift.location.name}.",
+                    payload={"shiftId": shift_id, "locationId": shift.location_id},
+                    db=tx,
+                    ws_manager=None,
+                )
+                await create_audit_log(
+                    actor_id=current_user.id,
+                    action_type="shift.assign",
+                    entity_type="assignment",
+                    entity_id=assignment.id,
+                    location_id=shift.location_id,
+                    after_state={
+                        "shift_id": assignment.shift_id,
+                        "user_id": assignment.user_id,
+                        "status": assignment.status,
+                        "assigned_by": assignment.assigned_by,
+                    },
+                    reason=payload.override_reason,
+                    db=tx,
+                )
+        except IntegrityError:
             await _emit_assignment_conflict(
                 request,
                 manager_user_id=current_user.id,
@@ -404,26 +428,10 @@ async def create_assignment(
             "changedBy": current_user.id,
         },
     )
-    await create_notification(
-        user_id=user.id,
-        notif_type="shift.assigned",
-        message=f"You have been assigned to a shift at {shift.location.name}.",
-        payload={"shiftId": shift_id, "locationId": shift.location_id},
-        ws_manager=ws_manager,
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="shift.assign",
-        entity_type="assignment",
-        entity_id=assignment.id,
-        location_id=shift.location_id,
-        after_state={
-            "shift_id": assignment.shift_id,
-            "user_id": assignment.user_id,
-            "status": assignment.status,
-            "assigned_by": assignment.assigned_by,
-        },
-        reason=payload.override_reason,
+    await ws_manager.emit_to_user(
+        user.id,
+        "notification.new",
+        {"notificationId": notif.id, "type": notif.type, "message": notif.message},
     )
     return AssignmentResponse(**_to_assignment_response(assignment).model_dump())
 
@@ -443,7 +451,31 @@ async def delete_assignment(
     if assignment is None or assignment.shift_id != shift_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found.")
 
-    await prisma.shiftassignment.delete(where={"id": assignment_id})
+    async with prisma.tx() as tx:
+        await tx.shiftassignment.delete(where={"id": assignment_id})
+        notif = await create_notification(
+            user_id=assignment.user_id,
+            notif_type="shift.unassigned",
+            message="You have been removed from a shift.",
+            payload={"shiftId": shift_id, "locationId": shift.location_id},
+            db=tx,
+            ws_manager=None,
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="shift.unassign",
+            entity_type="assignment",
+            entity_id=assignment.id,
+            location_id=shift.location_id,
+            before_state={
+                "shift_id": assignment.shift_id,
+                "user_id": assignment.user_id,
+                "status": assignment.status,
+                "assigned_by": assignment.assigned_by,
+            },
+            after_state={"status": "removed"},
+            db=tx,
+        )
     ws_manager = request.app.state.ws_manager
     await ws_manager.emit_to_user(
         assignment.user_id,
@@ -455,25 +487,9 @@ async def delete_assignment(
             "changedBy": current_user.id,
         },
     )
-    await create_notification(
-        user_id=assignment.user_id,
-        notif_type="shift.unassigned",
-        message="You have been removed from a shift.",
-        payload={"shiftId": shift_id, "locationId": shift.location_id},
-        ws_manager=ws_manager,
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="shift.unassign",
-        entity_type="assignment",
-        entity_id=assignment.id,
-        location_id=shift.location_id,
-        before_state={
-            "shift_id": assignment.shift_id,
-            "user_id": assignment.user_id,
-            "status": assignment.status,
-            "assigned_by": assignment.assigned_by,
-        },
-        after_state={"status": "removed"},
+    await ws_manager.emit_to_user(
+        assignment.user_id,
+        "notification.new",
+        {"notificationId": notif.id, "type": notif.type, "message": notif.message},
     )
     return {"deleted": True}

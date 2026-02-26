@@ -151,36 +151,38 @@ async def create_shift(
     )
     week_start_value = week_start_monday(payload.shift_date)
 
-    shift = await prisma.shift.create(
-        data={
-            "location_id": location_id,
-            "required_skill_id": payload.required_skill_id,
-            "shift_date": _date_as_datetime(payload.shift_date),
-            "start_utc": start_utc,
-            "end_utc": end_utc,
-            "headcount_needed": payload.headcount_needed,
-            "status": "draft",
-            "week_start": _date_as_datetime(week_start_value),
-            "created_by": current_user.id,
-        },
-        include={"required_skill": True, "location": True},
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="shift.create",
-        entity_type="shift",
-        entity_id=shift.id,
-        location_id=location_id,
-        after_state={
-            "location_id": shift.location_id,
-            "required_skill_id": shift.required_skill_id,
-            "shift_date": _date_as_date(shift.shift_date).isoformat(),
-            "start_utc": shift.start_utc.isoformat(),
-            "end_utc": shift.end_utc.isoformat(),
-            "status": shift.status,
-            "headcount_needed": shift.headcount_needed,
-        },
-    )
+    async with prisma.tx() as tx:
+        shift = await tx.shift.create(
+            data={
+                "location_id": location_id,
+                "required_skill_id": payload.required_skill_id,
+                "shift_date": _date_as_datetime(payload.shift_date),
+                "start_utc": start_utc,
+                "end_utc": end_utc,
+                "headcount_needed": payload.headcount_needed,
+                "status": "draft",
+                "week_start": _date_as_datetime(week_start_value),
+                "created_by": current_user.id,
+            },
+            include={"required_skill": True, "location": True},
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="shift.create",
+            entity_type="shift",
+            entity_id=shift.id,
+            location_id=location_id,
+            after_state={
+                "location_id": shift.location_id,
+                "required_skill_id": shift.required_skill_id,
+                "shift_date": _date_as_date(shift.shift_date).isoformat(),
+                "start_utc": shift.start_utc.isoformat(),
+                "end_utc": shift.end_utc.isoformat(),
+                "status": shift.status,
+                "headcount_needed": shift.headcount_needed,
+            },
+            db=tx,
+        )
     return _to_shift_response(shift, location.iana_timezone)
 
 
@@ -268,35 +270,37 @@ async def update_shift(
         "week_start": _date_as_datetime(week_start_value),
     }
 
-    updated = await prisma.shift.update(
-        where={"id": shift_id},
-        data=update_data,
-        include={"required_skill": True, "location": True},
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="shift.update",
-        entity_type="shift",
-        entity_id=shift_id,
-        location_id=location_id,
-        before_state={
-            "shift_date": _date_as_date(shift.shift_date).isoformat(),
-            "start_utc": shift.start_utc.isoformat(),
-            "end_utc": shift.end_utc.isoformat(),
-            "required_skill_id": shift.required_skill_id,
-            "headcount_needed": shift.headcount_needed,
-            "status": shift.status,
-        },
-        after_state={
-            "shift_date": _date_as_date(updated.shift_date).isoformat(),
-            "start_utc": updated.start_utc.isoformat(),
-            "end_utc": updated.end_utc.isoformat(),
-            "required_skill_id": updated.required_skill_id,
-            "headcount_needed": updated.headcount_needed,
-            "status": updated.status,
-        },
-        reason=payload.override_reason,
-    )
+    async with prisma.tx() as tx:
+        updated = await tx.shift.update(
+            where={"id": shift_id},
+            data=update_data,
+            include={"required_skill": True, "location": True},
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="shift.update",
+            entity_type="shift",
+            entity_id=shift_id,
+            location_id=location_id,
+            before_state={
+                "shift_date": _date_as_date(shift.shift_date).isoformat(),
+                "start_utc": shift.start_utc.isoformat(),
+                "end_utc": shift.end_utc.isoformat(),
+                "required_skill_id": shift.required_skill_id,
+                "headcount_needed": shift.headcount_needed,
+                "status": shift.status,
+            },
+            after_state={
+                "shift_date": _date_as_date(updated.shift_date).isoformat(),
+                "start_utc": updated.start_utc.isoformat(),
+                "end_utc": updated.end_utc.isoformat(),
+                "required_skill_id": updated.required_skill_id,
+                "headcount_needed": updated.headcount_needed,
+                "status": updated.status,
+            },
+            reason=payload.override_reason,
+            db=tx,
+        )
 
     if shift.status == "published":
         await request.app.state.ws_manager.emit_to_location(
@@ -332,16 +336,18 @@ async def delete_shift(
     if shift is None or shift.location_id != location_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shift not found.")
 
-    await prisma.shift.update(where={"id": shift_id}, data={"status": "cancelled"})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="shift.cancel",
-        entity_type="shift",
-        entity_id=shift_id,
-        location_id=location_id,
-        before_state={"status": shift.status},
-        after_state={"status": "cancelled"},
-    )
+    async with prisma.tx() as tx:
+        await tx.shift.update(where={"id": shift_id}, data={"status": "cancelled"})
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="shift.cancel",
+            entity_type="shift",
+            entity_id=shift_id,
+            location_id=location_id,
+            before_state={"status": shift.status},
+            after_state={"status": "cancelled"},
+            db=tx,
+        )
     await request.app.state.ws_manager.emit_to_location(
         location_id,
         "schedule.updated",
@@ -379,30 +385,45 @@ async def publish_week(
     cutoff = earliest_start - timedelta(hours=48)
 
     now = datetime.now(tz=timezone.utc)
-    for shift in shifts:
-        await prisma.shift.update(
-            where={"id": shift.id},
-            data={
-                "status": "published",
-                "published_at": now,
-                "edit_cutoff_utc": cutoff,
-            },
-        )
-        await create_audit_log(
-            actor_id=current_user.id,
-            action_type="shift.publish",
-            entity_type="shift",
-            entity_id=shift.id,
-            location_id=location_id,
-            before_state={"status": shift.status},
-            after_state={"status": "published", "edit_cutoff_utc": cutoff.isoformat()},
-        )
+    notification_records: list[object] = []
+    async with prisma.tx() as tx:
+        for shift in shifts:
+            await tx.shift.update(
+                where={"id": shift.id},
+                data={
+                    "status": "published",
+                    "published_at": now,
+                    "edit_cutoff_utc": cutoff,
+                },
+            )
+            await create_audit_log(
+                actor_id=current_user.id,
+                action_type="shift.publish",
+                entity_type="shift",
+                entity_id=shift.id,
+                location_id=location_id,
+                before_state={"status": shift.status},
+                after_state={"status": "published", "edit_cutoff_utc": cutoff.isoformat()},
+                db=tx,
+            )
 
-    shift_ids = [shift.id for shift in shifts]
-    assignments = await prisma.shiftassignment.find_many(
-        where={"shift_id": {"in": shift_ids}, "status": "assigned"},
-    )
-    affected_user_ids = sorted({item.user_id for item in assignments})
+        shift_ids = [shift.id for shift in shifts]
+        assignments = await tx.shiftassignment.find_many(
+            where={"shift_id": {"in": shift_ids}, "status": "assigned"},
+        )
+        affected_user_ids = sorted({item.user_id for item in assignments})
+
+        for user_id in affected_user_ids:
+            record = await create_notification(
+                user_id=user_id,
+                notif_type="schedule.published",
+                message=f"Schedule published for week of {payload.week_start.isoformat()}.",
+                payload={"locationId": location_id, "weekStart": payload.week_start.isoformat()},
+                db=tx,
+                ws_manager=None,
+            )
+            notification_records.append(record)
+
     ws_manager = request.app.state.ws_manager
     event_payload = {
         "locationId": location_id,
@@ -412,13 +433,11 @@ async def publish_week(
     await ws_manager.emit_to_location(location_id, "schedule.published", event_payload)
     if affected_user_ids:
         await ws_manager.emit_to_users(affected_user_ids, "schedule.published", event_payload)
-        for user_id in affected_user_ids:
-            await create_notification(
-                user_id=user_id,
-                notif_type="schedule.published",
-                message=f"Schedule published for week of {payload.week_start.isoformat()}.",
-                payload={"locationId": location_id, "weekStart": payload.week_start.isoformat()},
-                ws_manager=ws_manager,
+        for record in notification_records:
+            await ws_manager.emit_to_user(
+                record.user_id,
+                "notification.new",
+                {"notificationId": record.id, "type": record.type, "message": record.message},
             )
 
     return PublishWeekResponse(
@@ -456,21 +475,23 @@ async def unpublish_shift(
             detail="Past edit cutoff. Override reason is required to unpublish.",
         )
 
-    updated = await prisma.shift.update(
-        where={"id": shift_id},
-        data={"status": "draft", "published_at": None},
-        include={"required_skill": True, "location": True},
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="shift.unpublish",
-        entity_type="shift",
-        entity_id=shift_id,
-        location_id=location_id,
-        before_state={"status": shift.status},
-        after_state={"status": "draft"},
-        reason=payload.override_reason,
-    )
+    async with prisma.tx() as tx:
+        updated = await tx.shift.update(
+            where={"id": shift_id},
+            data={"status": "draft", "published_at": None},
+            include={"required_skill": True, "location": True},
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="shift.unpublish",
+            entity_type="shift",
+            entity_id=shift_id,
+            location_id=location_id,
+            before_state={"status": shift.status},
+            after_state={"status": "draft"},
+            reason=payload.override_reason,
+            db=tx,
+        )
     await request.app.state.ws_manager.emit_to_location(
         location_id,
         "schedule.updated",

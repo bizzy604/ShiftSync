@@ -103,16 +103,33 @@ async def enforce_pending_limit(user_id: str) -> None:
         )
 
 
-async def manager_notify(request: Request, location_id: str, message: str, payload: dict) -> None:
-    ws = request.app.state.ws_manager
-    links = await prisma.managerlocationassignment.find_many(where={"location_id": location_id})
+async def manager_notify(location_id: str, message: str, payload: dict, db: object | None = None) -> list[object]:
+    client = db or prisma
+    links = await client.managerlocationassignment.find_many(where={"location_id": location_id})
+    notifications = []
     for link in links:
-        await create_notification(
+        notif = await create_notification(
             user_id=link.manager_id,
             notif_type="swap.manager_action_required",
             message=message,
             payload=payload,
-            ws_manager=ws,
+            db=client,
+            ws_manager=None,
+        )
+        notifications.append(notif)
+    return notifications
+
+
+async def emit_notifications(ws_manager: object, notifications: list[object]) -> None:
+    for notif in notifications:
+        await ws_manager.emit_to_user(
+            notif.user_id,
+            "notification.new",
+            {
+                "notificationId": notif.id,
+                "type": notif.type,
+                "message": notif.message,
+            },
         )
 
 
@@ -161,26 +178,36 @@ async def create_swap_request(payload: SwapCreateRequest, request: Request, curr
     target = await prisma.user.find_unique(where={"id": payload.target_user_id})
     if target is None or target.role != "staff" or not target.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target staff not found.")
-    row = await prisma.swaprequest.create(
-        data={
-            "type": "swap",
-            "requester_assignment_id": payload.my_assignment_id,
-            "target_user_id": payload.target_user_id,
-            "candidate_assignment_id": payload.target_assignment_id,
-            "status": "PENDING_ACCEPTEE",
-            "initiated_by": current_user.id,
-        }
-    )
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="swap.create",
-        entity_type="swap_request",
-        entity_id=row.id,
-        location_id=a.shift.location_id if a.shift else None,
-        after_state={"type": row.type, "status": row.status},
-    )
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.create(
+            data={
+                "type": "swap",
+                "requester_assignment_id": payload.my_assignment_id,
+                "target_user_id": payload.target_user_id,
+                "candidate_assignment_id": payload.target_assignment_id,
+                "status": "PENDING_ACCEPTEE",
+                "initiated_by": current_user.id,
+            }
+        )
+        target_notification = await create_notification(
+            user_id=target.id,
+            notif_type="swap.requested",
+            message="You have a swap request.",
+            payload={"swapRequestId": row.id},
+            db=tx,
+            ws_manager=None,
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="swap.create",
+            entity_type="swap_request",
+            entity_id=row.id,
+            location_id=a.shift.location_id if a.shift else None,
+            after_state={"type": row.type, "status": row.status},
+            db=tx,
+        )
     ws = request.app.state.ws_manager
-    await create_notification(user_id=target.id, notif_type="swap.requested", message="You have a swap request.", payload={"swapRequestId": row.id}, ws_manager=ws)
+    await emit_notifications(ws, [target_notification])
     await ws.emit_to_users([current_user.id, target.id], "swap.status_changed", {"swapRequestId": row.id, "newStatus": "PENDING_ACCEPTEE"})
     return to_resp(row)
 
@@ -194,20 +221,29 @@ async def accept_swap(request_id: str, body: SwapActionRequest, request: Request
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only target staff can accept.")
     if row.status != "PENDING_ACCEPTEE":
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Swap not awaiting acceptee.")
-    row = await prisma.swaprequest.update(where={"id": row.id}, data={"status": "PENDING_MANAGER", "resolution_note": body.note, "version": row.version + 1}, include={"requester_assignment": {"include": {"shift": True}}})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="swap.accept",
-        entity_type="swap_request",
-        entity_id=row.id,
-        location_id=row.requester_assignment.shift.location_id if row.requester_assignment and row.requester_assignment.shift else None,
-        before_state={"status": "PENDING_ACCEPTEE"},
-        after_state={"status": "PENDING_MANAGER"},
-        reason=body.note,
-    )
-    if row.requester_assignment and row.requester_assignment.shift:
-        await manager_notify(request, row.requester_assignment.shift.location_id, "Swap needs manager approval.", {"swapRequestId": row.id})
+    manager_notifications: list[object] = []
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "PENDING_MANAGER", "resolution_note": body.note, "version": row.version + 1}, include={"requester_assignment": {"include": {"shift": True}}})
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="swap.accept",
+            entity_type="swap_request",
+            entity_id=row.id,
+            location_id=row.requester_assignment.shift.location_id if row.requester_assignment and row.requester_assignment.shift else None,
+            before_state={"status": "PENDING_ACCEPTEE"},
+            after_state={"status": "PENDING_MANAGER"},
+            reason=body.note,
+            db=tx,
+        )
+        if row.requester_assignment and row.requester_assignment.shift:
+            manager_notifications = await manager_notify(
+                row.requester_assignment.shift.location_id,
+                "Swap needs manager approval.",
+                {"swapRequestId": row.id},
+                db=tx,
+            )
     ws = request.app.state.ws_manager
+    await emit_notifications(ws, manager_notifications)
     await ws.emit_to_users([row.initiated_by, current_user.id], "swap.status_changed", {"swapRequestId": row.id, "newStatus": "PENDING_MANAGER"})
     return to_resp(row)
 
@@ -219,18 +255,29 @@ async def reject_swap(request_id: str, body: SwapActionRequest, request: Request
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Swap request not found.")
     if row.target_user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only target staff can reject.")
-    row = await prisma.swaprequest.update(where={"id": row.id}, data={"status": "REJECTED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="swap.reject",
-        entity_type="swap_request",
-        entity_id=row.id,
-        before_state={"status": "PENDING_ACCEPTEE"},
-        after_state={"status": "REJECTED"},
-        reason=body.note,
-    )
+    initiator_notification = None
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "REJECTED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
+        initiator_notification = await create_notification(
+            user_id=row.initiated_by,
+            notif_type="swap.rejected",
+            message="Your swap request was rejected.",
+            payload={"swapRequestId": row.id},
+            db=tx,
+            ws_manager=None,
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="swap.reject",
+            entity_type="swap_request",
+            entity_id=row.id,
+            before_state={"status": "PENDING_ACCEPTEE"},
+            after_state={"status": "REJECTED"},
+            reason=body.note,
+            db=tx,
+        )
     ws = request.app.state.ws_manager
-    await create_notification(user_id=row.initiated_by, notif_type="swap.rejected", message="Your swap request was rejected.", payload={"swapRequestId": row.id}, ws_manager=ws)
+    await emit_notifications(ws, [initiator_notification])
     await ws.emit_to_users([row.initiated_by, current_user.id], "swap.status_changed", {"swapRequestId": row.id, "newStatus": "REJECTED"})
     return to_resp(row)
 
@@ -244,23 +291,25 @@ async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only initiator can cancel.")
     if row.status not in PENDING:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Request cannot be cancelled.")
-    row = await prisma.swaprequest.update(where={"id": row.id}, data={"status": "CANCELLED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="swap.cancel",
-        entity_type="swap_request",
-        entity_id=row.id,
-        before_state={"status": "PENDING"},
-        after_state={"status": "CANCELLED"},
-        reason=body.note,
-    )
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "CANCELLED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="swap.cancel",
+            entity_type="swap_request",
+            entity_id=row.id,
+            before_state={"status": "PENDING"},
+            after_state={"status": "CANCELLED"},
+            reason=body.note,
+            db=tx,
+        )
     ws = request.app.state.ws_manager
     recipients = [row.initiated_by] + ([row.target_user_id] if row.target_user_id else []) + ([row.pickup_user_id] if row.pickup_user_id else [])
     await ws.emit_to_users(recipients, "swap.status_changed", {"swapRequestId": row.id, "newStatus": "CANCELLED"})
     return to_resp(row)
 
 
-async def approve_transfer(row: object, actor: CurrentUser, note: str | None, request: Request, drop: bool) -> object:
+async def approve_transfer(row: object, actor: CurrentUser, note: str | None, request: Request, drop: bool) -> tuple[object, list[object], str]:
     a = await prisma.shiftassignment.find_unique(where={"id": row.requester_assignment_id}, include={"shift": {"include": {"location": True, "required_skill": True}}})
     if a is None or a.shift is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requester assignment not found.")
@@ -279,24 +328,57 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target no longer qualifies.")
     if result.requires_override and not note:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Override note is required.")
-    await prisma.shiftassignment.update(where={"id": a.id}, data={"user_id": u.id, "assigned_by": actor.id, "override_reason": note, "version": a.version + 1})
-    row = await prisma.swaprequest.update(where={"id": row.id}, data={"status": "APPROVED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": actor.id, "resolution_note": note, "version": row.version + 1})
-    await create_audit_log(
-        actor_id=actor.id,
-        action_type="drop.approve" if drop else "swap.approve",
-        entity_type="swap_request",
-        entity_id=row.id,
-        location_id=a.shift.location_id,
-        before_state={"status": "PENDING_MANAGER"},
-        after_state={"status": "APPROVED", "new_user_id": u.id},
-        reason=note,
-    )
+    async with prisma.tx() as tx:
+        await tx.shiftassignment.update(
+            where={"id": a.id},
+            data={"user_id": u.id, "assigned_by": actor.id, "override_reason": note, "version": a.version + 1},
+        )
+        row = await tx.swaprequest.update(
+            where={"id": row.id},
+            data={"status": "APPROVED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": actor.id, "resolution_note": note, "version": row.version + 1},
+        )
+        await create_audit_log(
+            actor_id=actor.id,
+            action_type="drop.approve" if drop else "swap.approve",
+            entity_type="swap_request",
+            entity_id=row.id,
+            location_id=a.shift.location_id,
+            before_state={"status": "PENDING_MANAGER"},
+            after_state={"status": "APPROVED", "new_user_id": u.id},
+            reason=note,
+            db=tx,
+        )
+        notif_1 = await create_notification(
+            user_id=row.initiated_by,
+            notif_type="swap.approved" if not drop else "drop.approved",
+            message="Request approved.",
+            payload={"requestId": row.id},
+            db=tx,
+            ws_manager=None,
+        )
+        notif_2 = await create_notification(
+            user_id=u.id,
+            notif_type="swap.approved" if not drop else "drop.approved",
+            message="You are assigned to the shift.",
+            payload={"requestId": row.id},
+            db=tx,
+            ws_manager=None,
+        )
+
     ws = request.app.state.ws_manager
-    await create_notification(user_id=row.initiated_by, notif_type="swap.approved" if not drop else "drop.approved", message="Request approved.", payload={"requestId": row.id}, ws_manager=ws)
-    await create_notification(user_id=u.id, notif_type="swap.approved" if not drop else "drop.approved", message="You are assigned to the shift.", payload={"requestId": row.id}, ws_manager=ws)
+    await ws.emit_to_user(
+        row.initiated_by,
+        "notification.new",
+        {"notificationId": notif_1.id, "type": notif_1.type, "message": notif_1.message},
+    )
+    await ws.emit_to_user(
+        u.id,
+        "notification.new",
+        {"notificationId": notif_2.id, "type": notif_2.type, "message": notif_2.message},
+    )
     await ws.emit_to_users([row.initiated_by, u.id], "swap.status_changed", {"swapRequestId": row.id, "newStatus": "APPROVED"})
     await ws.emit_to_user(u.id, "assignment.changed", {"shiftId": a.shift_id, "userId": u.id, "status": "assigned", "changedBy": actor.id})
-    return row
+    return row, [notif_1, notif_2], a.shift.location_id
 
 
 @router.put("/swap-requests/{request_id}/approve", response_model=SwapRequestResponse)
@@ -308,7 +390,7 @@ async def approve_swap_like(request_id: str, body: SwapActionRequest, request: R
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Request is not pending manager.")
     if current_user.role == "manager" and row.requester_assignment and row.requester_assignment.shift:
         ensure_manager_location_access(current_user, row.requester_assignment.shift.location_id)
-    row = await approve_transfer(row, current_user, body.note, request, drop=row.type == "drop")
+    row, _, _ = await approve_transfer(row, current_user, body.note, request, drop=row.type == "drop")
     return to_resp(row)
 
 
@@ -321,19 +403,33 @@ async def decline_swap_like(request_id: str, body: SwapActionRequest, request: R
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Request cannot be declined.")
     if current_user.role == "manager" and row.requester_assignment and row.requester_assignment.shift:
         ensure_manager_location_access(current_user, row.requester_assignment.shift.location_id)
-    row = await prisma.swaprequest.update(where={"id": row.id}, data={"status": "REJECTED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="drop.decline" if row.type == "drop" else "swap.decline",
-        entity_type="swap_request",
-        entity_id=row.id,
-        location_id=row.requester_assignment.shift.location_id if row.requester_assignment and row.requester_assignment.shift else None,
-        before_state={"status": "PENDING_MANAGER"},
-        after_state={"status": "REJECTED"},
-        reason=body.note,
-    )
+    previous_status = row.status
+    location_id = row.requester_assignment.shift.location_id if row.requester_assignment and row.requester_assignment.shift else None
+    initiator_notif_type = "drop.rejected" if row.type == "drop" else "swap.rejected"
+    initiator_notification = None
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "REJECTED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
+        initiator_notification = await create_notification(
+            user_id=row.initiated_by,
+            notif_type=initiator_notif_type,
+            message="Request declined.",
+            payload={"requestId": row.id},
+            db=tx,
+            ws_manager=None,
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="drop.decline" if row.type == "drop" else "swap.decline",
+            entity_type="swap_request",
+            entity_id=row.id,
+            location_id=location_id,
+            before_state={"status": previous_status},
+            after_state={"status": "REJECTED"},
+            reason=body.note,
+            db=tx,
+        )
     ws = request.app.state.ws_manager
-    await create_notification(user_id=row.initiated_by, notif_type="swap.rejected", message="Request declined.", payload={"requestId": row.id}, ws_manager=ws)
+    await emit_notifications(ws, [initiator_notification])
     await ws.emit_to_users([row.initiated_by] + ([row.pickup_user_id] if row.pickup_user_id else []), "swap.status_changed", {"swapRequestId": row.id, "newStatus": "REJECTED"})
     return to_resp(row)
 
@@ -349,16 +445,25 @@ async def create_drop(payload: DropCreateRequest, request: Request, current_user
     expires_at = a.shift.start_utc - timedelta(hours=24)
     if expires_at <= datetime.now(tz=timezone.utc):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Drop already within expiry window.")
-    row = await prisma.swaprequest.create(data={"type": "drop", "requester_assignment_id": a.id, "status": "OPEN", "initiated_by": current_user.id, "expires_at": expires_at})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="drop.create",
-        entity_type="swap_request",
-        entity_id=row.id,
-        location_id=a.shift.location_id,
-        after_state={"type": "drop", "status": "OPEN", "expires_at": expires_at.isoformat()},
-    )
-    await manager_notify(request, a.shift.location_id, "A drop request was opened.", {"dropRequestId": row.id})
+    manager_notifications: list[object] = []
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.create(data={"type": "drop", "requester_assignment_id": a.id, "status": "OPEN", "initiated_by": current_user.id, "expires_at": expires_at})
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="drop.create",
+            entity_type="swap_request",
+            entity_id=row.id,
+            location_id=a.shift.location_id,
+            after_state={"type": "drop", "status": "OPEN", "expires_at": expires_at.isoformat()},
+            db=tx,
+        )
+        manager_notifications = await manager_notify(
+            a.shift.location_id,
+            "A drop request was opened.",
+            {"dropRequestId": row.id},
+            db=tx,
+        )
+    await emit_notifications(request.app.state.ws_manager, manager_notifications)
     return to_resp(row)
 
 
@@ -423,20 +528,37 @@ async def pickup_drop(request_id: str, body: DropPickupRequest, request: Request
     result = evaluate_assignment(shift_snapshot(a.shift), user_snapshot(u), await existing_assignments(u.id, a.shift_id))
     if any(v.severity == "HARD_BLOCK" for v in result.violations):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="You do not qualify for this shift.")
-    row = await prisma.swaprequest.update(where={"id": row.id}, data={"status": "PENDING_MANAGER", "pickup_user_id": current_user.id, "resolution_note": body.note, "version": row.version + 1})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="drop.pickup",
-        entity_type="swap_request",
-        entity_id=row.id,
-        location_id=a.shift.location_id,
-        before_state={"status": "OPEN"},
-        after_state={"status": "PENDING_MANAGER", "pickup_user_id": current_user.id},
-        reason=body.note,
-    )
-    await manager_notify(request, a.shift.location_id, "Drop pickup pending manager approval.", {"dropRequestId": row.id})
+    manager_notifications: list[object] = []
+    initiator_notification = None
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "PENDING_MANAGER", "pickup_user_id": current_user.id, "resolution_note": body.note, "version": row.version + 1})
+        initiator_notification = await create_notification(
+            user_id=row.initiated_by,
+            notif_type="drop.picked_up",
+            message="Your dropped shift has been picked up.",
+            payload={"dropRequestId": row.id},
+            db=tx,
+            ws_manager=None,
+        )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="drop.pickup",
+            entity_type="swap_request",
+            entity_id=row.id,
+            location_id=a.shift.location_id,
+            before_state={"status": "OPEN"},
+            after_state={"status": "PENDING_MANAGER", "pickup_user_id": current_user.id},
+            reason=body.note,
+            db=tx,
+        )
+        manager_notifications = await manager_notify(
+            a.shift.location_id,
+            "Drop pickup pending manager approval.",
+            {"dropRequestId": row.id},
+            db=tx,
+        )
     ws = request.app.state.ws_manager
-    await create_notification(user_id=row.initiated_by, notif_type="drop.picked_up", message="Your dropped shift has been picked up.", payload={"dropRequestId": row.id}, ws_manager=ws)
+    await emit_notifications(ws, manager_notifications + [initiator_notification])
     await ws.emit_to_users([row.initiated_by, current_user.id], "swap.status_changed", {"swapRequestId": row.id, "newStatus": "PENDING_MANAGER"})
     return to_resp(row)
 
@@ -450,7 +572,7 @@ async def approve_drop(request_id: str, body: SwapActionRequest, request: Reques
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Drop is not pending manager.")
     if current_user.role == "manager" and row.requester_assignment and row.requester_assignment.shift:
         ensure_manager_location_access(current_user, row.requester_assignment.shift.location_id)
-    row = await approve_transfer(row, current_user, body.note, request, drop=True)
+    row, _, _ = await approve_transfer(row, current_user, body.note, request, drop=True)
     return to_resp(row)
 
 
@@ -463,20 +585,42 @@ async def decline_drop(request_id: str, body: SwapActionRequest, request: Reques
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Drop cannot be declined.")
     if current_user.role == "manager" and row.requester_assignment and row.requester_assignment.shift:
         ensure_manager_location_access(current_user, row.requester_assignment.shift.location_id)
-    row = await prisma.swaprequest.update(where={"id": row.id}, data={"status": "REJECTED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
-    await create_audit_log(
-        actor_id=current_user.id,
-        action_type="drop.decline",
-        entity_type="swap_request",
-        entity_id=row.id,
-        location_id=row.requester_assignment.shift.location_id if row.requester_assignment and row.requester_assignment.shift else None,
-        before_state={"status": "PENDING_MANAGER" if row.pickup_user_id else "OPEN"},
-        after_state={"status": "REJECTED"},
-        reason=body.note,
-    )
+    previous_status = row.status
+    location_id = row.requester_assignment.shift.location_id if row.requester_assignment and row.requester_assignment.shift else None
+    initiator_notification = None
+    pickup_notification = None
+    async with prisma.tx() as tx:
+        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "REJECTED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
+        initiator_notification = await create_notification(
+            user_id=row.initiated_by,
+            notif_type="drop.rejected",
+            message="Your drop request was declined.",
+            payload={"dropRequestId": row.id},
+            db=tx,
+            ws_manager=None,
+        )
+        if row.pickup_user_id:
+            pickup_notification = await create_notification(
+                user_id=row.pickup_user_id,
+                notif_type="drop.rejected",
+                message="Your drop pickup was declined.",
+                payload={"dropRequestId": row.id},
+                db=tx,
+                ws_manager=None,
+            )
+        await create_audit_log(
+            actor_id=current_user.id,
+            action_type="drop.decline",
+            entity_type="swap_request",
+            entity_id=row.id,
+            location_id=location_id,
+            before_state={"status": previous_status},
+            after_state={"status": "REJECTED"},
+            reason=body.note,
+            db=tx,
+        )
     ws = request.app.state.ws_manager
-    await create_notification(user_id=row.initiated_by, notif_type="drop.rejected", message="Your drop request was declined.", payload={"dropRequestId": row.id}, ws_manager=ws)
-    if row.pickup_user_id:
-        await create_notification(user_id=row.pickup_user_id, notif_type="drop.rejected", message="Your drop pickup was declined.", payload={"dropRequestId": row.id}, ws_manager=ws)
+    notifications = [initiator_notification] + ([pickup_notification] if pickup_notification else [])
+    await emit_notifications(ws, notifications)
     await ws.emit_to_users([row.initiated_by] + ([row.pickup_user_id] if row.pickup_user_id else []), "swap.status_changed", {"swapRequestId": row.id, "newStatus": "REJECTED"})
     return to_resp(row)

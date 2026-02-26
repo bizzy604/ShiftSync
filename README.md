@@ -181,6 +181,14 @@ The script verifies:
 - Notifications read/write endpoints
 - WebSocket events (`schedule.published`, `assignment.conflict`, ping/pong)
 
+Rule-level backend tests:
+```bash
+cd apps/api && python -m pytest -q tests/test_constraint_engine.py
+```
+
+Quality gate tracker:
+- `BACKEND_QUALITY_GATES.md`
+
 ## Demo Accounts
 
 | Role | Email | Password |
