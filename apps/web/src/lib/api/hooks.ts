@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import axios from "axios";
 import {
     acceptSwap,
     addCertification,
@@ -67,6 +68,7 @@ import {
     UserCreateRequest,
     UserUpdateRequest,
 } from "./types";
+import { useToast } from "../../components/ToastProvider";
 
 // --- Keys ---
 export const keys = {
@@ -92,6 +94,26 @@ export const keys = {
     notifications: (unreadOnly: boolean) => ["notifications", { unreadOnly }] as const,
     suggestions: (shiftId: string) => ["shifts", shiftId, "suggestions"] as const,
 };
+
+function getErrorMessage(error: unknown): string {
+    if (axios.isAxiosError(error)) {
+        const detail = error.response?.data?.detail;
+        if (typeof detail === "string") return detail;
+        if (detail && typeof detail === "object" && typeof detail.message === "string") {
+            return detail.message;
+        }
+        if (typeof error.response?.data?.message === "string") {
+            return error.response.data.message;
+        }
+        if (typeof error.message === "string" && error.message.length > 0) {
+            return error.message;
+        }
+    }
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+    return "Something went wrong. Please try again.";
+}
 
 // --- Locations ---
 export function useLocations() {
@@ -135,11 +157,16 @@ export function useUser(id: string) {
 
 export function useUpdateUser() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: UserUpdateRequest }) => updateUser(id, data),
         onSuccess: (_, { id }) => {
             queryClient.invalidateQueries({ queryKey: keys.user(id) });
             queryClient.invalidateQueries({ queryKey: keys.users() });
+            showSuccess("User updated");
+        },
+        onError: (error) => {
+            showError("Failed to update user", getErrorMessage(error));
         },
     });
 }
@@ -162,70 +189,105 @@ export function useSkills() {
 
 export function useUpdateAvailability() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: AvailabilityReplaceRequest }) => updateUserAvailability(id, data),
         onSuccess: (_, { id }) => {
             queryClient.invalidateQueries({ queryKey: keys.availability(id) });
+            showSuccess("Availability updated");
+        },
+        onError: (error) => {
+            showError("Failed to update availability", getErrorMessage(error));
         },
     });
 }
 
 export function useCreateUser() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: (data: UserCreateRequest) => createUser(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: keys.users() });
+            showSuccess("User created");
+        },
+        onError: (error) => {
+            showError("Failed to create user", getErrorMessage(error));
         },
     });
 }
 
 export function useDeleteUser() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: (id: string) => deleteUser(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: keys.users() });
+            showSuccess("User deactivated");
+        },
+        onError: (error) => {
+            showError("Failed to deactivate user", getErrorMessage(error));
         },
     });
 }
 
 export function useAddSkill() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ userId, data }: { userId: string; data: SkillAttachRequest }) => addSkill(userId, data),
         onSuccess: (_, { userId }) => {
             queryClient.invalidateQueries({ queryKey: keys.user(userId) });
+            showSuccess("Skill added");
+        },
+        onError: (error) => {
+            showError("Failed to add skill", getErrorMessage(error));
         },
     });
 }
 
 export function useRemoveSkill() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ userId, skillId }: { userId: string; skillId: string }) => removeSkill(userId, skillId),
         onSuccess: (_, { userId }) => {
             queryClient.invalidateQueries({ queryKey: keys.user(userId) });
+            showSuccess("Skill removed");
+        },
+        onError: (error) => {
+            showError("Failed to remove skill", getErrorMessage(error));
         },
     });
 }
 
 export function useAddCertification() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ userId, data }: { userId: string; data: CertificationAttachRequest }) => addCertification(userId, data),
         onSuccess: (_, { userId }) => {
             queryClient.invalidateQueries({ queryKey: keys.user(userId) });
+            showSuccess("Certification added");
+        },
+        onError: (error) => {
+            showError("Failed to add certification", getErrorMessage(error));
         },
     });
 }
 
 export function useRemoveCertification() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ userId, locationId }: { userId: string; locationId: string }) => removeCertification(userId, locationId),
         onSuccess: (_, { userId }) => {
             queryClient.invalidateQueries({ queryKey: keys.user(userId) });
+            showSuccess("Certification removed");
+        },
+        onError: (error) => {
+            showError("Failed to remove certification", getErrorMessage(error));
         },
     });
 }
@@ -241,42 +303,62 @@ export function useShifts(locationId: string, weekStart: string) {
 
 export function useCreateShift() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ locationId, data }: { locationId: string; data: ShiftCreateRequest }) => createShift(locationId, data),
         onSuccess: (_, { locationId, data }) => {
             queryClient.invalidateQueries({ queryKey: ["shifts", locationId] });
+            showSuccess("Shift created");
+        },
+        onError: (error) => {
+            showError("Failed to create shift", getErrorMessage(error));
         },
     });
 }
 
 export function useUpdateShift() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ locationId, shiftId, data }: { locationId: string; shiftId: string; data: ShiftUpdateRequest }) =>
             updateShift(locationId, shiftId, data),
         onSuccess: (_, { locationId }) => {
             queryClient.invalidateQueries({ queryKey: ["shifts", locationId] });
+            showSuccess("Shift updated");
+        },
+        onError: (error) => {
+            showError("Failed to update shift", getErrorMessage(error));
         },
     });
 }
 
 export function useDeleteShift() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ locationId, shiftId }: { locationId: string; shiftId: string }) => deleteShift(locationId, shiftId),
         onSuccess: (_, { locationId }) => {
             queryClient.invalidateQueries({ queryKey: ["shifts", locationId] });
+            showSuccess("Shift cancelled");
+        },
+        onError: (error) => {
+            showError("Failed to cancel shift", getErrorMessage(error));
         },
     });
 }
 
 export function usePublishWeek() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ locationId, data }: { locationId: string; data: PublishWeekRequest }) => publishWeek(locationId, data),
         onSuccess: (_, { locationId, data }) => {
             queryClient.invalidateQueries({ queryKey: keys.shifts(locationId, data.week_start as unknown as string) });
             queryClient.invalidateQueries({ queryKey: ["shifts", locationId] });
+            showSuccess("Schedule published");
+        },
+        onError: (error) => {
+            showError("Failed to publish schedule", getErrorMessage(error));
         },
     });
 }
@@ -306,8 +388,15 @@ export function useShiftSuggestions(shiftId: string) {
 }
 
 export function useNotifyQualifiedStaff() {
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: (requestId: string) => notifyQualifiedStaff(requestId),
+        onSuccess: (data) => {
+            showSuccess("Notifications sent", `Notified ${data.notified} qualified staff member(s).`);
+        },
+        onError: (error) => {
+            showError("Failed to notify staff", getErrorMessage(error));
+        },
     });
 }
 
@@ -321,22 +410,32 @@ export function useAssignmentPreview(shiftId: string, userId: string) {
 
 export function useCreateAssignment() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ shiftId, data }: { shiftId: string; data: AssignmentCreateRequest }) => createAssignment(shiftId, data),
         onSuccess: (_, { shiftId }) => {
             queryClient.invalidateQueries({ queryKey: keys.assignments(shiftId) });
             queryClient.invalidateQueries({ queryKey: ["shifts"] });
+            showSuccess("Staff assigned");
+        },
+        onError: (error) => {
+            showError("Failed to assign staff", getErrorMessage(error));
         },
     });
 }
 
 export function useDeleteAssignment() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ shiftId, assignmentId }: { shiftId: string; assignmentId: string }) => deleteAssignment(shiftId, assignmentId),
         onSuccess: (_, { shiftId }) => {
             queryClient.invalidateQueries({ queryKey: keys.assignments(shiftId) });
             queryClient.invalidateQueries({ queryKey: ["shifts"] });
+            showSuccess("Assignment removed");
+        },
+        onError: (error) => {
+            showError("Failed to remove assignment", getErrorMessage(error));
         },
     });
 }
@@ -359,12 +458,17 @@ export function useSwapRequest(id: string) {
 
 export function useCreateSwapRequest() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: (data: SwapCreateRequest) => createSwapRequest(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: keys.swaps });
             queryClient.invalidateQueries({ queryKey: ["shifts"] });
             queryClient.invalidateQueries({ queryKey: ["assignments"] });
+            showSuccess("Swap request sent");
+        },
+        onError: (error) => {
+            showError("Failed to create swap request", getErrorMessage(error));
         },
     });
 }
@@ -378,6 +482,7 @@ export function useAvailableDrops() {
 
 export function useCreateDropRequest() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: (data: DropCreateRequest) => createDrop(data),
         onSuccess: () => {
@@ -385,23 +490,39 @@ export function useCreateDropRequest() {
             queryClient.invalidateQueries({ queryKey: keys.myAssignments });
             queryClient.invalidateQueries({ queryKey: ["shifts"] });
             queryClient.invalidateQueries({ queryKey: ["assignments"] });
+            showSuccess("Drop request created");
+        },
+        onError: (error) => {
+            showError("Failed to create drop request", getErrorMessage(error));
         },
     });
 }
 
 export function usePickupDrop() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: DropPickupRequest }) => pickupDrop(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: keys.drops });
             queryClient.invalidateQueries({ queryKey: keys.swaps });
+            showSuccess("Drop picked up");
+        },
+        onError: (error) => {
+            showError("Failed to pick up drop", getErrorMessage(error));
         },
     });
 }
 
 export function useSwapAction(action: "accept" | "reject" | "approve" | "decline") {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
+    const successLabel = (() => {
+        if (action === "accept") return "Swap accepted";
+        if (action === "reject") return "Swap rejected";
+        if (action === "approve") return "Request approved";
+        return "Request declined";
+    })();
     return useMutation({
         mutationFn: ({ id, data, isDrop = false }: { id: string; data: SwapActionRequest; isDrop?: boolean }) => {
             if (isDrop) {
@@ -428,6 +549,10 @@ export function useSwapAction(action: "accept" | "reject" | "approve" | "decline
             queryClient.invalidateQueries({ queryKey: keys.drops });
             queryClient.invalidateQueries({ queryKey: ["shifts"] });
             queryClient.invalidateQueries({ queryKey: ["assignments"] });
+            showSuccess(successLabel);
+        },
+        onError: (error) => {
+            showError("Action failed", getErrorMessage(error));
         },
     });
 }
@@ -477,10 +602,15 @@ export function useNotifications(unreadOnly = false) {
 
 export function useMarkAllNotificationsRead() {
     const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
     return useMutation({
         mutationFn: () => markAllNotificationsRead(),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            showSuccess("Notifications marked as read");
+        },
+        onError: (error) => {
+            showError("Failed to mark notifications", getErrorMessage(error));
         },
     });
 }

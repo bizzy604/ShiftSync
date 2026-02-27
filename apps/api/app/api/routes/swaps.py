@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm.exc import DetachedInstanceError
 
 from app.api.deps import CurrentUser, ensure_manager_location_access, get_current_user, require_roles
 from app.core.database import prisma
@@ -29,6 +30,23 @@ from app.services.timezone_utils import format_local_iso
 
 router = APIRouter()
 PENDING = {"OPEN", "PENDING_ACCEPTEE", "PENDING_MANAGER"}
+SWAP_RESPONSE_INCLUDE = {
+    "requester_assignment": {
+        "include": {
+            "shift": {"include": {"location": True, "required_skill": True}},
+            "user": True,
+        }
+    },
+    "target_user": True,
+    "pickup_user": True,
+}
+
+
+def _safe_getattr(obj: object, attr: str):
+    try:
+        return getattr(obj, attr)
+    except DetachedInstanceError:
+        return None
 
 
 def to_resp(row: object) -> SwapRequestResponse:
@@ -39,27 +57,34 @@ def to_resp(row: object) -> SwapRequestResponse:
     shift_time = None
     shift_label = None
 
-    if hasattr(row, "requester_assignment") and row.requester_assignment:
-        a = row.requester_assignment
-        if hasattr(a, "user") and a.user:
-            requester_name = a.user.name
-        if hasattr(a, "shift") and a.shift:
-            s = a.shift
+    requester_assignment = _safe_getattr(row, "requester_assignment")
+    if requester_assignment:
+        a = requester_assignment
+        user = _safe_getattr(a, "user")
+        if user:
+            requester_name = user.name
+        shift = _safe_getattr(a, "shift")
+        if shift:
+            s = shift
             shift_date = s.shift_date.isoformat() if hasattr(s.shift_date, "isoformat") else str(s.shift_date)
             # Simple time formatting
-            start_local = format_local_iso(s.start_utc, s.location.iana_timezone) if hasattr(s, "location") and s.location else s.start_utc.isoformat()
-            end_local = format_local_iso(s.end_utc, s.location.iana_timezone) if hasattr(s, "location") and s.location else s.end_utc.isoformat()
+            location = _safe_getattr(s, "location")
+            start_local = format_local_iso(s.start_utc, location.iana_timezone) if location else s.start_utc.isoformat()
+            end_local = format_local_iso(s.end_utc, location.iana_timezone) if location else s.end_utc.isoformat()
             
             # Extract time part for UI convenience
             shift_time = f"{start_local[11:16]} – {end_local[11:16]}"
-            if hasattr(s, "required_skill") and s.required_skill:
-                shift_label = s.required_skill.name
+            required_skill = _safe_getattr(s, "required_skill")
+            if required_skill:
+                shift_label = required_skill.name
 
-    if hasattr(row, "target_user") and row.target_user:
-        target_name = row.target_user.name
+    target_user = _safe_getattr(row, "target_user")
+    if target_user:
+        target_name = target_user.name
     
-    if hasattr(row, "pickup_user") and row.pickup_user:
-        pickup_name = row.pickup_user.name
+    pickup_user = _safe_getattr(row, "pickup_user")
+    if pickup_user:
+        pickup_name = pickup_user.name
 
     return SwapRequestResponse(
         id=row.id,
@@ -170,6 +195,13 @@ async def emit_notifications(ws_manager: object, notifications: list[object]) ->
         )
 
 
+async def _load_swap_for_response(request_id: str) -> object:
+    row = await prisma.swaprequest.find_unique(where={"id": request_id}, include=SWAP_RESPONSE_INCLUDE)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")
+    return row
+
+
 @router.get("", response_model=SwapRequestListResponse)
 async def list_swap_requests(current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestListResponse:
     rows = await prisma.swaprequest.find_many(
@@ -233,29 +265,30 @@ async def create_swap_request(payload: SwapCreateRequest, request: Request, curr
     target = await prisma.user.find_unique(where={"id": payload.target_user_id})
     if target is None or target.role != "staff" or not target.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target staff not found.")
-    if not payload.target_assignment_id:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target assignment is required for swap.")
-    candidate_assignment = await prisma.shiftassignment.find_unique(
-        where={"id": payload.target_assignment_id},
-        include={"shift": True},
-    )
-    if (
-        candidate_assignment is None
-        or candidate_assignment.user_id != target.id
-        or candidate_assignment.status != "assigned"
-    ):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target assignment is invalid.")
-    if candidate_assignment.shift is None or candidate_assignment.shift.start_utc <= datetime.now(tz=timezone.utc):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target assignment shift has already started.")
-    if candidate_assignment.id == a.id:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot swap the same assignment.")
+    candidate_assignment_id = None
+    if payload.target_assignment_id:
+        candidate_assignment = await prisma.shiftassignment.find_unique(
+            where={"id": payload.target_assignment_id},
+            include={"shift": True},
+        )
+        if (
+            candidate_assignment is None
+            or candidate_assignment.user_id != target.id
+            or candidate_assignment.status != "assigned"
+        ):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target assignment is invalid.")
+        if candidate_assignment.shift is None or candidate_assignment.shift.start_utc <= datetime.now(tz=timezone.utc):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target assignment shift has already started.")
+        if candidate_assignment.id == a.id:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot swap the same assignment.")
+        candidate_assignment_id = candidate_assignment.id
     async with prisma.tx() as tx:
         row = await tx.swaprequest.create(
             data={
                 "type": "swap",
                 "requester_assignment_id": payload.my_assignment_id,
                 "target_user_id": payload.target_user_id,
-                "candidate_assignment_id": candidate_assignment.id,
+                "candidate_assignment_id": candidate_assignment_id,
                 "status": "PENDING_ACCEPTEE",
                 "initiated_by": current_user.id,
             }
@@ -382,13 +415,14 @@ async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request
 
 async def approve_transfer(row: object, actor: CurrentUser, note: str | None, request: Request, drop: bool) -> tuple[object, list[object], str]:
     now = datetime.now(tz=timezone.utc)
+    is_legacy_single_transfer = False
     requester_assignment = await prisma.shiftassignment.find_unique(
         where={"id": row.requester_assignment_id},
         include={"user": True, "shift": {"include": {"location": True, "required_skill": True}}},
     )
     if requester_assignment is None or requester_assignment.shift is None or requester_assignment.user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requester assignment not found.")
-    if requester_assignment.status != "assigned":
+    if requester_assignment.status not in {"assigned", "swap_pending"}:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Requester assignment is no longer assigned.")
     if requester_assignment.shift.start_utc <= now:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot approve after shift start.")
@@ -406,22 +440,23 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
     candidate_assignment = None
     if not drop:
         if not row.candidate_assignment_id:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Swap is missing candidate assignment.")
-        candidate_assignment = await prisma.shiftassignment.find_unique(
-            where={"id": row.candidate_assignment_id},
-            include={"user": True, "shift": {"include": {"location": True, "required_skill": True}}},
-        )
-        if (
-            candidate_assignment is None
-            or candidate_assignment.user is None
-            or candidate_assignment.shift is None
-            or candidate_assignment.status != "assigned"
-        ):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Candidate assignment is no longer valid.")
-        if candidate_assignment.user_id != target_user_id:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Candidate assignment no longer belongs to target user.")
-        if candidate_assignment.shift.start_utc <= now:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot approve after shift start.")
+            is_legacy_single_transfer = True
+        else:
+            candidate_assignment = await prisma.shiftassignment.find_unique(
+                where={"id": row.candidate_assignment_id},
+                include={"user": True, "shift": {"include": {"location": True, "required_skill": True}}},
+            )
+            if (
+                candidate_assignment is None
+                or candidate_assignment.user is None
+                or candidate_assignment.shift is None
+                or candidate_assignment.status not in {"assigned", "swap_pending"}
+            ):
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Candidate assignment is no longer valid.")
+            if candidate_assignment.user_id != target_user_id:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Candidate assignment no longer belongs to target user.")
+            if candidate_assignment.shift.start_utc <= now:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot approve after shift start.")
 
     target_excludes = {requester_assignment.shift_id}
     if candidate_assignment is not None:
@@ -431,8 +466,12 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
         user_snapshot(target_user),
         await existing_assignments(target_user.id, target_excludes),
     )
-    if any(v.severity == "HARD_BLOCK" for v in target_result.violations):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Target no longer qualifies.")
+    target_hard_blocks = [v for v in target_result.violations if v.severity == "HARD_BLOCK"]
+    if target_hard_blocks:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Target no longer qualifies: {target_hard_blocks[0].description}",
+        )
     if target_result.requires_override and not note:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Override note is required.")
 
@@ -452,8 +491,12 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
                 {requester_assignment.shift_id, candidate_assignment.shift_id},
             ),
         )
-        if any(v.severity == "HARD_BLOCK" for v in requester_result.violations):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Requester no longer qualifies for target shift.")
+        requester_hard_blocks = [v for v in requester_result.violations if v.severity == "HARD_BLOCK"]
+        if requester_hard_blocks:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Requester no longer qualifies for target shift: {requester_hard_blocks[0].description}",
+            )
         if requester_result.requires_override and not note:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Override note is required.")
 
@@ -465,6 +508,7 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
                 where={"id": requester_assignment.id},
                 data={
                     "user_id": target_user.id,
+                    "status": "assigned",
                     "assigned_by": actor.id,
                     "override_reason": note,
                     "version": requester_assignment.version + 1,
@@ -482,6 +526,7 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
                 where={"id": requester_assignment.id},
                 data={
                     "user_id": target_user.id,
+                    "status": "assigned",
                     "assigned_by": actor.id,
                     "override_reason": note,
                     "version": requester_assignment.version + 1,
@@ -491,6 +536,7 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
                 where={"id": candidate_assignment.id},
                 data={
                     "user_id": requester_assignment.user_id,
+                    "status": "assigned",
                     "assigned_by": actor.id,
                     "override_reason": note,
                     "version": candidate_assignment.version + 1,
@@ -522,7 +568,11 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
             entity_id=row.id,
             location_id=requester_assignment.shift.location_id,
             before_state={"status": "PENDING_MANAGER"},
-            after_state={"status": "APPROVED", "transfers": transfer_records},
+            after_state={
+                "status": "APPROVED",
+                "transfers": transfer_records,
+                "legacy_single_transfer": is_legacy_single_transfer,
+            },
             reason=note,
             db=tx,
         )
@@ -530,7 +580,15 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
         notif_1 = await create_notification(
             user_id=row.initiated_by,
             notif_type="swap.approved" if not drop else "drop.approved",
-            message="Request approved." if drop else "Swap approved and assignments were exchanged.",
+            message=(
+                "Request approved."
+                if drop
+                else (
+                    "Swap approved and assignments were exchanged."
+                    if not is_legacy_single_transfer
+                    else "Swap approved."
+                )
+            ),
             payload={"requestId": row.id},
             db=tx,
             ws_manager=None,
@@ -538,7 +596,15 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
         notif_2 = await create_notification(
             user_id=target_user.id,
             notif_type="swap.approved" if not drop else "drop.approved",
-            message="You are assigned to the shift." if drop else "Swap approved and assignments were exchanged.",
+            message=(
+                "You are assigned to the shift."
+                if drop
+                else (
+                    "Swap approved and assignments were exchanged."
+                    if not is_legacy_single_transfer
+                    else "Swap approved."
+                )
+            ),
             payload={"requestId": row.id},
             db=tx,
             ws_manager=None,
@@ -624,7 +690,8 @@ async def approve_swap_like(request_id: str, body: SwapActionRequest, request: R
     if current_user.role == "manager" and row.requester_assignment and row.requester_assignment.shift:
         ensure_manager_location_access(current_user, row.requester_assignment.shift.location_id)
     row, _, _ = await approve_transfer(row, current_user, body.note, request, drop=row.type == "drop")
-    return to_resp(row)
+    response_row = await _load_swap_for_response(row.id)
+    return to_resp(response_row)
 
 
 @router.post("/{request_id}/decline", response_model=SwapRequestResponse)
@@ -664,7 +731,8 @@ async def decline_swap_like(request_id: str, body: SwapActionRequest, request: R
     ws = request.app.state.ws_manager
     await emit_notifications(ws, [initiator_notification])
     await ws.emit_to_users([row.initiated_by] + ([row.pickup_user_id] if row.pickup_user_id else []), "swap.status_changed", {"swapRequestId": row.id, "newStatus": "REJECTED"})
-    return to_resp(row)
+    response_row = await _load_swap_for_response(row.id)
+    return to_resp(response_row)
 
 
 @router.post("/drops", response_model=SwapRequestResponse)
@@ -808,7 +876,8 @@ async def approve_drop(request_id: str, body: SwapActionRequest, request: Reques
     if current_user.role == "manager" and row.requester_assignment and row.requester_assignment.shift:
         ensure_manager_location_access(current_user, row.requester_assignment.shift.location_id)
     row, _, _ = await approve_transfer(row, current_user, body.note, request, drop=True)
-    return to_resp(row)
+    response_row = await _load_swap_for_response(row.id)
+    return to_resp(response_row)
 
 
 @router.post("/drops/{request_id}/decline", response_model=SwapRequestResponse)
@@ -858,7 +927,8 @@ async def decline_drop(request_id: str, body: SwapActionRequest, request: Reques
     notifications = [initiator_notification] + ([pickup_notification] if pickup_notification else [])
     await emit_notifications(ws, notifications)
     await ws.emit_to_users([row.initiated_by] + ([row.pickup_user_id] if row.pickup_user_id else []), "swap.status_changed", {"swapRequestId": row.id, "newStatus": "REJECTED"})
-    return to_resp(row)
+    response_row = await _load_swap_for_response(row.id)
+    return to_resp(response_row)
 
 
 @router.post("/drops/{request_id}/notify-qualified")

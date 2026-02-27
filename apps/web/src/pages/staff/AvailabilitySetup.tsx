@@ -172,7 +172,6 @@ export function AvailabilitySetup() {
         updateAvailability.mutate({ id: me.id, data: payload as any }, {
             onSuccess: () => {
                 setHasChanges(false);
-                alert('Availability updated successfully!');
             }
         });
     };

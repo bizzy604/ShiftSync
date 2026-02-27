@@ -88,14 +88,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
 
     const handleNotifyAll = () => {
         if (!request) return;
-        notifyMutation.mutate(request.id, {
-            onSuccess: (data) => {
-                alert(`Broadcasted notifications to ${data.notified} qualified staff members.`);
-            },
-            onError: () => {
-                alert('Failed to send notifications. Please try again.');
-            }
-        });
+        notifyMutation.mutate(request.id);
     };
 
     const isLoading = isLoadingRequest || isLoadingUsers || isLoadingSuggestions;

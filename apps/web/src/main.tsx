@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { RealtimeProvider } from "./components/RealtimeProvider";
+import { ToastProvider } from "./components/ToastProvider";
 
 // Admin screens
 import { AdminDashboard } from "./pages/admin/Dashboard";
@@ -20,6 +21,7 @@ import { OvertimeFairness } from "./pages/manager/OvertimeFairness";
 // Staff screens
 import { StaffDashboard } from "./pages/staff/Dashboard";
 import { AvailabilitySetup } from "./pages/staff/AvailabilitySetup";
+import { SwapInbox } from "./pages/staff/SwapInbox";
 
 // Shared
 import { LoginPage } from "./pages/LoginPage";
@@ -39,34 +41,37 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <RealtimeProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<IndexRedirect />} />
+        <ToastProvider>
+          <BrowserRouter>
+            <RealtimeProvider>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/" element={<IndexRedirect />} />
 
-              {/* Admin Routes */}
-              <Route element={<ProtectedRoute allowRoles={["admin"]} />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/staff" element={<StaffManagement />} />
-                <Route path="/admin/audit" element={<AuditLog />} />
-              </Route>
+                {/* Admin Routes */}
+                <Route element={<ProtectedRoute allowRoles={["admin"]} />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/staff" element={<StaffManagement />} />
+                  <Route path="/admin/audit" element={<AuditLog />} />
+                </Route>
 
-              {/* Manager Routes */}
-              <Route element={<ProtectedRoute allowRoles={["manager"]} />}>
-                <Route path="/manager" element={<ManagerDashboard />} />
-                <Route path="/manager/swaps" element={<SwapApprovalQueue />} />
-                <Route path="/manager/analytics" element={<OvertimeFairness />} />
-              </Route>
+                {/* Manager Routes */}
+                <Route element={<ProtectedRoute allowRoles={["manager"]} />}>
+                  <Route path="/manager" element={<ManagerDashboard />} />
+                  <Route path="/manager/swaps" element={<SwapApprovalQueue />} />
+                  <Route path="/manager/analytics" element={<OvertimeFairness />} />
+                </Route>
 
-              {/* Staff Routes */}
-              <Route element={<ProtectedRoute allowRoles={["staff"]} />}>
-                <Route path="/staff" element={<StaffDashboard />} />
-                <Route path="/staff/availability" element={<AvailabilitySetup />} />
-              </Route>
-            </Routes>
-          </RealtimeProvider>
-        </BrowserRouter>
+                {/* Staff Routes */}
+                <Route element={<ProtectedRoute allowRoles={["staff"]} />}>
+                  <Route path="/staff" element={<StaffDashboard />} />
+                  <Route path="/staff/availability" element={<AvailabilitySetup />} />
+                  <Route path="/staff/swaps" element={<SwapInbox />} />
+                </Route>
+              </Routes>
+            </RealtimeProvider>
+          </BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>

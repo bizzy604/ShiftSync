@@ -90,6 +90,7 @@ const managerNavItems: NavItem[] = [
 
 const staffNavItems: NavItem[] = [
     { label: 'My Schedule', path: '/staff', icon: <Calendar size={18} /> },
+    { label: 'Swap Inbox', path: '/staff/swaps', icon: <ArrowLeftRight size={18} /> },
     { label: 'Availability', path: '/staff/availability', icon: <Clock size={18} /> },
 ];
 
