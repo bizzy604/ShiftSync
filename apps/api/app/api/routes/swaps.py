@@ -53,6 +53,7 @@ def to_resp(row: object) -> SwapRequestResponse:
     requester_name = None
     target_name = None
     pickup_name = None
+    shift_id = None
     shift_date = None
     shift_time = None
     shift_label = None
@@ -66,6 +67,7 @@ def to_resp(row: object) -> SwapRequestResponse:
         shift = _safe_getattr(a, "shift")
         if shift:
             s = shift
+            shift_id = s.id
             shift_date = s.shift_date.isoformat() if hasattr(s.shift_date, "isoformat") else str(s.shift_date)
             # Simple time formatting
             location = _safe_getattr(s, "location")
@@ -91,6 +93,7 @@ def to_resp(row: object) -> SwapRequestResponse:
         type=row.type,
         status=row.status,
         requester_assignment_id=row.requester_assignment_id,
+        shift_id=shift_id,
         requester_name=requester_name,
         target_user_id=row.target_user_id,
         target_name=target_name,
@@ -943,6 +946,11 @@ async def notify_qualified_staff(
     )
     if row is None or row.type != "drop":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Drop request not found.")
+    if row.status != "OPEN":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Drop request is not open for notifications (status: {row.status}).",
+        )
     
     a = row.requester_assignment
     if a is None or a.shift is None:

@@ -67,12 +67,13 @@ interface EmergencyCoverageProps {
 export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverageProps) {
     const { data: request, isLoading: isLoadingRequest } = useSwapRequest(requestId);
     const { data: usersData, isLoading: isLoadingUsers } = useUsers();
+    const shiftId = request?.shift_id || '';
 
     const approveMutation = useSwapAction('approve');
     const declineMutation = useSwapAction('decline');
     const notifyMutation = useNotifyQualifiedStaff();
 
-    const { data: suggestions, isLoading: isLoadingSuggestions } = useShiftSuggestions(request?.requester_assignment_id || '');
+    const { data: suggestions, isLoading: isLoadingSuggestions } = useShiftSuggestions(shiftId);
 
     const handleApprove = () => {
         if (!request) return;
@@ -107,6 +108,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
         const suggestionIds = new Set(suggestions.map(s => s.user_id));
         return usersData.users.filter(u => suggestionIds.has(u.id));
     }, [usersData, suggestions]);
+    const canNotifyQualified = request?.status === 'OPEN' && filteredUsers.length > 0;
 
     if (!requestId) return null;
 
@@ -207,7 +209,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
 
                             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
                                 {filteredUsers.map((u) => (
-                                    <QualifiedStaffRow key={u.id} user={u} shiftId={request?.requester_assignment_id || ''} />
+                                    <QualifiedStaffRow key={u.id} user={u} shiftId={shiftId} />
                                 ))}
                                 {filteredUsers.length === 0 && (
                                     <div className="py-10 text-center">
@@ -221,12 +223,21 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
                         <div className="space-y-3 pt-4 border-t border-border-gray">
                             <button
                                 onClick={handleNotifyAll}
-                                disabled={notifyMutation.isPending || filteredUsers.length === 0}
+                                disabled={notifyMutation.isPending || !canNotifyQualified}
                                 className="w-full py-3 bg-navy text-white text-sm font-bold rounded-xl hover:bg-navy/90 transition-all shadow-lg flex items-center justify-center gap-2 group disabled:opacity-50"
                             >
                                 <Bell size={18} className={notifyMutation.isPending ? 'animate-spin' : 'group-hover:animate-bounce'} />
-                                {notifyMutation.isPending ? 'Sending Notifications...' : 'Notify All Qualified'}
+                                {notifyMutation.isPending
+                                    ? 'Sending Notifications...'
+                                    : request?.status === 'OPEN'
+                                        ? 'Notify All Qualified'
+                                        : 'Notifications Only While OPEN'}
                             </button>
+                            {request?.status !== 'OPEN' && (
+                                <p className="text-xs text-amber-warn text-center">
+                                    This drop is no longer open for pickup. Additional availability alerts are disabled.
+                                </p>
+                            )}
                             <button
                                 onClick={onClose}
                                 className="w-full py-3 border border-border-gray text-gray-500 text-sm font-bold rounded-xl hover:bg-gray-50 transition-all text-center"

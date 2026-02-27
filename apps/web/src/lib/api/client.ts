@@ -24,6 +24,7 @@ import {
     ShiftListResponse,
     ShiftResponse,
     ShiftUpdateRequest,
+    UnpublishShiftRequest,
     SwapActionRequest,
     SwapCreateRequest,
     SwapRequestListResponse,
@@ -172,6 +173,11 @@ export async function updateShift(locationId: string, shiftId: string, data: Shi
     return response.data;
 }
 
+export async function unpublishShift(locationId: string, shiftId: string, data: UnpublishShiftRequest): Promise<ShiftResponse> {
+    const response = await api.post(`/shifts/locations/${locationId}/shifts/${shiftId}/unpublish`, data);
+    return response.data;
+}
+
 export async function deleteShift(locationId: string, shiftId: string): Promise<void> {
     await api.delete(`/shifts/${shiftId}`, {
         params: { location_id: locationId },
@@ -251,6 +257,10 @@ export async function approveSwap(requestId: string, data: SwapActionRequest): P
 
 export async function declineSwap(requestId: string, data: SwapActionRequest): Promise<void> {
     await api.post(`/swaps/${requestId}/decline`, data);
+}
+
+export async function cancelSwap(requestId: string, data: SwapActionRequest): Promise<void> {
+    await api.post(`/swaps/${requestId}/cancel`, data);
 }
 
 export async function getAvailableDrops(): Promise<AvailableDropListResponse> {

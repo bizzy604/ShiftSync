@@ -31,6 +31,7 @@ class SwapRequestResponse(BaseModel):
     type: SwapType
     status: SwapStatus
     requester_assignment_id: str
+    shift_id: str | None = None
     requester_name: str | None = None
     target_user_id: str | None = None
     target_name: str | None = None

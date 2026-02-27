@@ -165,6 +165,10 @@ export interface ShiftUpdateRequest {
     override_reason?: string;
 }
 
+export interface UnpublishShiftRequest {
+    override_reason?: string;
+}
+
 export interface PublishWeekRequest {
     week_start: string;
 }
@@ -298,6 +302,7 @@ export interface SwapRequestResponse {
     type: SwapType;
     status: SwapStatus;
     requester_assignment_id: string;
+    shift_id: string | null;
     requester_name: string | null;
     target_user_id: string | null;
     target_name: string | null;

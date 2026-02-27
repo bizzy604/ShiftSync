@@ -4,6 +4,7 @@ import {
     acceptSwap,
     addCertification,
     addSkill,
+    cancelSwap,
     createSkill,
     approveDrop,
     approveSwap,
@@ -47,6 +48,7 @@ import {
     rejectSwap,
     removeCertification,
     removeSkill,
+    unpublishShift,
     updateShift,
     updateUser,
     updateUserAvailability,
@@ -69,6 +71,7 @@ import {
     PublishWeekRequest,
     ShiftCreateRequest,
     ShiftUpdateRequest,
+    UnpublishShiftRequest,
     SkillAttachRequest,
     SkillCreateRequest,
     SwapActionRequest,
@@ -388,6 +391,22 @@ export function useDeleteShift() {
     });
 }
 
+export function useUnpublishShift() {
+    const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
+    return useMutation({
+        mutationFn: ({ locationId, shiftId, data }: { locationId: string; shiftId: string; data: UnpublishShiftRequest }) =>
+            unpublishShift(locationId, shiftId, data),
+        onSuccess: (_, { locationId }) => {
+            queryClient.invalidateQueries({ queryKey: ["shifts", locationId] });
+            showSuccess("Shift unpublished");
+        },
+        onError: (error) => {
+            showError("Failed to unpublish shift", getErrorMessage(error));
+        },
+    });
+}
+
 export function usePublishWeek() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -555,13 +574,14 @@ export function usePickupDrop() {
     });
 }
 
-export function useSwapAction(action: "accept" | "reject" | "approve" | "decline") {
+export function useSwapAction(action: "accept" | "reject" | "approve" | "decline" | "cancel") {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
     const successLabel = (() => {
         if (action === "accept") return "Swap accepted";
         if (action === "reject") return "Swap rejected";
         if (action === "approve") return "Request approved";
+        if (action === "cancel") return "Request cancelled";
         return "Request declined";
     })();
     return useMutation({
@@ -569,6 +589,7 @@ export function useSwapAction(action: "accept" | "reject" | "approve" | "decline
             if (isDrop) {
                 if (action === "approve") return approveDrop(id, data);
                 if (action === "decline") return declineDrop(id, data);
+                if (action === "cancel") return cancelSwap(id, data);
                 throw new Error("Invalid drop action");
             }
 
@@ -581,6 +602,8 @@ export function useSwapAction(action: "accept" | "reject" | "approve" | "decline
                     return approveSwap(id, data);
                 case "decline":
                     return declineSwap(id, data);
+                case "cancel":
+                    return cancelSwap(id, data);
                 default:
                     throw new Error("Unknown action");
             }

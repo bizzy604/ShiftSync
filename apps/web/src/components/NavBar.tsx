@@ -91,6 +91,7 @@ const managerNavItems: NavItem[] = [
     { label: 'Schedule Builder', path: '/manager', icon: <Calendar size={18} /> },
     { label: 'Swap Requests', path: '/manager/swaps', icon: <ArrowLeftRight size={18} /> },
     { label: 'Analytics', path: '/manager/analytics', icon: <BarChart3 size={18} /> },
+    { label: 'Shift History', path: '/manager/history', icon: <FileText size={18} /> },
     { label: 'Notifications', path: '/settings/notifications', icon: <Bell size={18} /> },
 ];
 

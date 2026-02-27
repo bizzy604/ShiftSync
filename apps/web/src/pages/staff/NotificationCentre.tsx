@@ -67,6 +67,13 @@ function withQuery(base: string, key: string, value: string | null): string {
     return `${base}?${key}=${encodeURIComponent(value)}`;
 }
 
+function staffDropTarget(requestId: string | null): string {
+    const params = new URLSearchParams();
+    params.set('open_drops', '1');
+    if (requestId) params.set('requestId', requestId);
+    return `/staff?${params.toString()}`;
+}
+
 function buildTarget(notification: NotificationResponse, role: Role | undefined): string {
     const requestId = requestIdFromPayload(notification.payload);
     const shiftId = shiftIdFromPayload(notification.payload);
@@ -87,7 +94,7 @@ function buildTarget(notification: NotificationResponse, role: Role | undefined)
 
     if (role === 'staff') {
         if (notification.type.startsWith('swap.')) return withQuery('/staff/swaps', 'requestId', requestId);
-        if (notification.type.startsWith('drop.')) return '/staff';
+        if (notification.type.startsWith('drop.')) return staffDropTarget(requestId);
         if (notification.type.startsWith('shift.') || notification.type === 'schedule.published') {
             return withQuery('/staff', 'shiftId', shiftId);
         }

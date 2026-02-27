@@ -18,6 +18,7 @@ import { SkillCatalog } from "./pages/admin/SkillCatalog";
 import { ManagerDashboard } from "./pages/manager/Dashboard";
 import { SwapApprovalQueue } from "./pages/manager/SwapApprovalQueue";
 import { OvertimeFairness } from "./pages/manager/OvertimeFairness";
+import { ShiftHistory } from "./pages/manager/ShiftHistory";
 
 // Staff screens
 import { StaffDashboard } from "./pages/staff/Dashboard";
@@ -63,6 +64,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <Route path="/manager" element={<ManagerDashboard />} />
                   <Route path="/manager/swaps" element={<SwapApprovalQueue />} />
                   <Route path="/manager/analytics" element={<OvertimeFairness />} />
+                  <Route path="/manager/history" element={<ShiftHistory />} />
                 </Route>
 
                 {/* Staff Routes */}

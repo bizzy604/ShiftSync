@@ -69,8 +69,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                     // Handle specific events
                     if (eventName === 'notification.new') {
                         queryClient.invalidateQueries({ queryKey: ['notifications'] });
+                        if (typeof payload?.type === 'string' && payload.type.startsWith('drop.')) {
+                            queryClient.invalidateQueries({ queryKey: keys.drops });
+                        }
                     } else if (eventName === 'swap.status_changed') {
                         queryClient.invalidateQueries({ queryKey: keys.swaps });
+                        queryClient.invalidateQueries({ queryKey: keys.drops });
                         queryClient.invalidateQueries({ queryKey: keys.myAssignments });
                         if (payload.swapRequestId) {
                             queryClient.invalidateQueries({ queryKey: keys.swap(payload.swapRequestId) });

@@ -17,6 +17,7 @@ import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
 import { NotificationCentre } from '../staff/NotificationCentre';
+import { EmergencyCoverage } from './EmergencyCoverage';
 
 import { useNotifications, useSwapRequests, useSwapAction } from '../../lib/api/hooks';
 import { SwapRequestResponse, SwapStatus } from '../../lib/api/types';
@@ -26,11 +27,12 @@ import { SwapRequestResponse, SwapStatus } from '../../lib/api/types';
 interface RequestCardProps {
     request: SwapRequestResponse;
     onAction: (id: string, action: 'approve' | 'decline' | 'reject', note?: string, isDrop?: boolean) => void;
+    onEmergencyCoverage: (requestId: string) => void;
     isPending: boolean;
     highlighted?: boolean;
 }
 
-function RequestCard({ request, onAction, isPending, highlighted = false }: RequestCardProps) {
+function RequestCard({ request, onAction, onEmergencyCoverage, isPending, highlighted = false }: RequestCardProps) {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [note, setNote] = useState('');
@@ -143,6 +145,14 @@ function RequestCard({ request, onAction, isPending, highlighted = false }: Requ
 
                 {request.status === 'PENDING_MANAGER' && (
                     <>
+                        {isDrop && (
+                            <button
+                                onClick={() => onEmergencyCoverage(request.id)}
+                                className="px-3 py-1.5 text-xs font-semibold border border-amber-warn/30 text-amber-warn rounded-lg hover:bg-amber-warn-50 transition-base flex-1 sm:flex-none"
+                            >
+                                Emergency Coverage
+                            </button>
+                        )}
                         <button
                             onClick={() => setShowRejectModal(true)}
                             className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base flex-1 sm:flex-none"
@@ -159,7 +169,15 @@ function RequestCard({ request, onAction, isPending, highlighted = false }: Requ
                 )}
 
                 {request.status === 'OPEN' && (
-                    <span className="text-xs text-teal font-medium">Available for pickup by other staff</span>
+                    <>
+                        <button
+                            onClick={() => onEmergencyCoverage(request.id)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-amber-warn/30 text-amber-warn rounded-lg hover:bg-amber-warn-50 transition-base"
+                        >
+                            Emergency Coverage
+                        </button>
+                        <span className="text-xs text-teal font-medium">Available for pickup by other staff</span>
+                    </>
                 )}
             </div>
 
@@ -236,6 +254,8 @@ type Tab = 'pending' | 'approved' | 'resolved' | 'expired';
 export function SwapApprovalQueue() {
     const [activeTab, setActiveTab] = useState<Tab>('pending');
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [isCoverageOpen, setIsCoverageOpen] = useState(false);
+    const [coverageRequestId, setCoverageRequestId] = useState<string | null>(null);
     const [searchParams] = useSearchParams();
     const highlightedRequestId = searchParams.get('requestId');
 
@@ -344,6 +364,10 @@ export function SwapApprovalQueue() {
                                 key={r.id}
                                 request={r}
                                 onAction={handleAction}
+                                onEmergencyCoverage={(requestId) => {
+                                    setCoverageRequestId(requestId);
+                                    setIsCoverageOpen(true);
+                                }}
                                 isPending={approveMutation.isPending || declineMutation.isPending || rejectMutation.isPending}
                                 highlighted={highlightedRequestId === r.id}
                             />
@@ -355,6 +379,12 @@ export function SwapApprovalQueue() {
             <NotificationCentre
                 open={isNotificationOpen}
                 onClose={() => setIsNotificationOpen(false)}
+            />
+
+            <EmergencyCoverage
+                open={isCoverageOpen}
+                onClose={() => setIsCoverageOpen(false)}
+                requestId={coverageRequestId || ""}
             />
         </AppLayout>
     );

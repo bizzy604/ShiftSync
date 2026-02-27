@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
     ChevronLeft,
     ChevronRight,
@@ -14,7 +14,9 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { format, parseISO, startOfWeek, addDays, isSameDay } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import { useNotifications } from '../../lib/api/hooks';
+import { useAuth } from '../../auth/AuthContext';
 
 import { AppLayout } from '../../components/NavBar';
 import { Avatar } from '../../components/Avatar';
@@ -24,10 +26,11 @@ import {
     useMyAssignments,
     useAvailableDrops,
     useSwapRequests,
+    useSwapAction,
     usePickupDrop,
     useCreateDropRequest
 } from '../../lib/api/hooks';
-import { MyAssignmentResponse, AvailableDropRequest } from '../../lib/api/types';
+import { MyAssignmentResponse } from '../../lib/api/types';
 import { SwapRequestFlow } from './SwapRequestFlow';
 import { NotificationCentre } from './NotificationCentre';
 
@@ -103,6 +106,8 @@ function ShiftCard({ assignment, swapInfo, onDrop, onSwap, dropping }: ShiftCard
 /* ========== Main Component ========== */
 
 export function MySchedule() {
+    const { user } = useAuth();
+    const [searchParams] = useSearchParams();
     const [weekOffset, setWeekOffset] = useState(0);
     const [showNotificationBanner, setShowNotificationBanner] = useState(true);
     const [showAvailableShifts, setShowAvailableShifts] = useState(false);
@@ -115,13 +120,16 @@ export function MySchedule() {
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
     const { data: assignmentsData, isLoading: isLoadingAssignments } = useMyAssignments();
-    const { data: availableData, isLoading: isLoadingAvailable } = useAvailableDrops();
+    const { data: availableData, isLoading: isLoadingAvailable, refetch: refetchAvailableDrops } = useAvailableDrops();
     const { data: swapsData } = useSwapRequests();
     const { data: notificationsData } = useNotifications();
     const unreadCount = notificationsData?.unread_count || 0;
+    const highlightedDropRequestId = searchParams.get('requestId');
+    const openDropsFromNotification = searchParams.get('open_drops') === '1' || !!highlightedDropRequestId;
 
     const pickupMutation = usePickupDrop();
     const dropMutation = useCreateDropRequest();
+    const cancelRequestMutation = useSwapAction('cancel');
 
     // Week Calculation
     const weekStart = useMemo(() => {
@@ -166,7 +174,36 @@ export function MySchedule() {
         setIsSwapModalOpen(true);
     };
 
+    const handleCancelPendingRequest = (requestId: string, isDrop: boolean) => {
+        if (!window.confirm('Cancel this pending request?')) return;
+        cancelRequestMutation.mutate({
+            id: requestId,
+            data: { note: 'Cancelled by requester' },
+            isDrop,
+        });
+    };
+
     const isLoading = isLoadingAssignments || isLoadingAvailable;
+    const myPendingRequests = (swapsData?.requests || []).filter((request) =>
+        request.initiated_by === user?.id && ['OPEN', 'PENDING_ACCEPTEE', 'PENDING_MANAGER'].includes(request.status)
+    );
+    const highlightedDropStillOpen = highlightedDropRequestId
+        ? (availableData?.available || []).some((drop) => drop.drop_request_id === highlightedDropRequestId)
+        : false;
+
+    useEffect(() => {
+        if (!openDropsFromNotification) return;
+        setShowAvailableShifts(true);
+        refetchAvailableDrops();
+    }, [openDropsFromNotification, refetchAvailableDrops]);
+
+    useEffect(() => {
+        if (!showAvailableShifts || !highlightedDropRequestId) return;
+        const el = document.getElementById(`drop-${highlightedDropRequestId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [showAvailableShifts, highlightedDropRequestId, availableData?.available.length]);
 
     return (
         <AppLayout
@@ -257,6 +294,40 @@ export function MySchedule() {
                     )}
                 </div>
 
+                {/* My Pending Requests */}
+                <div className="border border-border-gray rounded-2xl overflow-hidden shadow-sm bg-white mb-8">
+                    <div className="px-4 sm:px-5 py-4 bg-gray-50 border-b border-border-gray flex items-center justify-between gap-3 flex-wrap">
+                        <span className="text-sm font-bold text-navy">My Pending Swap/Drop Requests</span>
+                        <Badge variant="amber">{myPendingRequests.length}</Badge>
+                    </div>
+                    <div className="p-4 space-y-3">
+                        {myPendingRequests.map((request) => (
+                            <div key={request.id} className="border border-border-gray rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
+                                <div>
+                                    <p className="text-sm font-semibold text-navy capitalize">
+                                        {request.type} request - {request.status.replace("_", " ")}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        {request.shift_date ? format(parseISO(request.shift_date), 'MMM d') : 'Unknown date'} - {request.shift_label || 'Shift'} - {request.shift_time || 'Time unknown'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => handleCancelPendingRequest(request.id, request.type === 'drop')}
+                                    disabled={cancelRequestMutation.isPending}
+                                    className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50"
+                                >
+                                    {cancelRequestMutation.isPending ? 'Cancelling...' : 'Cancel Request'}
+                                </button>
+                            </div>
+                        ))}
+                        {myPendingRequests.length === 0 && (
+                            <div className="py-6 text-center text-sm text-gray-400">
+                                You have no pending swap or drop requests.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* Available Shifts */}
                 <div className="border border-border-gray rounded-2xl overflow-hidden shadow-sm bg-white">
                     <button
@@ -277,10 +348,16 @@ export function MySchedule() {
                     </button>
                     {showAvailableShifts && (
                         <div className="p-4 space-y-3 animate-fade-in divide-y divide-gray-50">
+                            {highlightedDropRequestId && !isLoadingAvailable && !highlightedDropStillOpen && (
+                                <div className="rounded-xl border border-amber-warn/40 bg-amber-warn-50 p-3 text-xs text-amber-warn">
+                                    This request is no longer open for pickup.
+                                </div>
+                            )}
                             {availableData?.available.map((drop) => (
                                 <div
+                                    id={`drop-${drop.drop_request_id}`}
                                     key={drop.drop_request_id}
-                                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 first:pt-0"
+                                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 first:pt-0 ${highlightedDropRequestId === drop.drop_request_id ? 'rounded-lg bg-staff-purple-50/60 px-2 py-2 ring-1 ring-staff-purple/30' : ''}`}
                                 >
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 text-sm text-navy font-bold">

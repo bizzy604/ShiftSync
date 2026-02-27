@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { Search, Check, AlertTriangle, X, Loader2, CheckCircle } from 'lucide-react';
+import { Search, Check, AlertTriangle, X, Loader2, CheckCircle, Save, Trash2, RotateCcw, History } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 import { Modal } from '../../components/Modal';
 import { Avatar } from '../../components/Avatar';
 
 import { ShiftResponse } from '../../lib/api/types';
-import { useUsers, useAssignments, useCreateAssignment, keys } from '../../lib/api/hooks';
+import { useUsers, useAssignments, useCreateAssignment, useUpdateShift, useDeleteShift, useUnpublishShift, useSkills, keys } from '../../lib/api/hooks';
 import { previewAssignment } from '../../lib/api/client';
 
 export interface AssignmentModalProps {
@@ -17,19 +18,42 @@ export interface AssignmentModalProps {
 }
 
 export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
     const [expandedViolation, setExpandedViolation] = useState<string | null>(null);
     const [overrideReason, setOverrideReason] = useState('');
     const [showOverrideInput, setShowOverrideInput] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [editDate, setEditDate] = useState(shift.date);
+    const [editStartTime, setEditStartTime] = useState(shift.start_local.slice(11, 16));
+    const [editEndTime, setEditEndTime] = useState(shift.end_local.slice(11, 16));
+    const [editSkillId, setEditSkillId] = useState(shift.required_skill.id);
+    const [editHeadcount, setEditHeadcount] = useState(shift.headcount_needed);
+    const [shiftOverrideReason, setShiftOverrideReason] = useState('');
+
+    const { data: skillsData } = useSkills();
+    const updateShiftMutation = useUpdateShift();
+    const deleteShiftMutation = useDeleteShift();
+    const unpublishShiftMutation = useUnpublishShift();
 
     // 1. Fetch Users & Assignments
     const { data: usersData, isLoading: isLoadingUsers } = useUsers(shift.location_id);
     const { data: assignmentsData } = useAssignments(shift.id);
     const createAssignmentMutation = useCreateAssignment();
 
+    useEffect(() => {
+        if (!open) return;
+        setEditDate(shift.date);
+        setEditStartTime(shift.start_local.slice(11, 16));
+        setEditEndTime(shift.end_local.slice(11, 16));
+        setEditSkillId(shift.required_skill.id);
+        setEditHeadcount(shift.headcount_needed);
+        setShiftOverrideReason('');
+    }, [open, shift]);
+
     const allStaff = usersData?.users.filter(u => u.role === 'staff' && u.is_active) || [];
+    const skillOptions = skillsData || [];
     const assignedUserIds = new Set(
         assignmentsData?.assignments.filter(a => a.status === 'assigned').map(a => a.user_id) || []
     );
@@ -73,6 +97,60 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
         setShowOverrideInput(null);
         setSearchQuery('');
         onClose();
+    };
+
+    const requiresShiftOverride =
+        shift.status === 'published' &&
+        !!shift.edit_cutoff_utc &&
+        new Date(shift.edit_cutoff_utc).getTime() < Date.now();
+
+    const handleUpdateShift = () => {
+        if (!editDate || !editStartTime || !editEndTime || !editSkillId) return;
+        if (requiresShiftOverride && shiftOverrideReason.trim().length < 10) return;
+
+        updateShiftMutation.mutate({
+            locationId: shift.location_id,
+            shiftId: shift.id,
+            data: {
+                date: editDate,
+                start_time: editStartTime,
+                end_time: editEndTime,
+                required_skill_id: editSkillId,
+                headcount_needed: editHeadcount,
+                override_reason: shiftOverrideReason.trim() || undefined,
+            },
+        });
+    };
+
+    const handleUnpublishShift = () => {
+        if (shift.status !== 'published') return;
+        if (requiresShiftOverride && shiftOverrideReason.trim().length < 10) return;
+
+        unpublishShiftMutation.mutate(
+            {
+                locationId: shift.location_id,
+                shiftId: shift.id,
+                data: { override_reason: shiftOverrideReason.trim() || undefined },
+            },
+            {
+                onSuccess: () => {
+                    resetAndClose();
+                },
+            }
+        );
+    };
+
+    const handleCancelShift = () => {
+        if (shift.status === 'cancelled') return;
+        if (!window.confirm("Cancel this shift? Pending swaps tied to this shift will be cancelled.")) return;
+        deleteShiftMutation.mutate(
+            { locationId: shift.location_id, shiftId: shift.id },
+            {
+                onSuccess: () => {
+                    resetAndClose();
+                },
+            }
+        );
     };
 
     const shiftDateStr = format(parseISO(shift.date), "eeee, MMMM d, yyyy");
@@ -157,6 +235,125 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
                         <span className="text-gray-500">Current assigned:</span>
                         <span className="ml-2 font-medium text-navy">{assignedUserIds.size}</span>
                     </div>
+                </div>
+            </div>
+
+            <div className="border border-border-gray rounded-lg p-4 mb-5 space-y-4">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-navy">Shift Management</p>
+                    <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                        {shift.status}
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Date</label>
+                        <input
+                            type="date"
+                            value={editDate}
+                            onChange={(event) => setEditDate(event.target.value)}
+                            className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Required Skill</label>
+                        <select
+                            value={editSkillId}
+                            onChange={(event) => setEditSkillId(event.target.value)}
+                            className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                        >
+                            <option value={shift.required_skill.id}>{shift.required_skill.name}</option>
+                            {skillOptions
+                                .filter((skill) => skill.id !== shift.required_skill.id)
+                                .map((skill) => (
+                                    <option key={skill.id} value={skill.id}>
+                                        {skill.name}
+                                    </option>
+                                ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Start Time</label>
+                        <input
+                            type="time"
+                            value={editStartTime}
+                            onChange={(event) => setEditStartTime(event.target.value)}
+                            className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">End Time</label>
+                        <input
+                            type="time"
+                            value={editEndTime}
+                            onChange={(event) => setEditEndTime(event.target.value)}
+                            className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                        />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <label className="block text-xs text-gray-500 mb-1">Headcount Needed</label>
+                        <input
+                            type="number"
+                            min={1}
+                            value={editHeadcount}
+                            onChange={(event) => setEditHeadcount(Math.max(1, Number(event.target.value) || 1))}
+                            className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                        />
+                    </div>
+                </div>
+
+                {(requiresShiftOverride || shift.status === 'published') && (
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                            Override Reason {requiresShiftOverride ? "(required, min 10 chars)" : "(optional)"}
+                        </label>
+                        <textarea
+                            value={shiftOverrideReason}
+                            onChange={(event) => setShiftOverrideReason(event.target.value)}
+                            placeholder="Reason for edit/unpublish"
+                            rows={2}
+                            className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm bg-white resize-none"
+                        />
+                    </div>
+                )}
+
+                <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                        onClick={() => {
+                            navigate(`/manager/history?shift_id=${encodeURIComponent(shift.id)}&location_id=${encodeURIComponent(shift.location_id)}`);
+                            onClose();
+                        }}
+                        className="px-3 py-2 text-xs font-semibold border border-border-gray text-gray-600 rounded-lg hover:bg-gray-50 transition-base inline-flex items-center gap-1.5"
+                    >
+                        <History size={14} /> View History
+                    </button>
+                    <button
+                        onClick={handleUpdateShift}
+                        disabled={updateShiftMutation.isPending || (requiresShiftOverride && shiftOverrideReason.trim().length < 10)}
+                        className="px-3 py-2 text-xs font-semibold border border-teal/30 text-teal rounded-lg hover:bg-teal-50 transition-base disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                        {updateShiftMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        Save Shift
+                    </button>
+                    {shift.status === 'published' && (
+                        <button
+                            onClick={handleUnpublishShift}
+                            disabled={unpublishShiftMutation.isPending || (requiresShiftOverride && shiftOverrideReason.trim().length < 10)}
+                            className="px-3 py-2 text-xs font-semibold border border-amber-warn/30 text-amber-warn rounded-lg hover:bg-amber-warn-50 transition-base disabled:opacity-50 inline-flex items-center gap-1.5"
+                        >
+                            {unpublishShiftMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                            Unpublish
+                        </button>
+                    )}
+                    <button
+                        onClick={handleCancelShift}
+                        disabled={deleteShiftMutation.isPending || shift.status === 'cancelled'}
+                        className="px-3 py-2 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                        {deleteShiftMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        Cancel Shift
+                    </button>
                 </div>
             </div>
 
