@@ -87,7 +87,7 @@ function RequestCard({ request, onAction, isPending, highlighted = false }: Requ
             {/* Content */}
             <div className="mb-3">
                 {request.type === 'swap' ? (
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <Avatar name={request.requester_name || 'Staff'} size="sm" />
                         <span className="font-semibold text-navy">{request.requester_name}</span>
                         <ArrowLeftRight size={14} className="text-gray-400" />
@@ -101,12 +101,12 @@ function RequestCard({ request, onAction, isPending, highlighted = false }: Requ
                         )}
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <Avatar name={request.requester_name || 'Staff'} size="sm" />
                         <span className="font-semibold text-navy">{request.requester_name} dropped</span>
                     </div>
                 )}
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-3 text-sm text-gray-600 flex-wrap">
                     <span className="flex items-center gap-1">
                         <Clock size={13} /> {dateFormatted} · {request.shift_label} · {request.shift_time}
                     </span>
@@ -134,24 +134,24 @@ function RequestCard({ request, onAction, isPending, highlighted = false }: Requ
             <p className="text-xs text-gray-400 mb-4">Requested: {format(parseISO(request.created_at), 'MMM d, h:mm a')}</p>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-gray">
-                {isPending && <Loader2 size={16} className="animate-spin text-teal mr-auto" />}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-gray flex-wrap">
+                {isPending && <Loader2 size={16} className="animate-spin text-teal mr-auto sm:mr-0" />}
 
                 {request.status === 'PENDING_ACCEPTEE' && (
-                    <span className="text-xs text-gray-500 mr-auto">Awaiting {request.target_name}'s acceptance</span>
+                    <span className="text-xs text-gray-500 w-full sm:w-auto sm:mr-auto">Awaiting {request.target_name}'s acceptance</span>
                 )}
 
                 {request.status === 'PENDING_MANAGER' && (
                     <>
                         <button
                             onClick={() => setShowRejectModal(true)}
-                            className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base"
+                            className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base flex-1 sm:flex-none"
                         >
                             Decline
                         </button>
                         <button
                             onClick={() => setShowApproveModal(true)}
-                            className="px-4 py-1.5 text-xs font-bold bg-teal text-white rounded-lg hover:bg-teal-dark transition-base"
+                            className="px-4 py-1.5 text-xs font-bold bg-teal text-white rounded-lg hover:bg-teal-dark transition-base flex-1 sm:flex-none"
                         >
                             Approve {isDrop ? 'Drop' : 'Swap'}
                         </button>
@@ -176,11 +176,11 @@ function RequestCard({ request, onAction, isPending, highlighted = false }: Requ
                         className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-teal/40 resize-none"
                         rows={2}
                     />
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button onClick={() => setShowApproveModal(false)} className="text-sm text-gray-500">Cancel</button>
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6">
+                        <button onClick={() => setShowApproveModal(false)} className="w-full sm:w-auto text-sm text-gray-500">Cancel</button>
                         <button
                             onClick={() => handleConfirmAction('approve')}
-                            className="px-6 py-2 bg-teal text-white font-bold rounded-lg hover:bg-teal-dark transition-base"
+                            className="w-full sm:w-auto px-6 py-2 bg-teal text-white font-bold rounded-lg hover:bg-teal-dark transition-base"
                         >
                             Confirm Approval
                         </button>
@@ -201,12 +201,12 @@ function RequestCard({ request, onAction, isPending, highlighted = false }: Requ
                         className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-danger/40 resize-none"
                         rows={2}
                     />
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button onClick={() => setShowRejectModal(false)} className="text-sm text-gray-500">Cancel</button>
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6">
+                        <button onClick={() => setShowRejectModal(false)} className="w-full sm:w-auto text-sm text-gray-500">Cancel</button>
                         <button
                             onClick={() => handleConfirmAction('decline')}
                             disabled={!note}
-                            className="px-6 py-2 bg-danger text-white font-bold rounded-lg hover:bg-danger/90 disabled:opacity-50 transition-base"
+                            className="w-full sm:w-auto px-6 py-2 bg-danger text-white font-bold rounded-lg hover:bg-danger/90 disabled:opacity-50 transition-base"
                         >
                             Confirm Decline
                         </button>
@@ -304,8 +304,8 @@ export function SwapApprovalQueue() {
             onBellClick={() => setIsNotificationOpen(true)}
         >
             <div className="p-4 md:p-6 max-w-4xl mx-auto">
-                <div className="mb-6 flex items-center justify-between">
-                    <h1 className="text-2xl font-bold text-navy">Swap & Drop Requests</h1>
+                <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
+                    <h1 className="text-xl sm:text-2xl font-bold text-navy">Swap & Drop Requests</h1>
                     {isLoading && <Loader2 size={24} className="animate-spin text-teal" />}
                 </div>
 

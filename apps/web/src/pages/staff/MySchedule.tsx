@@ -49,15 +49,15 @@ function ShiftCard({ assignment, swapInfo, onDrop, onSwap, dropping }: ShiftCard
             className={`bg-white rounded-xl border border-border-gray shadow-sm p-4 border-l-4 ${status === 'assigned' ? 'border-l-staff-purple' : 'border-l-amber-warn'
                 } hover:shadow-md transition-base`}
         >
-            <div className="flex items-start justify-between mb-2">
+            <div className="flex items-start justify-between mb-2 gap-2 flex-wrap">
                 <div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1 flex-wrap">
                         <MapPin size={13} />
                         <span>{shift.location_name}</span>
                         <span>·</span>
                         <span>{shift.required_skill}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-navy font-medium">
+                    <div className="flex items-center gap-2 text-sm text-navy font-medium flex-wrap">
                         <Clock size={13} />
                         <span>{shift.start_local.slice(11, 16)} – {shift.end_local.slice(11, 16)}</span>
                     </div>
@@ -73,19 +73,19 @@ function ShiftCard({ assignment, swapInfo, onDrop, onSwap, dropping }: ShiftCard
                 </p>
             )}
 
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-gray">
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-gray flex-wrap">
                 {status === 'assigned' ? (
                     <>
                         <button
                             onClick={() => onSwap(assignment)}
-                            className="px-3 py-1.5 text-xs font-semibold border border-staff-purple/30 text-staff-purple rounded-lg hover:bg-staff-purple-50 transition-base"
+                            className="px-3 py-1.5 text-xs font-semibold border border-staff-purple/30 text-staff-purple rounded-lg hover:bg-staff-purple-50 transition-base flex-1 sm:flex-none"
                         >
                             Request Swap
                         </button>
                         <button
                             onClick={() => onDrop(id)}
                             disabled={dropping}
-                            className="px-3 py-1.5 text-xs font-semibold border border-danger/20 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50"
+                            className="px-3 py-1.5 text-xs font-semibold border border-danger/20 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50 flex-1 sm:flex-none"
                         >
                             {dropping ? 'Dropping...' : 'Drop Shift'}
                         </button>
@@ -194,14 +194,14 @@ export function MySchedule() {
 
                 {/* Week Header */}
                 <div className="mb-8">
-                    <div className="flex items-center justify-center gap-6 mb-4">
+                    <div className="flex items-center justify-center gap-2 sm:gap-6 mb-4">
                         <button
                             onClick={() => setWeekOffset(prev => prev - 1)}
                             className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-all active:scale-90"
                         >
                             <ChevronLeft size={24} />
                         </button>
-                        <h1 className="text-2xl font-black text-navy min-w-[240px] text-center">
+                        <h1 className="text-lg sm:text-2xl font-black text-navy text-center whitespace-nowrap">
                             {format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'd, yyyy')}
                         </h1>
                         <button
@@ -261,11 +261,11 @@ export function MySchedule() {
                 <div className="border border-border-gray rounded-2xl overflow-hidden shadow-sm bg-white">
                     <button
                         onClick={() => setShowAvailableShifts(!showAvailableShifts)}
-                        className="w-full px-5 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-all"
+                        className="w-full px-4 sm:px-5 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-all gap-3"
                     >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                             <AlertCircle size={18} className="text-success" />
-                            <span className="text-sm font-bold text-navy">Open Shifts Available for Pickup</span>
+                            <span className="text-sm font-bold text-navy truncate">Open Shifts Available for Pickup</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <Badge variant="green">{availableData?.available.length || 0}</Badge>
@@ -280,7 +280,7 @@ export function MySchedule() {
                             {availableData?.available.map((drop) => (
                                 <div
                                     key={drop.drop_request_id}
-                                    className="flex items-center justify-between pt-3 first:pt-0"
+                                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 first:pt-0"
                                 >
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 text-sm text-navy font-bold">
@@ -296,7 +296,7 @@ export function MySchedule() {
                                     <button
                                         onClick={() => handlePickup(drop.drop_request_id)}
                                         disabled={pickupMutation.isPending}
-                                        className="px-5 py-2 text-xs font-black bg-success text-white rounded-xl hover:bg-success-dark transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50"
+                                        className="w-full sm:w-auto px-5 py-2 text-xs font-black bg-success text-white rounded-xl hover:bg-success-dark transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50"
                                     >
                                         {pickupMutation.isPending ? 'Picking up...' : 'Claim'}
                                     </button>

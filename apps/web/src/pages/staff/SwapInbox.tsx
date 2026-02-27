@@ -66,19 +66,19 @@ function SwapCard({
             id={`request-${request.id}`}
             className={`bg-white border border-border-gray rounded-xl p-5 shadow-sm ${highlighted ? "ring-2 ring-staff-purple/40" : ""}`}
         >
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <Badge variant="purple">Swap Request</Badge>
                 <Badge variant={status.variant}>{status.label}</Badge>
             </div>
 
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Avatar name={requester} size="sm" />
                 <span className="text-sm font-semibold text-navy">{requester}</span>
                 <ArrowLeftRight size={14} className="text-gray-400" />
                 <span className="text-sm text-gray-500">wants to swap with you</span>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                 <Clock size={13} />
                 <span>
                     {shiftDate} - {shiftLabel} - {shiftTime}
@@ -97,19 +97,19 @@ function SwapCard({
             </p>
 
             {actionable && (
-                <div className="mt-4 pt-3 border-t border-border-gray flex items-center justify-end gap-2">
+                <div className="mt-4 pt-3 border-t border-border-gray flex items-center justify-end gap-2 flex-wrap">
                     {busy && <Loader2 size={16} className="animate-spin text-staff-purple mr-auto" />}
                     <button
                         onClick={onReject}
                         disabled={busy}
-                        className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50 flex-1 sm:flex-none"
                     >
                         Reject
                     </button>
                     <button
                         onClick={onAccept}
                         disabled={busy}
-                        className="px-4 py-1.5 text-xs font-bold bg-staff-purple text-white rounded-lg hover:bg-staff-purple-light transition-base disabled:opacity-50"
+                        className="px-4 py-1.5 text-xs font-bold bg-staff-purple text-white rounded-lg hover:bg-staff-purple-light transition-base disabled:opacity-50 flex-1 sm:flex-none"
                     >
                         Accept Swap
                     </button>
@@ -180,8 +180,8 @@ export function SwapInbox() {
         >
             <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-8">
                 <section>
-                    <div className="mb-4 flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-navy">Swap Inbox</h1>
+                    <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+                        <h1 className="text-xl sm:text-2xl font-bold text-navy">Swap Inbox</h1>
                         {isLoading && <Loader2 size={22} className="animate-spin text-staff-purple" />}
                     </div>
 
@@ -246,14 +246,14 @@ export function SwapInbox() {
                 title={action === "accept" ? "Accept Swap Request" : "Reject Swap Request"}
                 width="max-w-md"
                 footer={
-                    <div className="w-full flex items-center justify-end gap-3">
-                        <button onClick={closeModal} className="text-sm text-gray-500 hover:text-navy transition-base">
+                    <div className="w-full flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
+                        <button onClick={closeModal} className="w-full sm:w-auto text-sm text-gray-500 hover:text-navy transition-base">
                             Cancel
                         </button>
                         <button
                             onClick={submitAction}
                             disabled={busy}
-                            className={`px-5 py-2 text-sm font-bold text-white rounded-lg transition-base disabled:opacity-50 ${action === "accept" ? "bg-staff-purple hover:bg-staff-purple-light" : "bg-danger hover:bg-danger/90"
+                            className={`w-full sm:w-auto px-5 py-2 text-sm font-bold text-white rounded-lg transition-base disabled:opacity-50 ${action === "accept" ? "bg-staff-purple hover:bg-staff-purple-light" : "bg-danger hover:bg-danger/90"
                                 }`}
                         >
                             {busy ? (

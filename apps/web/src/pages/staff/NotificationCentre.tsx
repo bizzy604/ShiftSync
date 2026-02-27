@@ -145,8 +145,8 @@ export function NotificationCentre({ open, onClose }: NotificationCentreProps) {
         <>
             <div className="fixed inset-0 z-40" onClick={onClose} />
 
-            <div className="fixed top-14 left-2 right-2 md:left-auto md:right-4 z-50 w-auto md:w-[400px] max-h-[calc(100vh-4rem)] bg-white rounded-3xl shadow-2xl border border-border-gray flex flex-col animate-fade-in overflow-hidden">
-                <div className="px-6 py-5 border-b border-border-gray flex items-center justify-between flex-shrink-0 bg-gray-50/50">
+            <div className="fixed top-14 left-2 right-2 md:left-auto md:right-4 z-50 w-auto md:w-[400px] max-h-[calc(100vh-4rem)] bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-border-gray flex flex-col animate-fade-in overflow-hidden">
+                <div className="px-4 sm:px-6 py-5 border-b border-border-gray flex items-center justify-between flex-wrap gap-2 flex-shrink-0 bg-gray-50/50">
                     <div>
                         <h3 className="text-base font-black text-navy uppercase tracking-tight">Notifications</h3>
                         {unreadCount > 0 && (
@@ -196,7 +196,7 @@ export function NotificationCentre({ open, onClose }: NotificationCentreProps) {
                                         key={notification.id}
                                         type="button"
                                         onClick={() => handleNotificationClick(notification)}
-                                        className={`w-full text-left flex gap-4 px-6 py-5 transition-all hover:bg-gray-50 group ${isUnread
+                                        className={`w-full text-left flex gap-4 px-4 sm:px-6 py-5 transition-all hover:bg-gray-50 group ${isUnread
                                             ? 'bg-staff-purple/5 border-l-4 border-l-staff-purple'
                                             : 'border-l-4 border-l-transparent'
                                             }`}
@@ -235,7 +235,7 @@ export function NotificationCentre({ open, onClose }: NotificationCentreProps) {
                     )}
                 </div>
 
-                <div className="px-6 py-4 border-t border-border-gray bg-gray-50/30 text-center flex-shrink-0">
+                <div className="px-4 sm:px-6 py-4 border-t border-border-gray bg-gray-50/30 text-center flex-shrink-0">
                     <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
                         Click a notification to open the related screen
                     </p>

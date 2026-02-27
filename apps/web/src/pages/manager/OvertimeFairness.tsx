@@ -154,8 +154,8 @@ function FairnessReportUI({ staff, overallScore, grade }: { staff: FairnessStaff
                     <h3 className="text-sm font-bold text-navy mb-4">Scheduling Variance (%)</h3>
                     <div className="space-y-3">
                         {staff.slice(0, 5).map(s => (
-                            <div key={s.user_id} className="flex items-center gap-3">
-                                <span className="text-xs font-semibold text-gray-600 w-24 truncate">{s.name}</span>
+                            <div key={s.user_id} className="flex items-center gap-2 sm:gap-3">
+                                <span className="text-xs font-semibold text-gray-600 w-20 sm:w-24 truncate">{s.name}</span>
                                 <div className="flex-1 bg-gray-100 h-2 rounded-full overflow-hidden">
                                     <div
                                         className={`h-2 rounded-full ${Math.abs(s.scheduling_variance_pct) > 20 ? 'bg-danger' : 'bg-teal'}`}
@@ -236,11 +236,11 @@ export function OvertimeFairness() {
     const isLoading = isLoadingOT || isLoadingFairness;
 
     const centerContent = (
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
             <button onClick={handlePrevWeek} className="p-1.5 rounded-full hover:bg-white/10 transition-base">
                 <ChevronLeft size={20} />
             </button>
-            <span className="font-bold min-w-[140px] text-center">Week of {format(parseISO(weekStart), 'MMM d, yyyy')}</span>
+            <span className="font-bold min-w-0 sm:min-w-[140px] text-center whitespace-nowrap">Week of {format(parseISO(weekStart), 'MMM d, yyyy')}</span>
             <button onClick={handleNextWeek} className="p-1.5 rounded-full hover:bg-white/10 transition-base">
                 <ChevronRight size={20} />
             </button>
@@ -259,17 +259,17 @@ export function OvertimeFairness() {
                 {/* Header */}
                 <div className="mb-8 flex items-start gap-4 flex-wrap justify-between">
                     <div>
-                        <h1 className="text-2xl font-black text-navy">Overtime & Fairness</h1>
+                        <h1 className="text-xl sm:text-2xl font-black text-navy">Overtime & Fairness</h1>
                         <p className="text-gray-500 text-sm mt-1">{location?.name || 'Loading location...'} · Data updated every 30m</p>
                     </div>
                     {isLoading && <Loader2 size={24} className="animate-spin text-teal" />}
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-2 mb-8">
+                <div className="flex flex-wrap gap-2 mb-8">
                     <button
                         onClick={() => setActiveTab('overtime')}
-                        className={`px-6 py-2.5 rounded-full text-sm font-bold transition-base ${activeTab === 'overtime'
+                        className={`px-4 sm:px-6 py-2.5 rounded-full text-sm font-bold transition-base ${activeTab === 'overtime'
                             ? 'bg-teal text-white shadow-md'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}
@@ -278,7 +278,7 @@ export function OvertimeFairness() {
                     </button>
                     <button
                         onClick={() => setActiveTab('fairness')}
-                        className={`px-6 py-2.5 rounded-full text-sm font-bold transition-base ${activeTab === 'fairness'
+                        className={`px-4 sm:px-6 py-2.5 rounded-full text-sm font-bold transition-base ${activeTab === 'fairness'
                             ? 'bg-teal text-white shadow-md'
                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}

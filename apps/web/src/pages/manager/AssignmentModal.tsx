@@ -116,14 +116,14 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
             subtitle={shiftDateStr}
             width="max-w-xl"
             footer={
-                <div className="flex items-center justify-between">
-                    <button onClick={resetAndClose} className="text-sm text-gray-500 hover:text-navy transition-base">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <button onClick={resetAndClose} className="w-full sm:w-auto text-sm text-gray-500 hover:text-navy transition-base">
                         Cancel
                     </button>
                     <button
                         onClick={handleAssign}
                         disabled={!selectedStaff || createAssignmentMutation.isPending || (!!showOverrideInput && overrideReason.length < 10)}
-                        className="px-5 py-2.5 bg-teal text-white font-semibold rounded-lg hover:bg-teal-dark disabled:opacity-50 disabled:cursor-not-allowed transition-base flex items-center gap-2"
+                        className="w-full sm:w-auto justify-center px-5 py-2.5 bg-teal text-white font-semibold rounded-lg hover:bg-teal-dark disabled:opacity-50 disabled:cursor-not-allowed transition-base flex items-center gap-2"
                     >
                         {createAssignmentMutation.isPending ? (
                             <>
@@ -140,7 +140,7 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
         >
             {/* Shift Details */}
             <div className="bg-gray-50 rounded-lg p-4 mb-5">
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
                         <span className="text-gray-500">Time:</span>
                         <span className="ml-2 font-medium text-navy">{formatTime(shift.start_local)} – {formatTime(shift.end_local)}</span>

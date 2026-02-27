@@ -40,7 +40,7 @@ export function SkillCatalog() {
             <div className="p-4 md:p-6 max-w-4xl mx-auto">
                 <div className="mb-6">
                     <p className="text-xs text-gray-500 mb-1">Admin &gt; Skill Catalog</p>
-                    <h1 className="text-2xl font-bold text-navy">Skill Catalog</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-navy">Skill Catalog</h1>
                     <p className="text-sm text-gray-500 mt-1">Manage the predefined skills used for shifts and staff qualification.</p>
                 </div>
 

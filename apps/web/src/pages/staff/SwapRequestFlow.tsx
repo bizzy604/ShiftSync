@@ -15,7 +15,7 @@ type FlowStep = 'select' | 'note' | 'status' | 'approved';
 
 function StepIndicator({ current, total, label }: { current: number; total: number; label: string }) {
     return (
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
             <Badge variant="purple">Step {current} of {total}</Badge>
             <span className="text-xs text-gray-500 font-bold uppercase tracking-tight">{label}</span>
         </div>
@@ -26,41 +26,43 @@ function SwapTimeline({ currentStep, targetName }: { currentStep: number; target
     const steps = ['Requested', `${targetName} Accepts`, 'Manager Approves'];
 
     return (
-        <div className="flex items-center justify-between my-8 px-4">
-            {steps.map((step, i) => {
-                const isComplete = i < currentStep;
-                const isCurrent = i === currentStep;
+        <div className="overflow-x-auto pb-2">
+            <div className="flex items-center justify-between my-8 px-2 sm:px-4 min-w-[560px]">
+                {steps.map((step, i) => {
+                    const isComplete = i < currentStep;
+                    const isCurrent = i === currentStep;
 
-                return (
-                    <React.Fragment key={step}>
-                        <div className="flex flex-col items-center gap-2 flex-shrink-0 relative">
-                            <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isComplete
-                                    ? 'bg-staff-purple text-white shadow-lg shadow-staff-purple/20'
-                                    : isCurrent
-                                        ? 'bg-staff-purple/20 border-2 border-staff-purple shadow-lg shadow-staff-purple/10'
-                                        : 'bg-gray-100 text-gray-400'
-                                    } ${isCurrent ? 'animate-pulse' : ''}`}
-                            >
-                                {isComplete ? (
-                                    <Check size={20} />
-                                ) : (
-                                    <span className={`w-3 h-3 rounded-full ${isCurrent ? 'bg-staff-purple' : 'bg-gray-300'}`} />
-                                )}
+                    return (
+                        <React.Fragment key={step}>
+                            <div className="flex flex-col items-center gap-2 flex-shrink-0 relative">
+                                <div
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isComplete
+                                        ? 'bg-staff-purple text-white shadow-lg shadow-staff-purple/20'
+                                        : isCurrent
+                                            ? 'bg-staff-purple/20 border-2 border-staff-purple shadow-lg shadow-staff-purple/10'
+                                            : 'bg-gray-100 text-gray-400'
+                                        } ${isCurrent ? 'animate-pulse' : ''}`}
+                                >
+                                    {isComplete ? (
+                                        <Check size={20} />
+                                    ) : (
+                                        <span className={`w-3 h-3 rounded-full ${isCurrent ? 'bg-staff-purple' : 'bg-gray-300'}`} />
+                                    )}
+                                </div>
+                                <span
+                                    className={`text-[10px] font-black uppercase tracking-tight text-center max-w-[80px] absolute -bottom-8 ${isComplete || isCurrent ? 'text-navy' : 'text-gray-400'
+                                        }`}
+                                >
+                                    {step}
+                                </span>
                             </div>
-                            <span
-                                className={`text-[10px] font-black uppercase tracking-tight text-center max-w-[80px] absolute -bottom-8 ${isComplete || isCurrent ? 'text-navy' : 'text-gray-400'
-                                    }`}
-                            >
-                                {step}
-                            </span>
-                        </div>
-                        {i < steps.length - 1 && (
-                            <div className={`flex-1 h-1 mx-2 ${isComplete ? 'bg-staff-purple' : 'bg-gray-100'}`} />
-                        )}
-                    </React.Fragment>
-                );
-            })}
+                            {i < steps.length - 1 && (
+                                <div className={`flex-1 h-1 mx-2 ${isComplete ? 'bg-staff-purple' : 'bg-gray-100'}`} />
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -158,17 +160,17 @@ export function SwapRequestFlow({ open, onClose, myAssignment }: SwapRequestFlow
                 subtitle={shiftInfo}
                 width="max-w-lg"
                 footer={
-                    <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between w-full gap-3">
                         <button
                             onClick={() => setStep('select')}
-                            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-navy transition-all"
+                            className="w-full sm:w-auto justify-center sm:justify-start flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-navy transition-all"
                         >
                             <ArrowLeft size={16} /> Back
                         </button>
                         <button
                             onClick={handleSubmit}
                             disabled={createSwapMutation.isPending}
-                            className="px-8 py-3 bg-staff-purple text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-staff-purple-light shadow-lg hover:shadow-staff-purple/20 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                            className="w-full sm:w-auto justify-center px-8 py-3 bg-staff-purple text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-staff-purple-light shadow-lg hover:shadow-staff-purple/20 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
                         >
                             {createSwapMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Send Request'}
                         </button>
@@ -177,7 +179,7 @@ export function SwapRequestFlow({ open, onClose, myAssignment }: SwapRequestFlow
             >
                 <StepIndicator current={2} total={2} label="Add a message" />
 
-                <div className="flex items-center gap-4 p-4 bg-staff-purple/5 rounded-2xl border border-staff-purple/10 mb-6">
+                <div className="flex items-center gap-4 p-4 bg-staff-purple/5 rounded-2xl border border-staff-purple/10 mb-6 flex-wrap">
                     <Avatar name={selectedName} size="lg" color="bg-staff-purple" />
                     <div>
                         <p className="text-[10px] font-black text-staff-purple uppercase tracking-widest mb-0.5">Swapping with</p>
@@ -211,14 +213,14 @@ export function SwapRequestFlow({ open, onClose, myAssignment }: SwapRequestFlow
             subtitle={shiftInfo}
             width="max-w-lg"
             footer={
-                <div className="flex items-center justify-between w-full">
-                    <button onClick={resetAndClose} className="text-xs font-black uppercase tracking-widest text-gray-500 hover:text-navy transition-all">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between w-full gap-3">
+                    <button onClick={resetAndClose} className="w-full sm:w-auto text-xs font-black uppercase tracking-widest text-gray-500 hover:text-navy transition-all">
                         Cancel
                     </button>
                     <button
                         onClick={() => setStep('note')}
                         disabled={!selectedStaffId}
-                        className="px-8 py-3 bg-navy text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-navy-light shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                        className="w-full sm:w-auto px-8 py-3 bg-navy text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-navy-light shadow-lg transition-all active:scale-95 disabled:opacity-50"
                     >
                         Next Step
                     </button>

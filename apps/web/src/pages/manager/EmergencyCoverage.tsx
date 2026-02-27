@@ -119,7 +119,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
             width="sm:w-[420px]"
             headerColor="bg-danger"
         >
-            <div className="p-5 space-y-6">
+            <div className="p-4 sm:p-5 space-y-6">
                 {isLoading ? (
                     <div className="py-20 flex flex-col items-center justify-center text-gray-300">
                         <Loader2 size={40} className="animate-spin mb-4" />
@@ -135,7 +135,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
 
                         {/* Shift Status */}
                         <div className="bg-gray-50 rounded-xl p-4 shadow-inner">
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                                 <h4 className="text-sm font-bold text-navy">Coverage Status</h4>
                                 {request?.status === 'PENDING_MANAGER' ? (
                                     <Badge variant="amber">Pickup Pending Approval</Badge>
@@ -167,7 +167,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
                         {/* Pickup Pending Approval Section */}
                         {request?.status === 'PENDING_MANAGER' && (
                             <div className="bg-teal-50 rounded-xl p-4 border border-teal/20 animate-fade-in ring-4 ring-teal/5">
-                                <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
                                     <h4 className="text-sm font-black text-teal uppercase tracking-wider">Pickup Claimed!</h4>
                                     <Badge variant="teal">Action Required</Badge>
                                 </div>
@@ -178,7 +178,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
                                         <p className="text-xs text-gray-500">Ready to cover this shift</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <button
                                         onClick={handleApprove}
                                         disabled={approveMutation.isPending}
@@ -189,7 +189,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
                                     <button
                                         onClick={handleDecline}
                                         disabled={declineMutation.isPending}
-                                        className="px-4 py-2.5 text-sm font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50"
+                                        className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50"
                                     >
                                         Reject
                                     </button>
@@ -199,7 +199,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
 
                         {/* Qualified Staff */}
                         <div>
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                                 <h4 className="text-sm font-bold text-navy">Qualified & Available Staff</h4>
                                 <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded font-bold">{filteredUsers.length} Found</span>
                             </div>

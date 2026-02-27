@@ -73,14 +73,14 @@ export function CreateShiftModal({ open, onClose, locationId, defaultDateStr, de
             subtitle="Add a new shift to the schedule"
             width="max-w-md"
             footer={
-                <div className="flex items-center justify-between">
-                    <button onClick={onClose} className="text-sm font-bold text-gray-500 hover:text-navy transition-base">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <button onClick={onClose} className="w-full sm:w-auto text-sm font-bold text-gray-500 hover:text-navy transition-base">
                         Cancel
                     </button>
                     <button
                         onClick={handleCreate}
                         disabled={createMutation.isPending || !date || !startTime || !endTime}
-                        className="px-5 py-2.5 bg-teal text-white font-semibold rounded-lg hover:bg-teal-dark disabled:opacity-50 transition-base flex items-center gap-2"
+                        className="w-full sm:w-auto justify-center px-5 py-2.5 bg-teal text-white font-semibold rounded-lg hover:bg-teal-dark disabled:opacity-50 transition-base flex items-center gap-2"
                     >
                         {createMutation.isPending ? (
                             <><Loader2 size={16} className="animate-spin" /> Creating…</>
@@ -125,7 +125,7 @@ export function CreateShiftModal({ open, onClose, locationId, defaultDateStr, de
                 </div>
 
                 {/* Time Range */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-semibold text-navy mb-1.5">Start Time</label>
                         <input

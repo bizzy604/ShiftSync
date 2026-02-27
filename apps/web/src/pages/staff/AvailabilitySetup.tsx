@@ -205,9 +205,9 @@ export function AvailabilitySetup() {
         >
             <div className="max-w-3xl mx-auto p-4 md:p-6">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-6">
+                <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
                     <div>
-                        <h1 className="text-2xl font-black text-navy uppercase tracking-tight">My Availability</h1>
+                        <h1 className="text-xl sm:text-2xl font-black text-navy uppercase tracking-tight">My Availability</h1>
                         <p className="text-sm text-gray-500 mt-1">
                             Current Timezone: <span className="font-bold text-staff-purple">{me?.home_timezone || 'America/Los_Angeles'}</span>
                         </p>
@@ -215,7 +215,7 @@ export function AvailabilitySetup() {
                     <button
                         onClick={handleSave}
                         disabled={!hasChanges || updateAvailability.isPending}
-                        className={`px-6 py-2.5 text-sm font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95 ${hasChanges
+                        className={`w-full sm:w-auto justify-center px-6 py-2.5 text-sm font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95 ${hasChanges
                             ? 'bg-teal text-white hover:bg-teal-dark'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
                             }`}
@@ -234,9 +234,9 @@ export function AvailabilitySetup() {
                         {availability.map((day, i) => (
                             <div
                                 key={day.day}
-                                className={`flex items-center gap-4 px-6 py-5 ${!day.available ? 'bg-gray-50/50 opacity-60' : ''}`}
+                                className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 ${!day.available ? 'bg-gray-50/50 opacity-60' : ''}`}
                             >
-                                <span className="w-24 text-sm font-black text-navy uppercase">{day.day}</span>
+                                <span className="w-full sm:w-24 text-sm font-black text-navy uppercase">{day.day}</span>
 
                                 {/* Toggle */}
                                 <button
@@ -251,7 +251,7 @@ export function AvailabilitySetup() {
                                 </button>
 
                                 {day.available ? (
-                                    <div className="flex items-center gap-2 flex-1 animate-fade-in">
+                                    <div className="flex flex-wrap items-center gap-2 w-full sm:flex-1 animate-fade-in">
                                         <div className="relative">
                                             <select
                                                 value={day.startTime}
@@ -283,7 +283,7 @@ export function AvailabilitySetup() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest italic">Unavailable</span>
+                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest italic w-full sm:w-auto">Unavailable</span>
                                 )}
                             </div>
                         ))}
@@ -311,10 +311,10 @@ export function AvailabilitySetup() {
                                 {exceptions.map((ex) => (
                                     <div
                                         key={ex.id}
-                                        className={`flex items-center justify-between px-5 py-4 rounded-xl border border-border-gray animate-fade-in ${ex.type === 'available' ? 'bg-success/5 border-success/10' : 'bg-danger/5 border-danger/10'
+                                        className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 rounded-xl border border-border-gray animate-fade-in ${ex.type === 'available' ? 'bg-success/5 border-success/10' : 'bg-danger/5 border-danger/10'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-4 min-w-0">
                                             <div className={`p-2 rounded-lg ${ex.type === 'available' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                                                 <Clock size={14} />
                                             </div>
@@ -334,7 +334,7 @@ export function AvailabilitySetup() {
                                         </div>
                                         <button
                                             onClick={() => removeException(ex.id)}
-                                            className="p-2 text-gray-400 hover:text-danger hover:bg-danger/5 rounded-lg transition-all"
+                                            className="p-2 text-gray-400 hover:text-danger hover:bg-danger/5 rounded-lg transition-all self-end sm:self-auto"
                                         >
                                             <X size={18} />
                                         </button>
@@ -365,17 +365,17 @@ export function AvailabilitySetup() {
                 subtitle="Override your recurring schedule for a specific date"
                 width="max-w-md"
                 footer={
-                    <div className="flex justify-end gap-3">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                         <button
                             onClick={() => setShowAddException(false)}
-                            className="px-6 py-2.5 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-navy transition-all"
+                            className="w-full sm:w-auto px-6 py-2.5 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-navy transition-all"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={addException}
                             disabled={!newExceptionDate}
-                            className="px-8 py-2.5 text-xs font-black uppercase tracking-widest bg-staff-purple text-white rounded-xl hover:bg-staff-purple-light shadow-lg hover:shadow-staff-purple/20 transition-all disabled:opacity-50 active:scale-95"
+                            className="w-full sm:w-auto px-8 py-2.5 text-xs font-black uppercase tracking-widest bg-staff-purple text-white rounded-xl hover:bg-staff-purple-light shadow-lg hover:shadow-staff-purple/20 transition-all disabled:opacity-50 active:scale-95"
                         >
                             Add Exception
                         </button>
@@ -394,7 +394,7 @@ export function AvailabilitySetup() {
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-navy uppercase tracking-widest mb-2 opacity-60">Availability Type</label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button
                                 onClick={() => setNewExceptionType('unavailable')}
                                 className={`py-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${newExceptionType === 'unavailable'
