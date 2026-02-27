@@ -88,6 +88,12 @@ def to_resp(row: object) -> SwapRequestResponse:
     if pickup_user:
         pickup_name = pickup_user.name
 
+    effective_expires_at = row.expires_at
+    if row.type == "drop" and effective_expires_at is None and requester_assignment:
+        shift = _safe_getattr(requester_assignment, "shift")
+        if shift and getattr(shift, "start_utc", None):
+            effective_expires_at = shift.start_utc - timedelta(hours=24)
+
     return SwapRequestResponse(
         id=row.id,
         type=row.type,
@@ -101,7 +107,7 @@ def to_resp(row: object) -> SwapRequestResponse:
         pickup_user_id=row.pickup_user_id,
         pickup_name=pickup_name,
         initiated_by=row.initiated_by,
-        expires_at=row.expires_at,
+        expires_at=effective_expires_at,
         created_at=row.created_at,
         resolved_at=row.resolved_at,
         resolution_note=row.resolution_note,
@@ -776,7 +782,7 @@ async def available_drops(request: Request, current_user: CurrentUser = Depends(
     now = datetime.now(tz=timezone.utc)
     await expire_due_drop_requests(now=now, ws_manager=request.app.state.ws_manager)
     rows = await prisma.swaprequest.find_many(
-        where={"type": "drop", "status": "OPEN", "expires_at": {"gt": now}, "initiated_by": {"not": current_user.id}},
+        where={"type": "drop", "status": "OPEN", "initiated_by": {"not": current_user.id}},
         include={"requester_assignment": {"include": {"shift": {"include": {"location": True, "required_skill": True}}, "user": True}}},
     )
     u = await prisma.user.find_unique(where={"id": current_user.id}, include={"user_skills": True, "user_location_certifications": True, "availability": True})
@@ -786,6 +792,16 @@ async def available_drops(request: Request, current_user: CurrentUser = Depends(
     for row in rows:
         a = row.requester_assignment
         if a is None or a.shift is None or a.user is None:
+            continue
+        effective_expires_at = row.expires_at
+        if effective_expires_at is None:
+            effective_expires_at = a.shift.start_utc - timedelta(hours=24)
+        if effective_expires_at <= now:
+            await expire_drop_request(
+                request_row=row,
+                now=now,
+                ws_manager=request.app.state.ws_manager,
+            )
             continue
         result = evaluate_assignment(shift_snapshot(a.shift), user_snapshot(u), await existing_assignments(u.id, {a.shift.id}))
         if any(v.severity == "HARD_BLOCK" for v in result.violations) or result.requires_override:
@@ -803,7 +819,7 @@ async def available_drops(request: Request, current_user: CurrentUser = Depends(
                     required_skill=shift.required_skill.name,
                 ),
                 original_staff={"name": a.user.name},
-                expires_at=row.expires_at,
+                expires_at=effective_expires_at,
             )
         )
     return AvailableDropListResponse(available=out)

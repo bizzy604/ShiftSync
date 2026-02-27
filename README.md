@@ -280,6 +280,7 @@ Frontend environment variable:
 
 ## Documentation
 
+- `ASSESSMENT_ACCESS.md` (assessment evaluator access + scenario test playbook)
 - `Docs/01_ShiftSync_PRD.md`
 - `Docs/02_ShiftSync_System_Design.md`
 - `Docs/03_ShiftSync_API_Architecture.md`

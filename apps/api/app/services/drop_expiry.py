@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.core.database import prisma
@@ -115,12 +115,20 @@ async def expire_due_drop_requests(
         where={
             "type": "drop",
             "status": {"in": sorted(EXPIRABLE_DROP_STATUSES)},
-            "expires_at": {"lt": resolved_at},
         },
         include={"requester_assignment": {"include": {"shift": True}}},
     )
     count = 0
     for row in rows:
+        expires_at = getattr(row, "expires_at", None)
+        if expires_at is None:
+            requester_assignment = getattr(row, "requester_assignment", None)
+            shift = getattr(requester_assignment, "shift", None) if requester_assignment is not None else None
+            if shift is None or getattr(shift, "start_utc", None) is None:
+                continue
+            expires_at = shift.start_utc - timedelta(hours=24)
+        if expires_at >= resolved_at:
+            continue
         expired = await expire_drop_request(
             request_row=row,
             now=resolved_at,

@@ -34,6 +34,8 @@ services:
       - key: FRONTEND_URLS
         value: https://shift-sync-web.vercel.app
       - key: DATABASE_URL
-        sync: false
+        value: postgresql://postgres.uxmrjrseeqsvhlaaajba:IawqBdd2eGFUl42y@aws-1-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require
+      - key: DIRECT_URL
+        value: postgresql://postgres.uxmrjrseeqsvhlaaajba:IawqBdd2eGFUl42y@aws-1-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require
       - key: REDIS_URL
         sync: false

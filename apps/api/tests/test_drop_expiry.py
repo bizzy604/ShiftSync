@@ -86,6 +86,7 @@ async def test_expire_due_drop_requests_counts_only_expired(monkeypatch) -> None
             type="drop",
             status="OPEN",
             version=1,
+            expires_at=datetime(2026, 2, 27, 11, 0, tzinfo=timezone.utc),
             initiated_by="staff-a",
             pickup_user_id=None,
             requester_assignment=SimpleNamespace(shift=SimpleNamespace(location_id="loc-1")),
@@ -95,6 +96,7 @@ async def test_expire_due_drop_requests_counts_only_expired(monkeypatch) -> None
             type="drop",
             status="PENDING_MANAGER",
             version=2,
+            expires_at=datetime(2026, 2, 27, 11, 30, tzinfo=timezone.utc),
             initiated_by="staff-b",
             pickup_user_id="staff-c",
             requester_assignment=SimpleNamespace(shift=SimpleNamespace(location_id="loc-1")),
@@ -116,3 +118,64 @@ async def test_expire_due_drop_requests_counts_only_expired(monkeypatch) -> None
 
     assert count == 2
     assert client.swaprequest.update.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_expire_due_drop_requests_handles_legacy_null_expires_at(monkeypatch) -> None:
+    async def fake_audit(**kwargs):
+        return None
+
+    async def fake_notification(*, user_id: str, notif_type: str, message: str, **kwargs):
+        return SimpleNamespace(id=f"notif-{user_id}", user_id=user_id, type=notif_type, message=message)
+
+    monkeypatch.setattr(drop_expiry, "create_audit_log", fake_audit)
+    monkeypatch.setattr(drop_expiry, "create_notification", fake_notification)
+
+    rows = [
+        SimpleNamespace(
+            id="drop-null-future",
+            type="drop",
+            status="OPEN",
+            version=1,
+            expires_at=None,
+            initiated_by="staff-a",
+            pickup_user_id=None,
+            requester_assignment=SimpleNamespace(
+                shift=SimpleNamespace(
+                    location_id="loc-1",
+                    start_utc=datetime(2026, 2, 28, 20, 0, tzinfo=timezone.utc),
+                )
+            ),
+        ),
+        SimpleNamespace(
+            id="drop-null-past",
+            type="drop",
+            status="PENDING_MANAGER",
+            version=2,
+            expires_at=None,
+            initiated_by="staff-b",
+            pickup_user_id="staff-c",
+            requester_assignment=SimpleNamespace(
+                shift=SimpleNamespace(
+                    location_id="loc-1",
+                    start_utc=datetime(2026, 2, 27, 11, 0, tzinfo=timezone.utc),
+                )
+            ),
+        ),
+    ]
+    client = SimpleNamespace(
+        swaprequest=SimpleNamespace(
+            find_many=AsyncMock(return_value=rows),
+            update=AsyncMock(return_value=SimpleNamespace(status="EXPIRED")),
+        ),
+        managerlocationassignment=SimpleNamespace(find_many=AsyncMock(return_value=[])),
+    )
+
+    count = await drop_expiry.expire_due_drop_requests(
+        now=datetime(2026, 2, 27, 12, 0, tzinfo=timezone.utc),
+        db=client,
+        ws_manager=None,
+    )
+
+    assert count == 1
+    assert client.swaprequest.update.await_count == 1

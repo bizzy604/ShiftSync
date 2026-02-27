@@ -295,13 +295,13 @@ async def seed() -> None:
         await ensure_manager_location(db, users["sam@coastaleats.com"].id, locations["Brooklyn Tap"].id)
 
         staff_setup = {
-            "carlos@coastaleats.com": {"skills": ["bartender"], "locations": ["Ocean Ave", "Midtown Bistro"]},
+            "carlos@coastaleats.com": {"skills": ["bartender", "server"], "locations": ["Ocean Ave", "Midtown Bistro"]},
             "maria@coastaleats.com": {"skills": ["bartender", "server"], "locations": ["Ocean Ave"]},
             "amy@coastaleats.com": {"skills": ["server", "host"], "locations": ["Ocean Ave"]},
-            "ben@coastaleats.com": {"skills": ["server"], "locations": ["Ocean Ave"]},
-            "alex@coastaleats.com": {"skills": ["line cook"], "locations": ["Ocean Ave", "Pier 39"]},
-            "dana@coastaleats.com": {"skills": ["bartender"], "locations": ["Ocean Ave"]},
-            "finn@coastaleats.com": {"skills": ["host"], "locations": ["Midtown Bistro"]},
+            "ben@coastaleats.com": {"skills": ["server", "host"], "locations": ["Ocean Ave"]},
+            "alex@coastaleats.com": {"skills": ["line cook", "bartender"], "locations": ["Ocean Ave", "Pier 39"]},
+            "dana@coastaleats.com": {"skills": ["bartender", "host"], "locations": ["Ocean Ave"]},
+            "finn@coastaleats.com": {"skills": ["host", "server"], "locations": ["Midtown Bistro"]},
             "luna@coastaleats.com": {"skills": ["server", "host"], "locations": ["Brooklyn Tap", "Midtown Bistro"]},
         }
 
