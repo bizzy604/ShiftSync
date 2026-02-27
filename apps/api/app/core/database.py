@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import and_, delete as sa_delete, false, func, or_, select, text, update as sa_update
 from sqlalchemy.exc import NoResultFound
@@ -28,13 +29,33 @@ from app.core.models import (
 
 def _to_async_url(url: str) -> str:
     """Convert a PostgreSQL DSN to the SQLAlchemy asyncpg form."""
-    if url.startswith("postgresql+asyncpg://"):
-        return url
+    normalized = url
     if url.startswith("postgresql://"):
-        return f"postgresql+asyncpg://{url[len('postgresql://'):]}"
-    if url.startswith("postgres://"):
-        return f"postgresql+asyncpg://{url[len('postgres://'):]}"
-    return url
+        normalized = f"postgresql+asyncpg://{url[len('postgresql://'):]}"
+    elif url.startswith("postgres://"):
+        normalized = f"postgresql+asyncpg://{url[len('postgres://'):]}"
+
+    # asyncpg expects `ssl`, while many hosted URLs provide `sslmode`.
+    parsed = urlsplit(normalized)
+    if parsed.scheme != "postgresql+asyncpg":
+        return normalized
+
+    query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    has_ssl = any(key.lower() == "ssl" for key, _ in query_pairs)
+    sslmode_value: str | None = None
+    filtered_pairs: list[tuple[str, str]] = []
+
+    for key, value in query_pairs:
+        if key.lower() == "sslmode":
+            sslmode_value = value
+            continue
+        filtered_pairs.append((key, value))
+
+    if not has_ssl and sslmode_value is not None:
+        filtered_pairs.append(("ssl", sslmode_value))
+
+    rebuilt_query = urlencode(filtered_pairs, doseq=True)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, rebuilt_query, parsed.fragment))
 
 
 settings = get_settings()
