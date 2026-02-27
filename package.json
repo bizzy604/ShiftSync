@@ -9,6 +9,9 @@
   "scripts": {
     "web:dev": "npm --workspace apps/web run dev",
     "web:build": "npm --workspace apps/web run build",
+    "api:test": "cd apps/api && python -m pytest -q",
+    "api:boundaries": "python scripts/check_module_boundaries.py",
+    "quality:check": "npm run api:boundaries && npm run api:test && npm run web:build",
     "db:upgrade": "python scripts/alembic_migrate.py upgrade",
     "db:downgrade": "python scripts/alembic_migrate.py downgrade",
     "db:stamp": "python scripts/alembic_migrate.py stamp",

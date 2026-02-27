@@ -5,8 +5,8 @@ FUNCTION:
     Implements reusable domain service logic for `constraint_engine` workflows.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/assignments.py
-    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/app/modules/assignments/router.py
+    - /apps/api/app/modules/swaps/router.py
     - /apps/api/tests/unit/test_constraint_engine.py
 
 IMPORTANCE:

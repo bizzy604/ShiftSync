@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `location` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/locations.py
+    - /apps/api/app/modules/locations/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

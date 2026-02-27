@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `swap` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/app/modules/swaps/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

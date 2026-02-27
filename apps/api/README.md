@@ -1,4 +1,4 @@
-﻿# ShiftSync Backend API
+# ShiftSync Backend API
 
 FastAPI-based REST API for the ShiftSync multi-location restaurant scheduling platform.
 
@@ -245,9 +245,15 @@ pytest tests/unit/test_constraint_engine.py`n`n# Route surface integration check
 
 # Verbose output
 pytest -v
+
+# From repository root: enforce modular boundaries
+python scripts/check_module_boundaries.py
 ```
 
 ## Project Structure
+
+Primary domain implementation is module-first under `app/modules/*`.
+Legacy `app/api/routes/*` compatibility package has been removed. Domain routers live in `app/modules/*`.
 
 ```
 apps/api/
@@ -256,17 +262,6 @@ apps/api/
 â”‚   â”œâ”€â”€ api/
 â”‚   â”‚   â”œâ”€â”€ router.py        # Main API router
 â”‚   â”‚   â”œâ”€â”€ deps.py          # FastAPI dependencies (auth, RBAC)
-â”‚   â”‚   â””â”€â”€ routes/          # Route handlers (thin layer)
-â”‚   â”‚       â”œâ”€â”€ auth.py
-â”‚   â”‚       â”œâ”€â”€ users.py
-â”‚   â”‚       â”œâ”€â”€ locations.py
-â”‚   â”‚       â”œâ”€â”€ shifts.py
-â”‚   â”‚       â”œâ”€â”€ assignments.py
-â”‚   â”‚       â”œâ”€â”€ swaps.py
-â”‚   â”‚       â”œâ”€â”€ notifications.py
-â”‚   â”‚       â”œâ”€â”€ analytics.py
-â”‚   â”‚       â”œâ”€â”€ audit.py
-â”‚   â”‚       â””â”€â”€ realtime.py
 â”‚   â”œâ”€â”€ core/
 â”‚   â”‚   â”œâ”€â”€ config.py        # Settings (Pydantic)
 â”‚   â”‚   â”œâ”€â”€ database.py      # SQLAlchemy engine, Prisma-like facade
@@ -428,10 +423,11 @@ apps/api/tests/
 
 The backend includes folder-level implementation guides:
 - `app/api/README.md`
-- `app/api/routes/README.md`
+- `app/modules/README.md (or domain README files under app/modules/*)`
 - `app/core/README.md`
 - `app/services/README.md`
 - `app/schemas/README.md`
 
 Cross-layer conventions:
 - `../../Docs/MAINTAINABILITY_GUIDE.md`
+

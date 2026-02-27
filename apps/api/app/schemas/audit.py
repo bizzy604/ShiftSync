@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `audit` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/audit.py
+    - /apps/api/app/modules/audit/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

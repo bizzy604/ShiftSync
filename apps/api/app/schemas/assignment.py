@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `assignment` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/assignments.py
+    - /apps/api/app/modules/assignments/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

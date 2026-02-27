@@ -20,7 +20,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.deps import CurrentUser
-from app.api.routes import swaps
+from app.modules.swaps import service as swaps
 
 
 @pytest.mark.asyncio

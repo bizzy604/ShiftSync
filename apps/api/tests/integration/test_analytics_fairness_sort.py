@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.api.deps import CurrentUser
-from app.api.routes import analytics
+from app.modules.analytics import service as analytics_service
 
 
 @pytest.mark.asyncio
@@ -50,15 +50,15 @@ async def test_fairness_report_sorts_by_absolute_variance(monkeypatch) -> None:
         SimpleNamespace(user_id=alice.id, shift=shift_a1, user=alice),
     ]
 
-    fake_prisma = SimpleNamespace(
-        userlocationcertification=SimpleNamespace(find_many=AsyncMock(return_value=certs)),
-        shift=SimpleNamespace(find_many=AsyncMock(return_value=shifts)),
-        shiftassignment=SimpleNamespace(find_many=AsyncMock(return_value=assignments)),
+    fake_repo = SimpleNamespace(
+        find_location=AsyncMock(return_value=location),
+        list_active_staff_certifications=AsyncMock(return_value=certs),
+        list_shifts_in_date_range=AsyncMock(return_value=shifts),
+        list_assigned_shift_assignments=AsyncMock(return_value=assignments),
     )
-    monkeypatch.setattr(analytics, "prisma", fake_prisma)
-    monkeypatch.setattr(analytics, "_location_or_404", AsyncMock(return_value=location))
+    monkeypatch.setattr(analytics_service, "get_analytics_repository", lambda: fake_repo)
 
-    response = await analytics.fairness_report(
+    response = await analytics_service.fairness_report(
         location_id="loc-1",
         start_date=date(2026, 1, 5),
         end_date=date(2026, 1, 11),

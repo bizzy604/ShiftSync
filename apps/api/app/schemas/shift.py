@@ -5,8 +5,8 @@ FUNCTION:
     Defines Pydantic API contract models for `shift` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/shifts.py
-    - /apps/api/app/api/routes/skills.py
+    - /apps/api/app/modules/shifts/router.py
+    - /apps/api/app/modules/skills/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

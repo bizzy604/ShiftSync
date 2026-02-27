@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `analytics` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/analytics.py
+    - /apps/api/app/modules/analytics/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

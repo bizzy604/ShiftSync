@@ -14,18 +14,28 @@ IMPORTANCE:
 
 from fastapi import APIRouter
 
-from app.api.routes import analytics, assignments, audit, auth, locations, notifications, realtime, shifts, swaps, users, skills
+from app.modules import analytics as analytics_module
+from app.modules import assignments as assignments_module
+from app.modules import auth as auth_module
+from app.modules import audit as audit_module
+from app.modules import locations as locations_module
+from app.modules import notifications as notifications_module
+from app.modules import realtime as realtime_module
+from app.modules import shifts as shifts_module
+from app.modules import skills as skills_module
+from app.modules import swaps as swaps_module
+from app.modules import users as users_module
 
 
 api_router = APIRouter(prefix="/api/v1")
-api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
-api_router.include_router(users.router, prefix="/users", tags=["users"])
-api_router.include_router(locations.router, prefix="/locations", tags=["locations"])
-api_router.include_router(shifts.router, prefix="/shifts", tags=["shifts"])
-api_router.include_router(assignments.router, prefix="/assignments", tags=["assignments"])
-api_router.include_router(swaps.router, prefix="/swaps", tags=["swaps"])
-api_router.include_router(notifications.router, tags=["notifications"])
-api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
-api_router.include_router(audit.router, prefix="/audit", tags=["audit"])
-api_router.include_router(realtime.router, prefix="/realtime", tags=["realtime"])
-api_router.include_router(skills.router, prefix="/skills", tags=["skills"])
+api_router.include_router(auth_module.router, prefix="/auth", tags=["auth"])
+api_router.include_router(users_module.router, prefix="/users", tags=["users"])
+api_router.include_router(locations_module.router, prefix="/locations", tags=["locations"])
+api_router.include_router(shifts_module.router, prefix="/shifts", tags=["shifts"])
+api_router.include_router(assignments_module.router, prefix="/assignments", tags=["assignments"])
+api_router.include_router(swaps_module.router, prefix="/swaps", tags=["swaps"])
+api_router.include_router(notifications_module.router, tags=["notifications"])
+api_router.include_router(analytics_module.router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(audit_module.router, prefix="/audit", tags=["audit"])
+api_router.include_router(realtime_module.router, prefix="/realtime", tags=["realtime"])
+api_router.include_router(skills_module.router, prefix="/skills", tags=["skills"])

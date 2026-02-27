@@ -2,39 +2,22 @@
 MODULE: /apps/api/app/services/user_access.py
 
 FUNCTION:
-    Implements reusable domain service logic for `user_access` workflows.
+    Maintains compatibility by re-exporting users-scope service helpers.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/users.py
+    - /apps/api/app/modules/users/router.py
+    - /apps/api/app/modules/users/router.py
 
 IMPORTANCE:
-    This module keeps domain logic reusable and consistent across routes, workers, and
-    future extensions.
+    This bridge keeps legacy imports stable while users visibility rules live in the
+    users domain service layer.
 """
 
-from app.api.deps import CurrentUser
-from app.core.database import prisma
+from app.shared.dependencies import CurrentUser
 
+from app.modules.users.service import get_manager_user_scope as get_manager_user_scope_record
 
 async def get_manager_user_scope(current_user: CurrentUser) -> set[str]:
-    """
-    Returns user IDs visible to a manager via active certifications in any assigned location.
-    """
+    """Return user ids visible to manager using users-domain visibility rules."""
 
-    if current_user.role == "admin":
-        users = await prisma.user.find_many()
-        return {user.id for user in users}
-
-    if current_user.role != "manager" or not current_user.location_ids:
-        return {current_user.id}
-
-    certs = await prisma.userlocationcertification.find_many(
-        where={
-            "location_id": {"in": current_user.location_ids},
-            "revoked_at": None,
-        },
-    )
-
-    user_ids = {cert.user_id for cert in certs}
-    user_ids.add(current_user.id)
-    return user_ids
+    return await get_manager_user_scope_record(current_user)

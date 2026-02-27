@@ -7,16 +7,16 @@ FUNCTION:
 DEPENDENCIES:
     - /apps/api/alembic/env.py
     - /apps/api/app/api/deps.py
-    - /apps/api/app/api/routes/analytics.py
-    - /apps/api/app/api/routes/assignments.py
-    - /apps/api/app/api/routes/audit.py
-    - /apps/api/app/api/routes/auth.py
-    - /apps/api/app/api/routes/locations.py
-    - /apps/api/app/api/routes/notifications.py
-    - /apps/api/app/api/routes/realtime.py
-    - /apps/api/app/api/routes/shifts.py
-    - /apps/api/app/api/routes/swaps.py
-    - /apps/api/app/api/routes/users.py
+    - /apps/api/app/modules/analytics/router.py
+    - /apps/api/app/modules/assignments/router.py
+    - /apps/api/app/modules/audit/router.py
+    - /apps/api/app/modules/auth/router.py
+    - /apps/api/app/modules/locations/router.py
+    - /apps/api/app/modules/notifications/router.py
+    - /apps/api/app/modules/realtime/router.py
+    - /apps/api/app/modules/shifts/router.py
+    - /apps/api/app/modules/swaps/router.py
+    - /apps/api/app/modules/users/router.py
     - (11 additional dependents omitted for brevity.)
 
 IMPORTANCE:

@@ -1,4 +1,4 @@
-"""
+﻿"""
 MODULE: /apps/api/tests/integration/test_assignments_notifications.py
 
 FUNCTION:
@@ -15,10 +15,13 @@ IMPORTANCE:
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+import importlib
 
 import pytest
 
-from app.api.routes import assignments
+from app.modules import assignments
+
+assignments_service = importlib.import_module("app.modules.assignments.service")
 
 
 @pytest.mark.asyncio
@@ -47,7 +50,7 @@ async def test_create_overtime_warning_notifications_notifies_unique_managers(mo
             message=kwargs["message"],
         )
 
-    monkeypatch.setattr(assignments, "create_notification", fake_create_notification)
+    monkeypatch.setattr(assignments_service, "create_notification", fake_create_notification)
 
     tx = SimpleNamespace(
         managerlocationassignment=SimpleNamespace(
@@ -74,3 +77,5 @@ async def test_create_overtime_warning_notifications_notifies_unique_managers(mo
     assert len(create_calls) == 2
     assert all(call["notif_type"] == "overtime.warning" for call in create_calls)
     assert all(call["payload"]["projectedWeeklyHours"] == 36.25 for call in create_calls)
+
+

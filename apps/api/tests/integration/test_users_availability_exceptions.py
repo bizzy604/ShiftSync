@@ -1,4 +1,4 @@
-"""
+﻿"""
 MODULE: /apps/api/tests/integration/test_users_availability_exceptions.py
 
 FUNCTION:
@@ -16,12 +16,15 @@ IMPORTANCE:
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+import importlib
 
 import pytest
 
 from app.api.deps import CurrentUser
-from app.api.routes import users
+from app.modules import users
 from app.schemas.user import ExceptionAvailabilityIn
+
+users_router = importlib.import_module("app.modules.users.router")
 
 
 @pytest.mark.asyncio
@@ -54,13 +57,13 @@ async def test_replace_availability_writes_exception_specific_date_as_date(monke
         tx=lambda: _TxContext(),
     )
 
-    monkeypatch.setattr(users, "prisma", fake_prisma)
-    monkeypatch.setattr(users, "create_audit_log", AsyncMock())
-    monkeypatch.setattr(users, "create_notification", AsyncMock())
+    monkeypatch.setattr(users_router, "prisma", fake_prisma)
+    monkeypatch.setattr(users_router, "create_audit_log", AsyncMock())
+    monkeypatch.setattr(users_router, "create_notification", AsyncMock())
     monkeypatch.setattr(
-        users,
+        users_router,
         "get_user_availability",
-        AsyncMock(return_value=users.AvailabilityResponse(user_id="staff-1", recurring=[], exceptions=[])),
+        AsyncMock(return_value=users_router.AvailabilityResponse(user_id="staff-1", recurring=[], exceptions=[])),
     )
 
     payload = users.AvailabilityReplaceRequest(
@@ -86,3 +89,5 @@ async def test_replace_availability_writes_exception_specific_date_as_date(monke
     assert len(captured_create_rows) == 1
     assert captured_create_rows[0]["specific_date"] == date(2026, 2, 27)
     assert type(captured_create_rows[0]["specific_date"]) is date
+
+

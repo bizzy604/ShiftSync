@@ -5,10 +5,10 @@ FUNCTION:
     Implements reusable domain service logic for `timezone_utils` workflows.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/analytics.py
-    - /apps/api/app/api/routes/assignments.py
-    - /apps/api/app/api/routes/shifts.py
-    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/app/modules/analytics/router.py
+    - /apps/api/app/modules/assignments/router.py
+    - /apps/api/app/modules/shifts/router.py
+    - /apps/api/app/modules/swaps/router.py
 
 IMPORTANCE:
     This module keeps domain logic reusable and consistent across routes, workers, and

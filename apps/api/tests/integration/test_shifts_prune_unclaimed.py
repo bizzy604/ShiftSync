@@ -1,4 +1,4 @@
-"""
+﻿"""
 MODULE: /apps/api/tests/integration/test_shifts_prune_unclaimed.py
 
 FUNCTION:
@@ -16,10 +16,13 @@ IMPORTANCE:
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+import importlib
 
 import pytest
 
-from app.api.routes import shifts
+from app.modules import shifts
+
+shifts_service = importlib.import_module("app.modules.shifts.service")
 
 
 @pytest.mark.asyncio
@@ -60,7 +63,7 @@ async def test_prune_past_unclaimed_shifts_hides_only_understaffed_past_shifts(m
             )
         )
     )
-    monkeypatch.setattr(shifts, "prisma", fake_prisma)
+    monkeypatch.setattr(shifts_service, "prisma", fake_prisma)
 
     result = await shifts._prune_past_unclaimed_shifts(
         [past_understaffed, past_filled, future_understaffed, past_cancelled],
@@ -68,3 +71,5 @@ async def test_prune_past_unclaimed_shifts_hides_only_understaffed_past_shifts(m
     )
 
     assert [item.id for item in result] == ["shift-2", "shift-3", "shift-4"]
+
+

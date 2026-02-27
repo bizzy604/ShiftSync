@@ -6,6 +6,7 @@ FUNCTION:
 
 DEPENDENCIES:
     - /apps/api/app/main.py
+    - /apps/api/app/modules/swaps/service.py
 
 IMPORTANCE:
     This module keeps domain logic reusable and consistent across routes, workers, and
@@ -16,7 +17,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
-from app.services.drop_expiry import expire_due_drop_requests
+from app.modules.swaps.service import expire_due_drop_requests_for_worker
 
 
 async def expire_drop_requests_once(app: Any) -> int:
@@ -30,7 +31,7 @@ async def expire_drop_requests_once(app: Any) -> int:
     """
     now = datetime.now(tz=timezone.utc)
     ws_manager = getattr(app.state, "ws_manager", None)
-    return await expire_due_drop_requests(now=now, ws_manager=ws_manager)
+    return await expire_due_drop_requests_for_worker(now=now, ws_manager=ws_manager)
 
 
 async def run_drop_expiry_worker(app: Any, interval_seconds: int = 60) -> None:

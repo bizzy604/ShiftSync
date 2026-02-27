@@ -5,7 +5,7 @@ FUNCTION:
     Implements reusable domain service logic for `swap_lifecycle` workflows.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/shifts.py
+    - /apps/api/app/modules/shifts/router.py
     - /apps/api/tests/unit/test_swap_lifecycle.py
 
 IMPORTANCE:

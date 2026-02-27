@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `user` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/users.py
+    - /apps/api/app/modules/users/router.py
     - /apps/api/tests/integration/test_users_availability_exceptions.py
 
 IMPORTANCE:

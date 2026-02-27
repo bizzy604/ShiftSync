@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `notification` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/notifications.py
+    - /apps/api/app/modules/notifications/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

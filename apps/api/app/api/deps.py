@@ -2,160 +2,33 @@
 MODULE: /apps/api/app/api/deps.py
 
 FUNCTION:
-    Defines shared FastAPI dependency helpers for auth, session validation, and access
-    control.
+    Maintains compatibility by re-exporting shared authentication dependencies.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/analytics.py
-    - /apps/api/app/api/routes/assignments.py
-    - /apps/api/app/api/routes/audit.py
-    - /apps/api/app/api/routes/auth.py
-    - /apps/api/app/api/routes/locations.py
-    - /apps/api/app/api/routes/notifications.py
-    - /apps/api/app/api/routes/shifts.py
-    - /apps/api/app/api/routes/skills.py
-    - /apps/api/app/api/routes/swaps.py
-    - /apps/api/app/api/routes/users.py
-    - /apps/api/app/services/user_access.py
-    - /apps/api/tests/integration/test_analytics_fairness_sort.py
-    - (6 additional dependents omitted for brevity.)
+    - /apps/api/app/modules/assignments/router.py
+    - /apps/api/app/modules/shifts/router.py
+    - /apps/api/app/modules/swaps/router.py
+    - /apps/api/tests/integration/*
 
 IMPORTANCE:
-    This module centralizes security and authorization checks consumed by most protected
-    endpoints.
+    This bridge lets existing imports continue working while auth/session checks are
+    centralized in `app.shared.dependencies`.
 """
 
-from dataclasses import dataclass
-from typing import Callable
+from app.shared.dependencies.auth import (
+    CurrentUser,
+    ensure_manager_location_access,
+    ensure_self_or_admin,
+    get_current_user,
+    get_session_store,
+    require_roles,
+)
 
-from fastapi import Depends, HTTPException, Request, status
-
-from app.core.config import get_settings
-from app.core.database import prisma
-from app.core.security import decode_access_token
-from app.core.session_store import SessionStore
-
-
-@dataclass
-class CurrentUser:
-    """CurrentUser type."""
-    id: str
-    role: str
-    location_ids: list[str]
-
-
-def get_session_store(request: Request) -> SessionStore:
-    """Get session store.
-    
-    Args:
-        request: Incoming FastAPI request context.
-    
-    Returns:
-        Result typed as `SessionStore`.
-    """
-    return request.app.state.session_store
-
-
-async def get_current_user(
-    request: Request,
-    session_store: SessionStore = Depends(get_session_store),
-) -> CurrentUser:
-    """Get current user.
-    
-    Args:
-        request: Incoming FastAPI request context.
-        session_store: Session store dependency used for token/session checks.
-    
-    Returns:
-        Result typed as `CurrentUser`.
-    """
-    settings = get_settings()
-    token = request.cookies.get(settings.token_cookie_name)
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
-
-    try:
-        payload = decode_access_token(token)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token.") from exc
-
-    sid = payload.get("sid")
-    if not sid:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token.")
-
-    if not await session_store.exists(f"session:{sid}"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
-
-    # Slide session TTL on activity to enforce inactivity-based expiration.
-    await session_store.touch(
-        f"session:{sid}",
-        settings.access_token_expire_minutes * 60,
-    )
-
-    user_id = payload.get("sub")
-    role = payload.get("role")
-    if not user_id or not role:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload.")
-
-    location_ids = payload.get("location_ids", [])
-    if not isinstance(location_ids, list):
-        location_ids = []
-
-    if role == "manager":
-        manager_assignments = await prisma.managerlocationassignment.find_many(
-            where={"manager_id": user_id},
-        )
-        location_ids = sorted({item.location_id for item in manager_assignments})
-    else:
-        location_ids = [item for item in location_ids if isinstance(item, str)]
-
-    return CurrentUser(id=user_id, role=role, location_ids=location_ids)
-
-
-def require_roles(*roles: str) -> Callable[[CurrentUser], CurrentUser]:
-    """Require roles.
-    
-    Args:
-        *roles: Input parameter `roles` used by this operation.
-    
-    Returns:
-        Result typed as `Callable[[CurrentUser], CurrentUser]`.
-    """
-    async def _require_role(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if current_user.role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions.")
-        return current_user
-
-    return _require_role
-
-
-def ensure_self_or_admin(current_user: CurrentUser, target_user_id: str) -> None:
-    """Ensure self or admin.
-    
-    Args:
-        current_user: Authenticated user from dependency resolution.
-        target_user_id: Identifier for the target resource.
-    
-    Returns:
-        None.
-    """
-    if current_user.role != "admin" and current_user.id != target_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
-
-
-def ensure_manager_location_access(current_user: CurrentUser, location_id: str) -> None:
-    """Ensure manager location access.
-    
-    Args:
-        current_user: Authenticated user from dependency resolution.
-        location_id: Target location identifier.
-    
-    Returns:
-        None.
-    """
-    if current_user.role == "admin":
-        return
-    if current_user.role != "manager":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Manager role required.")
-    if location_id not in current_user.location_ids:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Manager does not own this location.")
+__all__ = [
+    "CurrentUser",
+    "get_session_store",
+    "get_current_user",
+    "require_roles",
+    "ensure_self_or_admin",
+    "ensure_manager_location_access",
+]

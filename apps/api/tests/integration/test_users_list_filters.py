@@ -1,4 +1,4 @@
-"""
+﻿"""
 MODULE: /apps/api/tests/integration/test_users_list_filters.py
 
 FUNCTION:
@@ -14,11 +14,14 @@ IMPORTANCE:
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+import importlib
 
 import pytest
 
 from app.api.deps import CurrentUser
-from app.api.routes import users
+from app.modules import users
+
+users_router = importlib.import_module("app.modules.users.router")
 
 
 @pytest.mark.asyncio
@@ -35,7 +38,7 @@ async def test_admin_include_inactive_omits_active_filter(monkeypatch) -> None:
             count=AsyncMock(return_value=0),
         )
     )
-    monkeypatch.setattr(users, "prisma", fake_prisma)
+    monkeypatch.setattr(users_router, "prisma", fake_prisma)
 
     response = await users.list_users(
         location_id=None,
@@ -64,8 +67,8 @@ async def test_manager_include_inactive_is_still_limited_to_active(monkeypatch) 
             count=AsyncMock(return_value=0),
         )
     )
-    monkeypatch.setattr(users, "prisma", fake_prisma)
-    monkeypatch.setattr(users, "get_manager_user_scope", AsyncMock(return_value={"staff-1", "staff-2"}))
+    monkeypatch.setattr(users_router, "prisma", fake_prisma)
+    monkeypatch.setattr(users_router, "get_manager_user_scope", AsyncMock(return_value={"staff-1", "staff-2"}))
 
     response = await users.list_users(
         location_id=None,
@@ -79,3 +82,5 @@ async def test_manager_include_inactive_is_still_limited_to_active(monkeypatch) 
     assert response.total == 0
     assert captured_where.get("is_active") is True
     assert set(captured_where.get("id", {}).get("in", [])) == {"staff-1", "staff-2"}
+
+

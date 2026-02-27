@@ -5,11 +5,11 @@ FUNCTION:
     Implements reusable domain service logic for `notifications` workflows.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/assignments.py
-    - /apps/api/app/api/routes/notifications.py
-    - /apps/api/app/api/routes/shifts.py
-    - /apps/api/app/api/routes/swaps.py
-    - /apps/api/app/api/routes/users.py
+    - /apps/api/app/modules/assignments/router.py
+    - /apps/api/app/modules/notifications/router.py
+    - /apps/api/app/modules/shifts/router.py
+    - /apps/api/app/modules/swaps/router.py
+    - /apps/api/app/modules/users/router.py
     - /apps/api/app/services/drop_expiry.py
     - /apps/api/app/services/swap_lifecycle.py
 

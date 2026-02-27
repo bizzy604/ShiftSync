@@ -7,8 +7,8 @@ FUNCTION:
 DEPENDENCIES:
     - /apps/api/alembic/env.py
     - /apps/api/app/api/deps.py
-    - /apps/api/app/api/routes/auth.py
-    - /apps/api/app/api/routes/realtime.py
+    - /apps/api/app/modules/auth/router.py
+    - /apps/api/app/modules/realtime/router.py
     - /apps/api/app/core/database.py
     - /apps/api/app/core/security.py
     - /apps/api/app/main.py

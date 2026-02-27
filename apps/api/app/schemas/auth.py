@@ -5,7 +5,7 @@ FUNCTION:
     Defines Pydantic API contract models for `auth` requests and responses.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/auth.py
+    - /apps/api/app/modules/auth/router.py
 
 IMPORTANCE:
     This module defines API contracts that protect type safety and compatibility between

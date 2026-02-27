@@ -28,7 +28,6 @@ from app.services.errors import (
     SkillNameEmptyError,
     SkillNotFoundError,
 )
-from app.services.skill_catalog import create_skill, delete_skill, list_skills
 
 __all__ = [
     "NotificationDataClientProtocol",
@@ -41,7 +40,4 @@ __all__ = [
     "SkillAlreadyExistsError",
     "SkillNotFoundError",
     "SkillInUseError",
-    "list_skills",
-    "create_skill",
-    "delete_skill",
 ]

@@ -6,7 +6,7 @@ FUNCTION:
 
 DEPENDENCIES:
     - /apps/api/app/api/deps.py
-    - /apps/api/app/api/routes/auth.py
+    - /apps/api/app/modules/auth/router.py
     - /apps/api/app/main.py
     - /apps/api/tests/unit/test_session_store.py
 

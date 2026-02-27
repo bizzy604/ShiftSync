@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.api.deps import CurrentUser
-from app.api.routes import swaps
+from app.modules.swaps import service as swaps
 
 
 class TxContext:

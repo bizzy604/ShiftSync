@@ -14,10 +14,13 @@ IMPORTANCE:
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+import importlib
 
 import pytest
 
 from app.api import deps
+
+shared_auth_deps = importlib.import_module("app.shared.dependencies.auth")
 
 
 @pytest.mark.asyncio
@@ -47,9 +50,9 @@ async def test_get_current_user_uses_live_manager_location_assignments(monkeypat
     )
     fake_request = SimpleNamespace(cookies={"access_token": "token"})
 
-    monkeypatch.setattr(deps, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(deps, "decode_access_token", lambda token: fake_payload)
-    monkeypatch.setattr(deps, "prisma", fake_prisma)
+    monkeypatch.setattr(shared_auth_deps, "get_settings", lambda: fake_settings)
+    monkeypatch.setattr(shared_auth_deps, "decode_access_token", lambda token: fake_payload)
+    monkeypatch.setattr(shared_auth_deps, "prisma", fake_prisma)
 
     current = await deps.get_current_user(request=fake_request, session_store=fake_session_store)
 

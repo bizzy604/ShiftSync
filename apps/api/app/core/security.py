@@ -6,9 +6,9 @@ FUNCTION:
 
 DEPENDENCIES:
     - /apps/api/app/api/deps.py
-    - /apps/api/app/api/routes/auth.py
-    - /apps/api/app/api/routes/realtime.py
-    - /apps/api/app/api/routes/users.py
+    - /apps/api/app/modules/auth/router.py
+    - /apps/api/app/modules/realtime/router.py
+    - /apps/api/app/modules/users/router.py
 
 IMPORTANCE:
     This module is foundational infrastructure; regressions here can cascade across the

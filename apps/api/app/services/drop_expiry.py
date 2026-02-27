@@ -5,7 +5,7 @@ FUNCTION:
     Implements reusable domain service logic for `drop_expiry` workflows.
 
 DEPENDENCIES:
-    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/app/modules/swaps/router.py
     - /apps/api/app/services/drop_expiry_worker.py
     - /apps/api/tests/unit/test_drop_expiry.py
 

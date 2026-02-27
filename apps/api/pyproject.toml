@@ -8,3 +8,8 @@ dependencies = []
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.modular_boundaries]
+# Configuration used by scripts/check_module_boundaries.py.
+modules_root = "apps/api/app/modules"
+public_import_pattern = "app.modules.<domain>"

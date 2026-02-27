@@ -1,4 +1,4 @@
-"""
+﻿"""
 MODULE: /apps/api/tests/integration/test_skills_routes.py
 
 FUNCTION:
@@ -18,9 +18,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.api.deps import CurrentUser
-from app.api.routes import skills
+from app.modules import skills
 from app.core.errors import AppError
-from app.services import skill_catalog
+from app.modules.skills import service as skills_service
 
 
 @pytest.mark.asyncio
@@ -47,8 +47,8 @@ async def test_create_skill_success(monkeypatch) -> None:
 
     fake_prisma.tx = lambda: _TxContext()
 
-    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
-    monkeypatch.setattr(skill_catalog, "create_audit_log", fake_audit)
+    monkeypatch.setattr(skills_service, "prisma", fake_prisma)
+    monkeypatch.setattr(skills_service, "create_audit_log", fake_audit)
 
     result = await skills.create_skill(
         payload=skills.SkillCreateRequest(name="Expeditor"),
@@ -65,7 +65,7 @@ async def test_create_skill_duplicate_is_rejected(monkeypatch) -> None:
     fake_prisma = SimpleNamespace(
         skill=SimpleNamespace(find_many=AsyncMock(return_value=[SimpleNamespace(id="skill-1", name="Server")])),
     )
-    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
+    monkeypatch.setattr(skills_service, "prisma", fake_prisma)
 
     with pytest.raises(AppError) as exc:
         await skills.create_skill(
@@ -83,7 +83,7 @@ async def test_delete_skill_in_use_is_rejected(monkeypatch) -> None:
         userskill=SimpleNamespace(count=AsyncMock(return_value=2)),
         shift=SimpleNamespace(count=AsyncMock(return_value=0)),
     )
-    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
+    monkeypatch.setattr(skills_service, "prisma", fake_prisma)
 
     with pytest.raises(AppError) as exc:
         await skills.delete_skill(
@@ -118,8 +118,8 @@ async def test_delete_skill_success(monkeypatch) -> None:
 
     fake_prisma.tx = lambda: _TxContext()
 
-    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
-    monkeypatch.setattr(skill_catalog, "create_audit_log", fake_audit)
+    monkeypatch.setattr(skills_service, "prisma", fake_prisma)
+    monkeypatch.setattr(skills_service, "create_audit_log", fake_audit)
 
     result = await skills.delete_skill(
         skill_id="skill-1",
@@ -128,3 +128,5 @@ async def test_delete_skill_success(monkeypatch) -> None:
 
     assert result == {"deleted": True}
     assert audit_calls and audit_calls[0]["action_type"] == "skill.catalog.remove"
+
+
