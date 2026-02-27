@@ -5,8 +5,9 @@ import { format, startOfWeek, addDays, subDays, parseISO } from 'date-fns';
 import { AppLayout } from '../../components/NavBar';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
+import { NotificationCentre } from '../staff/NotificationCentre';
 
-import { useOvertimeDashboard, useFairnessReport, useLocations } from '../../lib/api/hooks';
+import { useNotifications, useOvertimeDashboard, useFairnessReport, useLocations } from '../../lib/api/hooks';
 import { OvertimeStaffRow, FairnessStaffRow } from '../../lib/api/types';
 
 /* ========== Sub-Components ========== */
@@ -168,8 +169,8 @@ function FairnessReportUI({ staff, overallScore, grade }: { staff: FairnessStaff
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-border-gray overflow-hidden shadow-sm">
-                <table className="w-full">
+            <div className="bg-white rounded-xl border border-border-gray overflow-x-auto shadow-sm">
+                <table className="w-full min-w-[680px]">
                     <thead>
                         <tr className="bg-gray-50 border-b border-border-gray">
                             <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase">Staff Name</th>
@@ -214,9 +215,12 @@ type TabType = 'overtime' | 'fairness';
 export function OvertimeFairness() {
     const [activeTab, setActiveTab] = useState<TabType>('overtime');
     const [weekStart, setWeekStart] = useState(() => format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
     const { data: locationsData } = useLocations();
+    const { data: notificationsData } = useNotifications();
     const location = locationsData?.locations?.[0]; // Assume first location for demo/manager scope
+    const unreadCount = notificationsData?.unread_count || 0;
 
     const { data: overtimeData, isLoading: isLoadingOT } = useOvertimeDashboard(location?.id || '', weekStart);
     const { data: fairnessData, isLoading: isLoadingFairness } = useFairnessReport(location?.id || '', weekStart, format(addDays(parseISO(weekStart), 6), 'yyyy-MM-dd'));
@@ -244,10 +248,16 @@ export function OvertimeFairness() {
     );
 
     return (
-        <AppLayout title="Analytics" role="manager" centerContent={centerContent}>
-            <div className="p-6 max-w-6xl mx-auto">
+        <AppLayout
+            title="Analytics"
+            role="manager"
+            centerContent={centerContent}
+            notificationCount={unreadCount}
+            onBellClick={() => setIsNotificationOpen(true)}
+        >
+            <div className="p-4 md:p-6 max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="mb-8 flex items-center justify-between">
+                <div className="mb-8 flex items-start gap-4 flex-wrap justify-between">
                     <div>
                         <h1 className="text-2xl font-black text-navy">Overtime & Fairness</h1>
                         <p className="text-gray-500 text-sm mt-1">{location?.name || 'Loading location...'} · Data updated every 30m</p>
@@ -306,6 +316,11 @@ export function OvertimeFairness() {
                     </div>
                 )}
             </div>
+
+            <NotificationCentre
+                open={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+            />
         </AppLayout>
     );
 }

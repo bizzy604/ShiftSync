@@ -61,7 +61,7 @@ function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () 
             onClose={onClose}
             title={`Edit — ${staff.name}`}
             subtitle={staff.email}
-            width="w-[480px]"
+            width="sm:w-[480px]"
             headerColor="bg-admin-slate"
         >
             <div className="p-6 space-y-6">

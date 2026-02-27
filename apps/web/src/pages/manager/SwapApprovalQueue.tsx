@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ArrowLeftRight,
     Clock,
@@ -10,13 +10,15 @@ import {
     Loader2,
 } from 'lucide-react';
 import { format, parseISO, isBefore, addHours } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 
 import { AppLayout } from '../../components/NavBar';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
+import { NotificationCentre } from '../staff/NotificationCentre';
 
-import { useSwapRequests, useSwapAction } from '../../lib/api/hooks';
+import { useNotifications, useSwapRequests, useSwapAction } from '../../lib/api/hooks';
 import { SwapRequestResponse, SwapStatus } from '../../lib/api/types';
 
 /* ========== Sub-Components ========== */
@@ -25,9 +27,10 @@ interface RequestCardProps {
     request: SwapRequestResponse;
     onAction: (id: string, action: 'approve' | 'decline' | 'reject', note?: string, isDrop?: boolean) => void;
     isPending: boolean;
+    highlighted?: boolean;
 }
 
-function RequestCard({ request, onAction, isPending }: RequestCardProps) {
+function RequestCard({ request, onAction, isPending, highlighted = false }: RequestCardProps) {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [note, setNote] = useState('');
@@ -61,8 +64,9 @@ function RequestCard({ request, onAction, isPending }: RequestCardProps) {
 
     return (
         <div
+            id={`request-${request.id}`}
             className={`bg-white rounded-xl border ${isUrgent ? 'border-danger/30 shadow-lg' : 'border-border-gray shadow-sm'
-                } p-5 transition-base hover:shadow-md ${isUrgent ? 'border-l-4 border-l-danger' : ''}`}
+                } p-5 transition-base hover:shadow-md ${isUrgent ? 'border-l-4 border-l-danger' : ''} ${highlighted ? 'ring-2 ring-teal/40' : ''}`}
         >
             {/* Urgent banner */}
             {isUrgent && (
@@ -231,11 +235,16 @@ type Tab = 'pending' | 'approved' | 'resolved' | 'expired';
 
 export function SwapApprovalQueue() {
     const [activeTab, setActiveTab] = useState<Tab>('pending');
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [searchParams] = useSearchParams();
+    const highlightedRequestId = searchParams.get('requestId');
 
     const { data, isLoading } = useSwapRequests();
+    const { data: notificationsData } = useNotifications();
     const approveMutation = useSwapAction('approve');
     const declineMutation = useSwapAction('decline');
     const rejectMutation = useSwapAction('reject');
+    const unreadCount = notificationsData?.unread_count || 0;
 
     const handleAction = (id: string, action: 'approve' | 'decline' | 'reject', note?: string, isDrop?: boolean) => {
         const mutation = action === 'approve' ? approveMutation : action === 'decline' ? declineMutation : rejectMutation;
@@ -262,6 +271,24 @@ export function SwapApprovalQueue() {
 
     const currentRequests = getTabContent();
 
+    useEffect(() => {
+        if (!highlightedRequestId) return;
+        const target = requests.find((r) => r.id === highlightedRequestId);
+        if (!target) return;
+        if (target.status === 'APPROVED') setActiveTab('approved');
+        else if (target.status === 'EXPIRED') setActiveTab('expired');
+        else if (['REJECTED', 'CANCELLED'].includes(target.status)) setActiveTab('resolved');
+        else setActiveTab('pending');
+    }, [highlightedRequestId, requests]);
+
+    useEffect(() => {
+        if (!highlightedRequestId) return;
+        const el = document.getElementById(`request-${highlightedRequestId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [highlightedRequestId, currentRequests.length, activeTab]);
+
     const tabs: { key: Tab; label: string; count?: number }[] = [
         { key: 'pending', label: 'Pending', count: pendingRequests.length },
         { key: 'approved', label: 'Approved', count: approvedRequests.length > 0 ? approvedRequests.length : undefined },
@@ -270,15 +297,20 @@ export function SwapApprovalQueue() {
     ];
 
     return (
-        <AppLayout title="Swap & Drop Requests" role="manager">
-            <div className="p-6 max-w-4xl mx-auto">
+        <AppLayout
+            title="Swap & Drop Requests"
+            role="manager"
+            notificationCount={unreadCount}
+            onBellClick={() => setIsNotificationOpen(true)}
+        >
+            <div className="p-4 md:p-6 max-w-4xl mx-auto">
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-navy">Swap & Drop Requests</h1>
                     {isLoading && <Loader2 size={24} className="animate-spin text-teal" />}
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-0 border-b border-border-gray mb-6">
+                <div className="flex gap-0 border-b border-border-gray mb-6 overflow-x-auto">
                     {tabs.map((tab) => (
                         <button
                             key={tab.key}
@@ -313,11 +345,17 @@ export function SwapApprovalQueue() {
                                 request={r}
                                 onAction={handleAction}
                                 isPending={approveMutation.isPending || declineMutation.isPending || rejectMutation.isPending}
+                                highlighted={highlightedRequestId === r.id}
                             />
                         ))}
                     </div>
                 )}
             </div>
+
+            <NotificationCentre
+                open={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+            />
         </AppLayout>
     );
 }

@@ -178,10 +178,20 @@ export function AvailabilitySetup() {
 
     if (isLoading) {
         return (
-            <AppLayout title="Availability" role="staff" notificationCount={0}>
+            <AppLayout
+                title="Availability"
+                role="staff"
+                notificationCount={unreadCount}
+                onBellClick={() => setIsNotificationOpen(true)}
+            >
                 <div className="flex items-center justify-center py-40">
                     <Loader2 className="animate-spin text-staff-purple" size={40} />
                 </div>
+
+                <NotificationCentre
+                    open={isNotificationOpen}
+                    onClose={() => setIsNotificationOpen(false)}
+                />
             </AppLayout>
         );
     }
@@ -193,7 +203,7 @@ export function AvailabilitySetup() {
             notificationCount={unreadCount}
             onBellClick={() => setIsNotificationOpen(true)}
         >
-            <div className="max-w-3xl mx-auto p-6">
+            <div className="max-w-3xl mx-auto p-4 md:p-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                     <div>

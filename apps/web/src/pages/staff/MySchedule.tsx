@@ -175,7 +175,7 @@ export function MySchedule() {
             notificationCount={unreadCount}
             onBellClick={() => setIsNotificationOpen(true)}
         >
-            <div className="max-w-3xl mx-auto p-6">
+            <div className="max-w-3xl mx-auto p-4 md:p-6">
                 {/* Notification Banner */}
                 {showNotificationBanner && swapsData?.requests.some(r => r.status === 'APPROVED') && (
                     <div className="mb-4 px-4 py-3 bg-staff-purple-50 border border-staff-purple/20 rounded-xl flex items-center gap-3 animate-fade-in">

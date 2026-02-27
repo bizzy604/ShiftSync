@@ -306,4 +306,8 @@ export async function markAllNotificationsRead(): Promise<void> {
     await api.put(`/notifications/read-all`);
 }
 
+export async function markNotificationRead(notificationId: string): Promise<void> {
+    await api.put(`/notifications/${notificationId}/read`);
+}
+
 export default api;

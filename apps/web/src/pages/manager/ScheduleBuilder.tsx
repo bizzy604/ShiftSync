@@ -4,8 +4,9 @@ import { ChevronLeft, ChevronRight, ChevronDown, Plus, AlertTriangle, X, Clock, 
 import { AppLayout } from "../../components/NavBar";
 import { Avatar } from "../../components/Avatar";
 import { Badge } from "../../components/Badge";
+import { NotificationCentre } from "../staff/NotificationCentre";
 
-import { useLocations, useShifts, useUsers, useAssignments, usePublishWeek, useOvertimeDashboard } from "../../lib/api/hooks";
+import { useLocations, useShifts, useUsers, useAssignments, usePublishWeek, useOvertimeDashboard, useNotifications } from "../../lib/api/hooks";
 import { ShiftResponse } from "../../lib/api/types";
 import { AssignmentModal } from "./AssignmentModal";
 import { CreateShiftModal } from "./CreateShiftModal";
@@ -149,6 +150,7 @@ export function ScheduleBuilder() {
     const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
     const [locationId, setLocationId] = useState<string>("");
     const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
     // Create Shift State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -156,7 +158,9 @@ export function ScheduleBuilder() {
     const [createPeriodIndex, setCreatePeriodIndex] = useState(0);
 
     const { data: locationsData } = useLocations();
+    const { data: notificationsData } = useNotifications();
     const locations = locationsData?.locations || [];
+    const unreadCount = notificationsData?.unread_count || 0;
 
     // Auto-select first location
     useEffect(() => {
@@ -193,12 +197,12 @@ export function ScheduleBuilder() {
     const currentLocation = locations.find((loc) => loc.id === locationId);
 
     const locationSelector = (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
             <div className="relative group">
                 <select
                     value={locationId}
                     onChange={(e) => setLocationId(e.target.value)}
-                    className="appearance-none bg-white/10 hover:bg-white/20 text-sm font-medium text-white px-3 py-1.5 pl-8 pr-8 rounded-lg outline-none transition-base cursor-pointer"
+                    className="appearance-none bg-white/10 hover:bg-white/20 text-xs md:text-sm font-medium text-white px-2.5 md:px-3 py-1.5 pl-7 md:pl-8 pr-7 md:pr-8 rounded-lg outline-none transition-base cursor-pointer"
                 >
                     {locations.map((loc) => (
                         <option key={loc.id} value={loc.id} className="text-navy">
@@ -210,11 +214,11 @@ export function ScheduleBuilder() {
                 <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none" />
             </div>
 
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                 <button onClick={handlePreviousWeek} className="p-1 rounded hover:bg-white/10 transition-base">
                     <ChevronLeft size={18} />
                 </button>
-                <span className="font-medium whitespace-nowrap min-w-[180px] text-center">{headerDateRange}</span>
+                <span className="font-medium whitespace-nowrap min-w-[130px] md:min-w-[180px] text-center">{headerDateRange}</span>
                 <button onClick={handleNextWeek} className="p-1 rounded hover:bg-white/10 transition-base">
                     <ChevronRight size={18} />
                 </button>
@@ -228,6 +232,8 @@ export function ScheduleBuilder() {
             role="manager"
             centerContent={locationSelector}
             sidebar={locationId ? <StaffSidebar locationId={locationId} weekStart={weekStartStr} /> : null}
+            notificationCount={unreadCount}
+            onBellClick={() => setIsNotificationOpen(true)}
         >
             <div className="flex flex-col h-full bg-gray-50/50">
                 {/* Schedule Grid */}
@@ -333,6 +339,11 @@ export function ScheduleBuilder() {
                 locationId={locationId}
                 defaultDateStr={createDate}
                 defaultPeriodIndex={createPeriodIndex}
+            />
+
+            <NotificationCentre
+                open={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
             />
         </AppLayout>
     );

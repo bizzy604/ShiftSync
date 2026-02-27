@@ -167,6 +167,44 @@ def _constraint_details(result: object) -> list[dict[str, Any]]:
     ]
 
 
+def _weekly_hours_warning(warnings: list[object]) -> object | None:
+    for warning in warnings:
+        if getattr(warning, "rule", None) == "WEEKLY_HOURS":
+            return warning
+    return None
+
+
+async def _create_overtime_warning_notifications(
+    *,
+    tx: object,
+    location_id: str,
+    assigned_user: object,
+    shift_id: str,
+    projected_weekly_hours: float,
+    warning_description: str,
+) -> list[object]:
+    manager_links = await tx.managerlocationassignment.find_many(where={"location_id": location_id})
+    manager_ids = sorted({item.manager_id for item in manager_links})
+    notifications: list[object] = []
+    for manager_id in manager_ids:
+        notif = await create_notification(
+            user_id=manager_id,
+            notif_type="overtime.warning",
+            message=f"Overtime warning: {assigned_user.name} projected at {projected_weekly_hours:.2f}h.",
+            payload={
+                "userId": assigned_user.id,
+                "shiftId": shift_id,
+                "locationId": location_id,
+                "projectedWeeklyHours": round(projected_weekly_hours, 2),
+                "detail": warning_description,
+            },
+            db=tx,
+            ws_manager=None,
+        )
+        notifications.append(notif)
+    return notifications
+
+
 async def _emit_assignment_conflict(
     request: Request,
     *,
@@ -438,6 +476,10 @@ async def create_assignment(
                 suggestions=suggestion_dicts,
             )
 
+        weekly_warning = _weekly_hours_warning(result.warnings)
+        overtime_warning_text = weekly_warning.description if weekly_warning is not None else ""
+        manager_overtime_notifs: list[object] = []
+
         try:
             async with prisma.tx() as tx:
                 assignment = await tx.shiftassignment.create(
@@ -459,6 +501,15 @@ async def create_assignment(
                     db=tx,
                     ws_manager=None,
                 )
+                if overtime_warning_text:
+                    manager_overtime_notifs = await _create_overtime_warning_notifications(
+                        tx=tx,
+                        location_id=shift.location_id,
+                        assigned_user=user,
+                        shift_id=shift_id,
+                        projected_weekly_hours=result.projected_weekly_hours,
+                        warning_description=overtime_warning_text,
+                    )
                 await create_audit_log(
                     actor_id=current_user.id,
                     action_type="shift.assign",
@@ -504,6 +555,12 @@ async def create_assignment(
         "notification.new",
         {"notificationId": notif.id, "type": notif.type, "message": notif.message},
     )
+    for manager_notif in manager_overtime_notifs:
+        await ws_manager.emit_to_user(
+            manager_notif.user_id,
+            "notification.new",
+            {"notificationId": manager_notif.id, "type": manager_notif.type, "message": manager_notif.message},
+        )
     return AssignmentResponse(**_to_assignment_response(assignment).model_dump())
 
 

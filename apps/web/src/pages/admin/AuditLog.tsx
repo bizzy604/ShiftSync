@@ -21,7 +21,7 @@ function DetailPanel({ entry, open, onClose }: { entry: AuditLogResponse | null;
             onClose={onClose}
             title="Audit Entry Detail"
             subtitle={`${entry.action_type} - ${entry.entity_type}`}
-            width="w-[480px]"
+            width="sm:w-[480px]"
             headerColor="bg-admin-slate"
         >
             <div className="p-6 space-y-5">

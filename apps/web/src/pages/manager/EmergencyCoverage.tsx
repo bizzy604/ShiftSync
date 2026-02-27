@@ -116,7 +116,7 @@ export function EmergencyCoverage({ open, onClose, requestId }: EmergencyCoverag
             onClose={onClose}
             title="🚨 Emergency Coverage"
             subtitle={`${shiftDate} · ${shiftInfo}`}
-            width="w-[420px]"
+            width="sm:w-[420px]"
             headerColor="bg-danger"
         >
             <div className="p-5 space-y-6">

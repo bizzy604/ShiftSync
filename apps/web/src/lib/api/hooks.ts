@@ -35,6 +35,7 @@ import {
     getUserAvailability,
     getUsers,
     markAllNotificationsRead,
+    markNotificationRead,
     notifyQualifiedStaff,
     pickupDrop,
     previewAssignment,
@@ -611,6 +612,16 @@ export function useMarkAllNotificationsRead() {
         },
         onError: (error) => {
             showError("Failed to mark notifications", getErrorMessage(error));
+        },
+    });
+}
+
+export function useMarkNotificationRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (notificationId: string) => markNotificationRead(notificationId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
         },
     });
 }

@@ -1,23 +1,18 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
+    ArrowLeftRight,
+    BarChart3,
     Bell,
     Calendar,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
+    Clock,
+    FileText,
     LayoutDashboard,
     LogOut,
     Menu,
     Users,
-    FileText,
-    Clock,
-    ArrowLeftRight,
-    BarChart3,
-    AlertTriangle,
-    Settings,
-    X,
 } from 'lucide-react';
+
 import { useAuth } from '../auth/AuthContext';
 import { Avatar } from './Avatar';
 
@@ -25,28 +20,37 @@ interface NavBarProps {
     centerContent?: React.ReactNode;
     notificationCount?: number;
     onBellClick?: () => void;
+    onMenuClick?: () => void;
 }
 
-export function NavBar({ centerContent, notificationCount = 0, onBellClick }: NavBarProps) {
+export function NavBar({ centerContent, notificationCount = 0, onBellClick, onMenuClick }: NavBarProps) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
     return (
-        <header className="bg-navy text-white h-14 flex items-center px-4 gap-4 shadow-md z-40 flex-shrink-0">
-            {/* Left — Logo */}
+        <header className="bg-navy text-white h-14 flex items-center px-3 md:px-4 gap-3 md:gap-4 shadow-md z-40 flex-shrink-0">
+            <button
+                onClick={onMenuClick}
+                className="md:hidden p-2 rounded-lg hover:bg-white/10 transition-base"
+                aria-label="Toggle navigation"
+            >
+                <Menu size={18} />
+            </button>
+
             <Link to={`/${user?.role}`} className="flex items-center gap-2 hover:opacity-90 transition-base">
-                <Calendar size={22} className="text-teal-light" />
-                <span className="text-lg font-bold tracking-tight">ShiftSync</span>
+                <Calendar size={20} className="text-teal-light" />
+                <span className="text-base md:text-lg font-bold tracking-tight">ShiftSync</span>
             </Link>
 
-            {/* Center */}
-            <div className="flex-1 flex items-center justify-center">{centerContent}</div>
+            <div className="flex-1 min-w-0 flex items-center justify-center overflow-x-auto px-1 [&>*]:shrink-0">
+                {centerContent}
+            </div>
 
-            {/* Right */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3 ml-auto">
                 <button
                     onClick={onBellClick}
                     className="relative p-2 rounded-lg hover:bg-white/10 transition-base"
+                    aria-label="Open notifications"
                 >
                     <Bell size={20} />
                     {notificationCount > 0 && (
@@ -57,7 +61,7 @@ export function NavBar({ centerContent, notificationCount = 0, onBellClick }: Na
                 </button>
                 <div className="flex items-center gap-2">
                     <Avatar name={user?.name ?? 'User'} size="sm" color="bg-teal" />
-                    <span className="text-sm font-medium hidden md:block">{user?.name}</span>
+                    <span className="text-sm font-medium hidden lg:block max-w-[140px] truncate">{user?.name}</span>
                 </div>
                 <button
                     onClick={async () => {
@@ -102,17 +106,18 @@ const adminNavItems: NavItem[] = [
 
 interface SidebarProps {
     role: 'admin' | 'manager' | 'staff';
+    onNavigate?: () => void;
     children?: React.ReactNode;
 }
 
-export function Sidebar({ role, children }: SidebarProps) {
+export function Sidebar({ role, onNavigate, children }: SidebarProps) {
     const location = useLocation();
     const items = role === 'admin' ? adminNavItems : role === 'manager' ? managerNavItems : staffNavItems;
 
     const accentColor = role === 'admin' ? 'admin-slate' : role === 'manager' ? 'teal' : 'staff-purple';
 
     return (
-        <aside className="w-56 bg-gray-bg border-r border-border-gray flex flex-col flex-shrink-0">
+        <aside className="w-56 h-full bg-gray-bg border-r border-border-gray flex flex-col flex-shrink-0">
             <nav className="p-3 space-y-1">
                 {items.map((item) => {
                     const isActive = location.pathname === item.path;
@@ -120,9 +125,10 @@ export function Sidebar({ role, children }: SidebarProps) {
                         <Link
                             key={item.path}
                             to={item.path}
+                            onClick={onNavigate}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-base ${isActive
-                                    ? `bg-${accentColor}/10 text-${accentColor} border-l-3 border-${accentColor}`
-                                    : 'text-gray-600 hover:bg-gray-200 hover:text-navy'
+                                ? `bg-${accentColor}/10 text-${accentColor} border-l-3 border-${accentColor}`
+                                : 'text-gray-600 hover:bg-gray-200 hover:text-navy'
                                 }`}
                             style={
                                 isActive
@@ -175,16 +181,38 @@ export function AppLayout({
     onBellClick,
     children,
 }: AppLayoutProps) {
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
     return (
         <div className="app-shell">
             <NavBar
                 centerContent={centerContent}
                 notificationCount={notificationCount}
                 onBellClick={onBellClick}
+                onMenuClick={() => setMobileNavOpen((prev) => !prev)}
             />
             <div className="flex flex-1 overflow-hidden">
-                <Sidebar role={role}>{sidebar}</Sidebar>
-                <main className="flex-1 overflow-y-auto">{children}</main>
+                <div className="hidden md:block">
+                    <Sidebar role={role}>{sidebar}</Sidebar>
+                </div>
+
+                {mobileNavOpen && (
+                    <>
+                        <button
+                            type="button"
+                            className="fixed top-14 inset-x-0 bottom-0 bg-black/30 z-30 md:hidden"
+                            onClick={() => setMobileNavOpen(false)}
+                            aria-label="Close navigation"
+                        />
+                        <div className="fixed top-14 bottom-0 left-0 z-40 md:hidden">
+                            <Sidebar role={role} onNavigate={() => setMobileNavOpen(false)}>
+                                {sidebar}
+                            </Sidebar>
+                        </div>
+                    </>
+                )}
+
+                <main className="flex-1 overflow-y-auto min-w-0">{children}</main>
             </div>
         </div>
     );

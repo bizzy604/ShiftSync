@@ -1,14 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Check, Clock, Loader2, MessageSquare, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { useSearchParams } from "react-router-dom";
 
 import { AppLayout } from "../../components/NavBar";
 import { Avatar } from "../../components/Avatar";
 import { Badge } from "../../components/Badge";
 import { Modal } from "../../components/Modal";
 import { useAuth } from "../../auth/AuthContext";
-import { useSwapAction, useSwapRequests } from "../../lib/api/hooks";
+import { useNotifications, useSwapAction, useSwapRequests } from "../../lib/api/hooks";
 import { SwapRequestResponse, SwapStatus } from "../../lib/api/types";
+import { NotificationCentre } from "./NotificationCentre";
 
 function formatShiftDate(dateValue: string | null): string {
     if (!dateValue) return "Unknown date";
@@ -44,12 +46,14 @@ function SwapCard({
     onAccept,
     onReject,
     busy,
+    highlighted = false,
 }: {
     request: SwapRequestResponse;
     actionable: boolean;
     onAccept: () => void;
     onReject: () => void;
     busy: boolean;
+    highlighted?: boolean;
 }) {
     const status = statusBadge(request.status);
     const requester = request.requester_name ?? "Staff member";
@@ -58,7 +62,10 @@ function SwapCard({
     const shiftLabel = request.shift_label ?? "Shift";
 
     return (
-        <div className="bg-white border border-border-gray rounded-xl p-5 shadow-sm">
+        <div
+            id={`request-${request.id}`}
+            className={`bg-white border border-border-gray rounded-xl p-5 shadow-sm ${highlighted ? "ring-2 ring-staff-purple/40" : ""}`}
+        >
             <div className="flex items-center gap-2 mb-3">
                 <Badge variant="purple">Swap Request</Badge>
                 <Badge variant={status.variant}>{status.label}</Badge>
@@ -114,13 +121,17 @@ function SwapCard({
 
 export function SwapInbox() {
     const { user } = useAuth();
+    const [searchParams] = useSearchParams();
+    const highlightedRequestId = searchParams.get("requestId");
     const { data, isLoading } = useSwapRequests();
+    const { data: notificationsData } = useNotifications();
     const acceptMutation = useSwapAction("accept");
     const rejectMutation = useSwapAction("reject");
 
     const [selected, setSelected] = useState<SwapRequestResponse | null>(null);
     const [action, setAction] = useState<"accept" | "reject" | null>(null);
     const [note, setNote] = useState("");
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
     const requests = data?.requests ?? [];
     const incoming = useMemo(
@@ -129,6 +140,14 @@ export function SwapInbox() {
     );
     const actionable = incoming.filter((r) => r.status === "PENDING_ACCEPTEE");
     const history = incoming.filter((r) => r.status !== "PENDING_ACCEPTEE");
+
+    useEffect(() => {
+        if (!highlightedRequestId) return;
+        const el = document.getElementById(`request-${highlightedRequestId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }, [highlightedRequestId, actionable.length, history.length]);
 
     const closeModal = () => {
         setSelected(null);
@@ -150,10 +169,16 @@ export function SwapInbox() {
     };
 
     const busy = acceptMutation.isPending || rejectMutation.isPending;
+    const unreadCount = notificationsData?.unread_count || 0;
 
     return (
-        <AppLayout title="Swap Inbox" role="staff">
-            <div className="max-w-4xl mx-auto p-6 space-y-8">
+        <AppLayout
+            title="Swap Inbox"
+            role="staff"
+            notificationCount={unreadCount}
+            onBellClick={() => setIsNotificationOpen(true)}
+        >
+            <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-8">
                 <section>
                     <div className="mb-4 flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-navy">Swap Inbox</h1>
@@ -176,6 +201,7 @@ export function SwapInbox() {
                                     request={request}
                                     actionable
                                     busy={busy}
+                                    highlighted={highlightedRequestId === request.id}
                                     onAccept={() => {
                                         setSelected(request);
                                         setAction("accept");
@@ -204,6 +230,7 @@ export function SwapInbox() {
                                     request={request}
                                     actionable={false}
                                     busy={false}
+                                    highlighted={highlightedRequestId === request.id}
                                     onAccept={() => {}}
                                     onReject={() => {}}
                                 />
@@ -262,6 +289,11 @@ export function SwapInbox() {
                     className="w-full px-3 py-2 border border-border-gray rounded-lg text-sm text-navy focus:outline-none focus:ring-2 focus:ring-staff-purple/30 resize-none"
                 />
             </Modal>
+
+            <NotificationCentre
+                open={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+            />
         </AppLayout>
     );
 }
