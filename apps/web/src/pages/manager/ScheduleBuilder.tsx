@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { format, startOfWeek, addDays, parseISO, differenceInDays } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, AlertTriangle, X, Clock, MapPin, Loader2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "../../components/NavBar";
 import { Avatar } from "../../components/Avatar";
 import { Badge } from "../../components/Badge";
@@ -147,6 +148,8 @@ function ShiftTileComponent({ shift, onClick }: { shift: ShiftResponse; onClick:
 
 /* ========== Main Component ========== */
 export function ScheduleBuilder() {
+    const [searchParams] = useSearchParams();
+    const requestedLocationId = searchParams.get("location_id");
     const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
     const [locationId, setLocationId] = useState<string>("");
     const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
@@ -165,9 +168,10 @@ export function ScheduleBuilder() {
     // Auto-select first location
     useEffect(() => {
         if (!locationId && locations.length > 0) {
-            setLocationId(locations[0].id);
+            const requestedExists = requestedLocationId && locations.some((loc) => loc.id === requestedLocationId);
+            setLocationId(requestedExists ? requestedLocationId! : locations[0].id);
         }
-    }, [locations, locationId]);
+    }, [locations, locationId, requestedLocationId]);
 
     const weekStartStr = format(weekStart, "yyyy-MM-dd");
     const { data: shiftsData, isLoading: isLoadingShifts } = useShifts(locationId, weekStartStr);

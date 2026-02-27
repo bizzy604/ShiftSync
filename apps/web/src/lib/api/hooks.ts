@@ -4,6 +4,7 @@ import {
     acceptSwap,
     addCertification,
     addSkill,
+    createSkill,
     approveDrop,
     approveSwap,
     createAssignment,
@@ -15,6 +16,7 @@ import {
     declineSwap,
     deleteAssignment,
     deleteShift,
+    deleteSkill,
     deleteUser,
     getAssignments,
     getShiftSuggestions,
@@ -65,6 +67,7 @@ import {
     ShiftCreateRequest,
     ShiftUpdateRequest,
     SkillAttachRequest,
+    SkillCreateRequest,
     SwapActionRequest,
     SwapCreateRequest,
     AuditLogQuery,
@@ -187,6 +190,37 @@ export function useSkills() {
     return useQuery({
         queryKey: keys.skills,
         queryFn: getSkills,
+    });
+}
+
+export function useCreateSkill() {
+    const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
+    return useMutation({
+        mutationFn: (data: SkillCreateRequest) => createSkill(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: keys.skills });
+            showSuccess("Skill created");
+        },
+        onError: (error) => {
+            showError("Failed to create skill", getErrorMessage(error));
+        },
+    });
+}
+
+export function useDeleteSkillCatalog() {
+    const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
+    return useMutation({
+        mutationFn: (skillId: string) => deleteSkill(skillId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: keys.skills });
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+            showSuccess("Skill deleted");
+        },
+        onError: (error) => {
+            showError("Failed to delete skill", getErrorMessage(error));
+        },
     });
 }
 

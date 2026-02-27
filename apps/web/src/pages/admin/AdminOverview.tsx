@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
 import {
     ChevronLeft,
     ChevronRight,
     MapPin,
     Users,
     AlertTriangle,
-    DollarSign,
     ArrowRight,
-    ChevronDown,
-    ExternalLink,
     AlertCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../components/NavBar';
 import { Badge } from '../../components/Badge';
 import { useLocations, useOnDuty, useUsers } from '../../lib/api/hooks';
-import { Loader2, User } from 'lucide-react';
+import { getUsers } from '../../lib/api/client';
+import { Loader2 } from 'lucide-react';
 import { format, startOfWeek, addDays } from 'date-fns';
 import { Avatar } from '../../components/Avatar';
 
@@ -82,6 +81,7 @@ interface LocationCardProps {
     id: string;
     name: string;
     iana_timezone: string;
+    staff_count: number;
 }
 
 function LocationCardComponent({ loc, onManageLocation }: { loc: LocationCardProps; onManageLocation: (locationId: string) => void }) {
@@ -102,7 +102,7 @@ function LocationCardComponent({ loc, onManageLocation }: { loc: LocationCardPro
             <div className="space-y-3 mb-4">
                 <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Total Staff:</span>
-                    <span className="font-bold text-navy">--</span>
+                    <span className="font-bold text-navy">{loc.staff_count}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
@@ -160,6 +160,25 @@ export function AdminOverview() {
     const locations = locationsData?.locations || [];
     const totalStaff = usersData?.users.filter(u => u.role === 'staff').length || 0;
 
+    const staffCountQueries = useQueries({
+        queries: locations.map((location) => ({
+            queryKey: ['admin', 'location-staff-count', location.id],
+            queryFn: () => getUsers(location.id),
+            staleTime: 60_000,
+        })),
+    });
+
+    const locationCards: LocationCardProps[] = locations.map((location, index) => {
+        const response = staffCountQueries[index]?.data;
+        const staffCount = response?.users.filter((user) => user.role === 'staff').length || 0;
+        return {
+            id: location.id,
+            name: location.name,
+            iana_timezone: location.iana_timezone,
+            staff_count: staffCount,
+        };
+    });
+
     return (
         <AppLayout title="Admin Portal" role="admin" centerContent={centerContent} notificationCount={0}>
             <div className="p-6">
@@ -180,11 +199,11 @@ export function AdminOverview() {
                                 <p>Loading location metrics...</p>
                             </div>
                         ) : (
-                            locations.map((loc) => (
+                            locationCards.map((loc) => (
                                 <LocationCardComponent
                                     key={loc.id}
                                     loc={loc}
-                                    onManageLocation={(locationId) => navigate(`/admin/staff?location_id=${encodeURIComponent(locationId)}`)}
+                                    onManageLocation={(locationId) => navigate(`/manager?location_id=${encodeURIComponent(locationId)}`)}
                                 />
                             ))
                         )}

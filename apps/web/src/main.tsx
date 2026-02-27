@@ -12,6 +12,7 @@ import { ToastProvider } from "./components/ToastProvider";
 import { AdminDashboard } from "./pages/admin/Dashboard";
 import { StaffManagement } from "./pages/admin/StaffManagement";
 import { AuditLog } from "./pages/admin/AuditLog";
+import { SkillCatalog } from "./pages/admin/SkillCatalog";
 
 // Manager screens
 import { ManagerDashboard } from "./pages/manager/Dashboard";
@@ -53,10 +54,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/staff" element={<StaffManagement />} />
                   <Route path="/admin/audit" element={<AuditLog />} />
+                  <Route path="/admin/skills" element={<SkillCatalog />} />
                 </Route>
 
                 {/* Manager Routes */}
-                <Route element={<ProtectedRoute allowRoles={["manager"]} />}>
+                <Route element={<ProtectedRoute allowRoles={["manager", "admin"]} />}>
                   <Route path="/manager" element={<ManagerDashboard />} />
                   <Route path="/manager/swaps" element={<SwapApprovalQueue />} />
                   <Route path="/manager/analytics" element={<OvertimeFairness />} />

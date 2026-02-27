@@ -30,6 +30,15 @@ export interface CertificationAttachRequest {
     location_id: string;
 }
 
+export interface SkillResponse {
+    id: string;
+    name: string;
+}
+
+export interface SkillCreateRequest {
+    name: string;
+}
+
 export interface UserUpdateRequest {
     name?: string;
     role?: Role;

@@ -34,6 +34,8 @@ import {
     AuditLogListResponse,
     AuditLogQuery,
     SkillAttachRequest,
+    SkillCreateRequest,
+    SkillResponse,
     CertificationAttachRequest,
     UserCreateRequest,
 } from "./types";
@@ -132,9 +134,18 @@ export async function updateUserAvailability(userId: string, data: AvailabilityR
 }
 
 // --- Skills ---
-export async function getSkills(): Promise<{ id: string; name: string }[]> {
+export async function getSkills(): Promise<SkillResponse[]> {
     const response = await api.get("/skills");
     return response.data;
+}
+
+export async function createSkill(data: SkillCreateRequest): Promise<SkillResponse> {
+    const response = await api.post("/skills", data);
+    return response.data;
+}
+
+export async function deleteSkill(skillId: string): Promise<void> {
+    await api.delete(`/skills/${skillId}`);
 }
 
 // --- Shifts ---

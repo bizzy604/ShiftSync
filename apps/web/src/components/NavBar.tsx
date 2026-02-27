@@ -10,6 +10,7 @@ import {
     LayoutDashboard,
     LogOut,
     Menu,
+    Settings,
     Users,
 } from 'lucide-react';
 
@@ -101,7 +102,9 @@ const staffNavItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
     { label: 'Overview', path: '/admin', icon: <LayoutDashboard size={18} /> },
     { label: 'Staff Management', path: '/admin/staff', icon: <Users size={18} /> },
+    { label: 'Skill Catalog', path: '/admin/skills', icon: <Settings size={18} /> },
     { label: 'Audit Log', path: '/admin/audit', icon: <FileText size={18} /> },
+    { label: 'Ops Mode', path: '/manager', icon: <Calendar size={18} /> },
 ];
 
 interface SidebarProps {
