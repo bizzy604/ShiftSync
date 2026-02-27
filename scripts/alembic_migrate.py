@@ -25,12 +25,30 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return parsed
 
 
+def resolve_active_env_file(env: dict[str, str]) -> Path:
+    explicit = env.get("ENV_FILE", "").strip()
+    if explicit:
+        env_path = Path(explicit)
+        if not env_path.is_absolute():
+            env_path = ROOT / env_path
+        return env_path
+
+    app_env = env.get("APP_ENV", "development").strip().lower()
+    if app_env in {"production", "prod"}:
+        return ROOT / ".env.production"
+    return ROOT / ".env.local"
+
+
 def load_env() -> dict[str, str]:
-    """Load process env with .env and .env.local overrides."""
+    """Load process env with .env and active env-file overrides."""
     env = os.environ.copy()
-    for env_file in (ROOT / ".env", ROOT / ".env.local"):
-        if env_file.exists():
-            env.update(parse_env_file(env_file))
+    base_file = ROOT / ".env"
+    if base_file.exists():
+        env.update(parse_env_file(base_file))
+
+    active_file = resolve_active_env_file(env)
+    if active_file.exists():
+        env.update(parse_env_file(active_file))
     return env
 
 

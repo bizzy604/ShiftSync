@@ -13,6 +13,25 @@ from app.services.drop_expiry_worker import run_drop_expiry_worker
 from app.services.realtime import RealtimeManager
 
 
+def _build_cors_origins() -> list[str]:
+    settings = get_settings()
+    origins = list(settings.cors_origins)
+    if settings.app_env.lower() != "production":
+        origins.extend(
+            [
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:8000",
+                "http://127.0.0.1:8000",
+            ]
+        )
+    deduped: list[str] = []
+    for origin in origins:
+        if origin and origin not in deduped:
+            deduped.append(origin)
+    return deduped
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -47,12 +66,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=_build_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

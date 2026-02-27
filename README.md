@@ -77,13 +77,23 @@ pip install -r apps/api/requirements.txt
 ```
 
 ### 3) Configure environment
-Copy `.env.example` to `.env` if needed, then verify `.env.local`.
+Use separate env files:
+- `.env.local` for local development
+- `.env.production` for production values (Supabase/Render)
 
 Current local defaults are set for Docker PostgreSQL on port `5434`:
 ```env
+APP_ENV="development"
 DATABASE_URL="postgresql://postgres:postgres@localhost:5434/shiftsync"
 DIRECT_URL="postgresql://postgres:postgres@localhost:5434/shiftsync"
 REDIS_URL="redis://localhost:6379/0"
+```
+
+Production file example:
+```env
+APP_ENV="production"
+DATABASE_URL="postgresql://postgres:%40Amoni_3350@db.uxmrjrseeqsvhlaaajba.supabase.co:5432/postgres?sslmode=require"
+REDIS_URL="redis://red-d3t94fvdiees7394qgv0:6379"
 ```
 
 ### 4) Start database (example Docker command)
@@ -107,6 +117,12 @@ npm run prisma:deploy
 python seed/seed.py
 ```
 
+Seed using production env file:
+```powershell
+$env:APP_ENV="production"
+python seed/seed.py
+```
+
 ## Environment Configuration
 
 Key environment variables:
@@ -116,11 +132,17 @@ Key environment variables:
 | `DATABASE_URL` | Yes | PostgreSQL connection string used by Prisma |
 | `DIRECT_URL` | Yes | Direct PostgreSQL URL for migrations/introspection |
 | `REDIS_URL` | No | Redis URL for session store |
+| `APP_ENV` | No | `development` (default) or `production` to select `.env.production` |
+| `ENV_FILE` | No | Explicit env file path override (highest priority) |
 | `JWT_SECRET` | Yes | JWT signing secret (HS256 mode) |
 | `JWT_ALGORITHM` | Yes | JWT algorithm (`HS256` by default) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Yes | Access token lifetime |
 | `TOKEN_COOKIE_NAME` | Yes | Auth cookie name |
 | `FRONTEND_URL` | Yes | CORS allowlist origin |
+| `FRONTEND_URLS` | No | Comma-separated CORS origins (recommended for multi-origin setups) |
+| `CORS_ALLOWED_ORIGINS` | No | Extra comma-separated CORS origins |
+| `COOKIE_SECURE` | Yes (prod) | Set `true` on HTTPS deployments |
+| `COOKIE_SAMESITE` | Yes (prod) | Use `none` for cross-site frontend/backend auth cookies |
 
 ## Running the System
 
@@ -141,6 +163,30 @@ Default local URLs:
 - WebSocket: `ws://localhost:8000/api/v1/ws`
 - Swagger: `http://localhost:8000/docs`
 - Web: `http://localhost:5173`
+
+## Deploying Backend to Render
+
+This repo now includes a Render Blueprint at `render.yaml` that deploys:
+- `shiftsync-api` (FastAPI web service)
+
+Deploy steps:
+1. Push your latest changes to GitHub.
+2. In Render, create a new Blueprint and select this repository.
+3. Confirm the generated services from `render.yaml`, then deploy.
+4. After first deploy, copy your Render API URL and set `VITE_API_BASE_URL` in Vercel, for example:
+   - `https://<your-render-service>.onrender.com/api/v1`
+5. Set `DATABASE_URL` in Render to your Supabase Postgres URL (URL-encode special characters in password, add SSL):
+   - `postgresql://postgres:%40Amoni_3350@db.uxmrjrseeqsvhlaaajba.supabase.co:5432/postgres?sslmode=require`
+6. Set `REDIS_URL` in Render to your production Redis internal URL:
+   - `redis://red-d3t94fvdiees7394qgv0:6379`
+7. Keep backend CORS/auth env vars aligned with your frontend:
+   - `FRONTEND_URL=https://shift-sync-web.vercel.app`
+   - `FRONTEND_URLS=https://shift-sync-web.vercel.app`
+   - `COOKIE_SECURE=true`
+   - `COOKIE_SAMESITE=none`
+8. Seed Supabase data from local machine after migrations:
+   - `$env:APP_ENV="production"`
+   - `python seed/seed.py`
 
 ## Operational Commands
 
@@ -214,7 +260,7 @@ Primary project docs at the repo root:
 - Prisma client errors after schema changes:
   - Run `python scripts/prisma_generate.py` again.
 - Migration issues:
-  - Confirm `.env.local` points to the intended database.
+  - Confirm the active env file (`.env.local` or `.env.production`) points to the intended database.
   - Run `npm run prisma:deploy` and review output.
 - Auth/session issues in local:
   - If Redis is unavailable, local in-memory session fallback is used.

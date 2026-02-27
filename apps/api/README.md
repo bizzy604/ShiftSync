@@ -49,12 +49,14 @@ FastAPI-based REST API for the ShiftSync multi-location restaurant scheduling pl
    ```bash
    # From project root
    cp .env.example .env
-   # Or create .env.local for local overrides
+   # Use .env.local for local and .env.production for production
    ```
 
-2. **Configure environment variables** in `.env` or `.env.local` (in project root):
+2. **Configure environment variables** in `.env.local` (local) and `.env.production` (production):
 
    ```env
+   APP_ENV="development"
+
    # Database (required)
    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/shiftsync"
    
@@ -75,6 +77,21 @@ FastAPI-based REST API for the ShiftSync multi-location restaurant scheduling pl
    
    # Frontend URL (for CORS)
    FRONTEND_URL="http://localhost:5173"
+   FRONTEND_URLS="http://localhost:5173"
+   CORS_ALLOWED_ORIGINS=""
+
+   # Cookie flags (use these values for HTTPS cross-site deployments)
+   COOKIE_SECURE=false
+   COOKIE_SAMESITE="lax"
+   ```
+
+   Example production values:
+   ```env
+   APP_ENV="production"
+   DATABASE_URL="database url"
+   REDIS_URL="redis url"
+   COOKIE_SECURE=true
+   COOKIE_SAMESITE="none"
    ```
 
 3. **Create the PostgreSQL database:**
@@ -120,7 +137,9 @@ alembic downgrade -1
 alembic upgrade <revision_id>
 ```
 
-**Note:** The `alembic.ini` file uses `DATABASE_URL` from your `.env` file automatically via `app.core.config`.
+**Note:** Alembic uses `DATABASE_URL` from the active env file selected by:
+- `ENV_FILE` (if set), otherwise
+- `APP_ENV` (`production` loads `.env.production`, default loads `.env.local`).
 
 ## Running the Server
 
@@ -146,11 +165,35 @@ set PORT=8000
 python run.py
 ```
 
+To run against production env file locally:
+
+```powershell
+$env:APP_ENV="production"
+python run.py
+```
+
 ### Production
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
+
+### Render deployment
+
+From repository root, this project includes `render.yaml` for automatic backend deploy.
+
+Render service commands in the blueprint:
+- Build: `pip install --upgrade pip && pip install -r apps/api/requirements.txt`
+- Start: `python scripts/alembic_migrate.py upgrade && python apps/api/run.py`
+
+Set `DATABASE_URL` in Render to your Supabase URL (password URL-encoded and SSL enabled), for example:
+- ``
+
+Required production env values for Vercel frontend integration:
+- `FRONTEND_URL=https://shift-sync-web.vercel.app`
+- `FRONTEND_URLS=https://shift-sync-web.vercel.app`
+- `COOKIE_SECURE=true`
+- `COOKIE_SAMESITE=none`
 
 ## API Documentation
 
@@ -339,11 +382,11 @@ All errors follow a consistent format:
 OSError: Connect call failed ('127.0.0.1', 5432)
 ```
 
-**Solution:** Ensure PostgreSQL is running and `DATABASE_URL` in `.env` is correct.
+**Solution:** Ensure PostgreSQL is running and `DATABASE_URL` in your active env file is correct.
 
 ### Redis Connection Error
 
-**Solution:** Ensure Redis is running and `REDIS_URL` in `.env` is correct.
+**Solution:** Ensure Redis is running and `REDIS_URL` in your active env file is correct.
 
 ### Module Not Found
 

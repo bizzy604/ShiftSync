@@ -55,8 +55,8 @@ async def login(
         key=settings.token_cookie_name,
         value=token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         max_age=ttl_seconds,
     )
     return LoginResponse(user=_build_auth_user(user, location_ids))
@@ -79,7 +79,12 @@ async def logout(
         except ValueError:
             pass
 
-    response.delete_cookie(settings.token_cookie_name)
+    response.delete_cookie(
+        settings.token_cookie_name,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+    )
     return {"logged_out": True}
 
 
@@ -131,8 +136,8 @@ async def refresh_token(
         key=settings.token_cookie_name,
         value=new_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         max_age=ttl_seconds,
     )
     return RefreshResponse(refreshed=True)

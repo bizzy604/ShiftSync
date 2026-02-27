@@ -1,5 +1,7 @@
 from functools import lru_cache
+import os
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,13 +9,41 @@ from dotenv import load_dotenv
 
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
+
+
+def _resolve_active_env_file() -> Path:
+    explicit = os.getenv("ENV_FILE")
+    if explicit:
+        env_path = Path(explicit)
+        if not env_path.is_absolute():
+            env_path = ROOT_DIR / env_path
+        return env_path
+
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env in {"production", "prod"}:
+        return ROOT_DIR / ".env.production"
+    return ROOT_DIR / ".env.local"
+
+
+ACTIVE_ENV_FILE = _resolve_active_env_file()
 load_dotenv(ROOT_DIR / ".env", override=False)
-load_dotenv(ROOT_DIR / ".env.local", override=True)
+load_dotenv(ACTIVE_ENV_FILE, override=True)
+
+
+def _parse_origins(value: str | None) -> list[str]:
+    if not value:
+        return []
+    parsed: list[str] = []
+    for item in value.split(","):
+        origin = item.strip().rstrip("/")
+        if origin:
+            parsed.append(origin)
+    return parsed
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(ROOT_DIR / ".env.local", ROOT_DIR / ".env"),
+        env_file=(ACTIVE_ENV_FILE, ROOT_DIR / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -32,12 +62,28 @@ class Settings(BaseSettings):
     jwt_public_key: str | None = Field(default=None, alias="JWT_PUBLIC_KEY")
     access_token_expire_minutes: int = Field(default=480, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     token_cookie_name: str = Field(default="shiftsync_token", alias="TOKEN_COOKIE_NAME")
+    cookie_secure: bool = Field(default=False, alias="COOKIE_SECURE")
+    cookie_samesite: Literal["lax", "strict", "none"] = Field(default="lax", alias="COOKIE_SAMESITE")
 
     frontend_url: str = Field(default="http://localhost:5173", alias="FRONTEND_URL")
+    frontend_urls: str | None = Field(default=None, alias="FRONTEND_URLS")
+    cors_allowed_origins: str | None = Field(default=None, alias="CORS_ALLOWED_ORIGINS")
     simulated_email_log_path: str = Field(
         default=str(ROOT_DIR / "simulated_emails.log"),
         alias="SIMULATED_EMAIL_LOG_PATH",
     )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins: list[str] = []
+        origins.extend(_parse_origins(self.frontend_url))
+        origins.extend(_parse_origins(self.frontend_urls))
+        origins.extend(_parse_origins(self.cors_allowed_origins))
+        deduped: list[str] = []
+        for origin in origins:
+            if origin not in deduped:
+                deduped.append(origin)
+        return deduped
 
 
 @lru_cache

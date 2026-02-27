@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: shiftsync-api
+    runtime: python
+    plan: free
+    rootDir: .
+    autoDeploy: true
+    healthCheckPath: /health
+    buildCommand: pip install --upgrade pip && pip install -r apps/api/requirements.txt
+    startCommand: python scripts/alembic_migrate.py upgrade && python apps/api/run.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: TOKEN_COOKIE_NAME
+        value: shiftsync_token
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: FRONTEND_URL
+        value: https://shift-sync-web.vercel.app
+      - key: FRONTEND_URLS
+        value: https://shift-sync-web.vercel.app
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        value: redis://red-d3t94fvdiees7394qgv0:6379

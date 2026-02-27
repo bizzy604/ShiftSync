@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -15,10 +16,25 @@ API_DIR = ROOT_DIR / "apps" / "api"
 if str(API_DIR) not in sys.path:
     sys.path.insert(0, str(API_DIR))
 
-from app.core.database import connect_db, disconnect_db, prisma
+
+def _resolve_active_env_file() -> Path:
+    explicit = os.getenv("ENV_FILE")
+    if explicit:
+        env_path = Path(explicit)
+        if not env_path.is_absolute():
+            env_path = ROOT_DIR / env_path
+        return env_path
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env in {"production", "prod"}:
+        return ROOT_DIR / ".env.production"
+    return ROOT_DIR / ".env.local"
+
 
 load_dotenv(ROOT_DIR / ".env", override=False)
-load_dotenv(ROOT_DIR / ".env.local", override=True)
+load_dotenv(_resolve_active_env_file(), override=True)
+
+
+from app.core.database import connect_db, disconnect_db, prisma
 
 
 def hash_password(password: str) -> str:
