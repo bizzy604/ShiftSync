@@ -6,13 +6,15 @@ services:
     rootDir: .
     autoDeploy: true
     healthCheckPath: /health
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r apps/api/requirements.txt
     startCommand: python scripts/alembic_migrate.py upgrade && python scripts/seed_production_once.py && uvicorn app.main:app --app-dir apps/api --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.11
       - key: APP_ENV
         value: production
+      - key: ENV_FILE
+        value: .env.render
       - key: RUN_PROD_SEED_ON_DEPLOY
         value: "false"
       - key: JWT_SECRET
@@ -34,4 +36,4 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
-        value: redis://red-d3t94fvdiees7394qgv0:6379
+        sync: false
