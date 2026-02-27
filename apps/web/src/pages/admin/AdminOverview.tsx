@@ -140,14 +140,14 @@ export function AdminOverview() {
     const headerDateRange = `Week of ${format(weekStart, "MMM d, yyyy")}`;
 
     const centerContent = (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <button
                 onClick={() => setWeekStart(prev => addDays(prev, -7))}
                 className="p-1 rounded hover:bg-white/10 transition-base"
             >
                 <ChevronLeft size={18} />
             </button>
-            <span className="font-medium">{headerDateRange}</span>
+            <span className="font-medium whitespace-nowrap">{headerDateRange}</span>
             <button
                 onClick={() => setWeekStart(prev => addDays(prev, 7))}
                 className="p-1 rounded hover:bg-white/10 transition-base"
@@ -181,11 +181,11 @@ export function AdminOverview() {
 
     return (
         <AppLayout title="Admin Portal" role="admin" centerContent={centerContent} notificationCount={0}>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
                 {/* Page title */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
                     <div>
-                        <h1 className="text-2xl font-bold text-navy">Global Operations Overview</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold text-navy">Global Operations Overview</h1>
                         <p className="text-sm text-gray-500 mt-1">Monitoring {locations.length} locations across all timezones.</p>
                     </div>
                 </div>
@@ -221,8 +221,8 @@ export function AdminOverview() {
                 </div>
 
                 {/* Bottom Summary */}
-                <div className="mt-6 px-6 py-5 bg-gray-50 rounded-xl border border-border-gray flex items-center justify-between flex-wrap gap-6">
-                    <div className="flex items-center gap-3">
+                <div className="mt-6 px-4 sm:px-6 py-5 bg-gray-50 rounded-xl border border-border-gray flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-4 sm:gap-6">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                         <div className="w-10 h-10 bg-navy/5 rounded-lg flex items-center justify-center text-navy">
                             <MapPin size={20} />
                         </div>
@@ -232,7 +232,7 @@ export function AdminOverview() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                         <div className="w-10 h-10 bg-teal/5 rounded-lg flex items-center justify-center text-teal">
                             <Users size={20} />
                         </div>
@@ -242,7 +242,7 @@ export function AdminOverview() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                         <div className="w-10 h-10 bg-amber-warn/5 rounded-lg flex items-center justify-center text-amber-warn">
                             <AlertTriangle size={20} />
                         </div>
@@ -252,8 +252,8 @@ export function AdminOverview() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 border-l border-border-gray pl-6">
-                        <div className="text-right">
+                    <div className="flex items-center gap-4 w-full sm:w-auto border-t sm:border-t-0 sm:border-l border-border-gray pt-4 sm:pt-0 sm:pl-6">
+                        <div className="text-left sm:text-right">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Est. Weekly Budget</p>
                             <p className="text-lg font-bold text-navy truncate max-w-[120px]">Calculated in Reports</p>
                         </div>

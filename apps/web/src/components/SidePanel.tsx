@@ -36,9 +36,9 @@ export function SidePanel({
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
             <div className="absolute inset-0" onClick={onClose} />
-            <div className={`relative w-full ${width} h-full bg-white shadow-2xl flex flex-col animate-slide-in-right`}>
+            <div className={`relative w-full max-w-full ${width} h-full bg-white shadow-2xl flex flex-col animate-slide-in-right`}>
                 {/* Header */}
-                <div className={`px-6 py-4 ${headerColor} text-white`}>
+                <div className={`px-4 sm:px-6 py-4 ${headerColor} text-white`}>
                     <div className="flex items-start justify-between">
                         <div>
                             <h2 className="text-lg font-bold">{title}</h2>

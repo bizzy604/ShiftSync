@@ -201,7 +201,7 @@ export function ScheduleBuilder() {
     const currentLocation = locations.find((loc) => loc.id === locationId);
 
     const locationSelector = (
-        <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
+        <div className="flex items-center justify-center flex-wrap gap-2 md:gap-4 text-xs md:text-sm">
             <div className="relative group">
                 <select
                     value={locationId}
@@ -222,7 +222,7 @@ export function ScheduleBuilder() {
                 <button onClick={handlePreviousWeek} className="p-1 rounded hover:bg-white/10 transition-base">
                     <ChevronLeft size={18} />
                 </button>
-                <span className="font-medium whitespace-nowrap min-w-[130px] md:min-w-[180px] text-center">{headerDateRange}</span>
+                <span className="font-medium whitespace-nowrap min-w-0 sm:min-w-[130px] md:min-w-[180px] text-center">{headerDateRange}</span>
                 <button onClick={handleNextWeek} className="p-1 rounded hover:bg-white/10 transition-base">
                     <ChevronRight size={18} />
                 </button>
@@ -241,8 +241,8 @@ export function ScheduleBuilder() {
         >
             <div className="flex flex-col h-full bg-gray-50/50">
                 {/* Schedule Grid */}
-                <div className="flex-1 overflow-auto p-4">
-                    <div className="min-w-[900px]">
+                <div className="flex-1 overflow-auto p-3 sm:p-4">
+                    <div className="min-w-[760px] md:min-w-[900px]">
                         {/* Day headers */}
                         <div className="grid grid-cols-7 gap-2 mb-2">
                             {DAYS.map((day, i) => (
@@ -307,16 +307,16 @@ export function ScheduleBuilder() {
                 </div>
 
                 {/* Bottom Action Bar */}
-                <div className="px-6 py-3 bg-white border-t border-border-gray flex items-center justify-between flex-shrink-0 shadow-sm z-10 relative">
+                <div className="px-4 sm:px-6 py-3 bg-white border-t border-border-gray flex flex-wrap items-center justify-between gap-3 flex-shrink-0 shadow-sm z-10 relative">
                     <Badge variant={isPublished ? "green" : "gray"}>{isPublished ? "Published" : "Draft"}</Badge>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 w-full sm:w-auto order-3 sm:order-none">
                         {shifts.length} total shifts scheduled
                     </p>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                         <button
                             onClick={handlePublish}
                             disabled={publishMutation.isPending || shifts.length === 0}
-                            className={`px-5 py-2 text-sm font-bold rounded-lg transition-base disabled:opacity-50 ${isPublished
+                            className={`w-full sm:w-auto px-5 py-2 text-sm font-bold rounded-lg transition-base disabled:opacity-50 ${isPublished
                                 ? "bg-teal/10 text-teal border border-teal/20"
                                 : "bg-teal text-white hover:bg-teal-dark shadow-md"
                                 }`}

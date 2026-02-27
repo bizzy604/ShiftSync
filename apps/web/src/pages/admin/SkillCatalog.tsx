@@ -51,12 +51,12 @@ export function SkillCatalog() {
                             value={newSkillName}
                             onChange={(event) => setNewSkillName(event.target.value)}
                             placeholder="Add skill (e.g. bartender)"
-                            className="flex-1 min-w-[220px] px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-admin-slate/30"
+                            className="flex-1 w-full sm:w-auto min-w-0 sm:min-w-[220px] px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-admin-slate/30"
                         />
                         <button
                             onClick={handleCreateSkill}
                             disabled={createSkillMutation.isPending || newSkillName.trim().length === 0}
-                            className="px-4 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2 disabled:opacity-50"
+                            className="w-full sm:w-auto justify-center px-4 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2 disabled:opacity-50"
                         >
                             {createSkillMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                             Add Skill
@@ -68,7 +68,7 @@ export function SkillCatalog() {
                 </div>
 
                 <div className="flex items-center gap-3 mb-4 flex-wrap">
-                    <div className="relative flex-1 min-w-[220px] max-w-sm">
+                    <div className="relative flex-1 w-full sm:w-auto min-w-0 sm:min-w-[220px] max-w-full sm:max-w-sm">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
@@ -92,10 +92,10 @@ export function SkillCatalog() {
                     ) : (
                         <div className="divide-y divide-border-gray">
                             {filtered.map((skill) => (
-                                <div key={skill.id} className="px-4 md:px-5 py-3 flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3">
+                                <div key={skill.id} className="px-4 md:px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+                                    <div className="flex items-center gap-3 min-w-0">
                                         <Badge variant="slate">Skill</Badge>
-                                        <span className="text-sm font-semibold text-navy">{skill.name}</span>
+                                        <span className="text-sm font-semibold text-navy break-words">{skill.name}</span>
                                     </div>
                                     <button
                                         onClick={() => handleDeleteSkill(skill.id, skill.name)}

@@ -32,7 +32,7 @@ function DetailPanel({ entry, open, onClose }: { entry: AuditLogResponse | null;
             width="sm:w-[520px]"
             headerColor="bg-admin-slate"
         >
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <span className="text-xs text-gray-500 block mb-0.5">Timestamp</span>
@@ -157,17 +157,17 @@ export function AuditLog() {
                 <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
                     <div>
                         <p className="text-xs text-gray-500 mb-1">Admin &gt; Audit Log</p>
-                        <h1 className="text-2xl font-bold text-navy">Audit Log</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold text-navy">Audit Log</h1>
                         <p className="text-sm text-gray-500 mt-0.5">Immutable record of scheduling and staffing actions.</p>
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-1.5 px-3 py-2 border border-border-gray rounded-lg text-sm text-navy bg-white">
+                    <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">
+                        <div className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-1.5 px-3 py-2 border border-border-gray rounded-lg text-xs sm:text-sm text-navy bg-white">
                             <Calendar size={14} className="text-gray-400" />
                             <span>{startDate} to {endDate}</span>
                         </div>
                         <button
                             onClick={() => setShowExportModal(true)}
-                            className="px-4 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2"
+                            className="w-full sm:w-auto justify-center px-4 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2"
                         >
                             <Download size={14} /> Export CSV
                         </button>
@@ -175,7 +175,7 @@ export function AuditLog() {
                 </div>
 
                 <div className="flex items-center gap-3 mb-4 flex-wrap">
-                    <div className="relative flex-1 min-w-[220px] max-w-sm">
+                    <div className="relative flex-1 w-full sm:w-auto min-w-0 sm:min-w-[220px] max-w-full sm:max-w-sm">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
@@ -190,19 +190,19 @@ export function AuditLog() {
                         type="date"
                         value={startDate}
                         onChange={(event) => setStartDate(event.target.value)}
-                        className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
                     />
                     <input
                         type="date"
                         value={endDate}
                         onChange={(event) => setEndDate(event.target.value)}
-                        className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
                     />
 
                     <select
                         value={actionFilter}
                         onChange={(event) => setActionFilter(event.target.value)}
-                        className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
                     >
                         <option value="all">All Action Types</option>
                         {actionOptions.map((action) => (
@@ -215,7 +215,7 @@ export function AuditLog() {
                     <select
                         value={actorFilter}
                         onChange={(event) => setActorFilter(event.target.value)}
-                        className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
                     >
                         <option value="all">All Actors</option>
                         {actorOptions.map((actor) => (
@@ -228,7 +228,7 @@ export function AuditLog() {
                     <select
                         value={locationId}
                         onChange={(event) => setLocationId(event.target.value)}
-                        className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
                     >
                         <option value="all">All Locations</option>
                         {locationsData?.locations.map((location) => (
@@ -296,9 +296,9 @@ export function AuditLog() {
                         </table>
                     </div>
 
-                    <div className="px-5 py-3 bg-gray-50 border-t border-border-gray flex items-center justify-between">
+                    <div className="px-4 sm:px-5 py-3 bg-gray-50 border-t border-border-gray flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <p className="text-[11px] text-gray-400 italic">Audit logs are immutable and append-only.</p>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
                             <button
                                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                                 disabled={page === 1}
@@ -331,17 +331,17 @@ export function AuditLog() {
                 title="Export Audit Log"
                 width="max-w-md"
                 footer={
-                    <div className="flex justify-end gap-3">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                         <button
                             onClick={() => setShowExportModal(false)}
-                            className="px-4 py-2 text-sm text-gray-600 hover:text-navy transition-base"
+                            className="w-full sm:w-auto px-4 py-2 text-sm text-gray-600 hover:text-navy transition-base"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleDownload}
                             disabled={exportMutation.isPending}
-                            className="px-5 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2 disabled:opacity-50"
+                            className="w-full sm:w-auto justify-center px-5 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2 disabled:opacity-50"
                         >
                             <Download size={14} />
                             {exportMutation.isPending ? 'Preparing...' : 'Download'}

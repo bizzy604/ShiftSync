@@ -38,8 +38,8 @@ function HoursBarChart({ staff }: { staff: OvertimeStaffRow[] }) {
                         const width = Math.min((s.projected_weekly_hours / maxDisplayHours) * 100, 100);
 
                         return (
-                            <div key={s.user_id} className="flex items-center gap-3">
-                                <span className="text-sm text-gray-700 w-24 truncate font-medium">{s.name}</span>
+                            <div key={s.user_id} className="flex items-center gap-2 sm:gap-3">
+                                <span className="text-xs sm:text-sm text-gray-700 w-20 sm:w-24 truncate font-medium">{s.name}</span>
                                 <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
                                     <div
                                         className={`h-7 rounded-full ${barColor} transition-all duration-500 flex items-center justify-end pr-2`}
@@ -48,7 +48,7 @@ function HoursBarChart({ staff }: { staff: OvertimeStaffRow[] }) {
                                         <span className="text-[10px] font-bold text-white">{s.projected_weekly_hours.toFixed(1)}h</span>
                                     </div>
                                 </div>
-                                <div className="w-28 flex-shrink-0">
+                                <div className="w-20 sm:w-28 flex-shrink-0">
                                     {status === 'red' && <Badge variant="red">Overtime</Badge>}
                                     {status === 'amber' && <Badge variant="amber">Near limit</Badge>}
                                 </div>
@@ -58,7 +58,7 @@ function HoursBarChart({ staff }: { staff: OvertimeStaffRow[] }) {
                 </div>
 
                 {/* Legend */}
-                <div className="flex items-center gap-4 mt-6 pt-3 border-t border-border-gray text-[10px] text-gray-500">
+                <div className="flex items-center flex-wrap gap-3 mt-6 pt-3 border-t border-border-gray text-[10px] text-gray-500">
                     <span className="flex items-center gap-1">
                         <span className="w-4 border-t-2 border-dashed border-amber-warn" /> 35h warning
                     </span>

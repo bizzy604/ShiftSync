@@ -97,7 +97,7 @@ function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () 
             width="sm:w-[480px]"
             headerColor="bg-admin-slate"
         >
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-6">
                 <div className="space-y-3">
                     <div>
                         <label className="block text-sm font-medium text-navy mb-1.5">Name</label>
@@ -163,17 +163,17 @@ function EditStaffDrawer({ open, onClose, staff }: { open: boolean; onClose: () 
                     </button>
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                     <button
                         onClick={handleSave}
                         disabled={updateMutation.isPending}
-                        className="flex-1 py-2.5 bg-admin-slate text-white text-sm font-semibold rounded-lg hover:bg-admin-slate-light transition-base disabled:opacity-50"
+                        className="w-full sm:flex-1 py-2.5 bg-admin-slate text-white text-sm font-semibold rounded-lg hover:bg-admin-slate-light transition-base disabled:opacity-50"
                     >
                         {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                     </button>
                     <button
                         onClick={onClose}
-                        className="px-5 py-2.5 text-sm text-gray-600 border border-border-gray rounded-lg hover:bg-gray-50 transition-base"
+                        className="w-full sm:w-auto px-5 py-2.5 text-sm text-gray-600 border border-border-gray rounded-lg hover:bg-gray-50 transition-base"
                     >
                         Cancel
                     </button>
@@ -287,19 +287,19 @@ export function StaffManagement() {
                 <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
                     <div>
                         <p className="text-xs text-gray-500 mb-1">Admin &gt; Staff Management</p>
-                        <h1 className="text-2xl font-bold text-navy">Staff Management</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold text-navy">Staff Management</h1>
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">
                         <button
                             onClick={() => setShowInviteModal(true)}
-                            className="px-4 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base"
+                            className="w-full sm:w-auto px-4 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base"
                         >
                             Invite Staff Member
                         </button>
                         <button
                             onClick={handleExportCsv}
                             disabled={filteredStaff.length === 0}
-                            className="px-4 py-2.5 border border-border-gray text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-base flex items-center gap-2 disabled:opacity-50"
+                            className="w-full sm:w-auto justify-center px-4 py-2.5 border border-border-gray text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-base flex items-center gap-2 disabled:opacity-50"
                         >
                             <Download size={14} /> Export CSV
                         </button>
@@ -307,7 +307,7 @@ export function StaffManagement() {
                 </div>
 
                 <div className="flex items-center gap-3 mb-4 flex-wrap">
-                    <div className="relative flex-1 min-w-[220px] max-w-sm">
+                    <div className="relative flex-1 w-full sm:w-auto min-w-0 sm:min-w-[220px] max-w-full sm:max-w-sm">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
@@ -321,7 +321,7 @@ export function StaffManagement() {
                     <select
                         value={selectedLocationId}
                         onChange={(event) => setSelectedLocationId(event.target.value)}
-                        className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
                     >
                         <option value="all">All Locations</option>
                         {locationsData?.locations.map((location) => (
@@ -334,7 +334,7 @@ export function StaffManagement() {
                     <select
                         value={statusFilter}
                         onChange={(event) => setStatusFilter(event.target.value as 'all' | 'active' | 'inactive')}
-                        className="px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg border border-border-gray text-sm text-navy bg-white"
                     >
                         <option value="all">All Status</option>
                         <option value="active">Active</option>
@@ -420,7 +420,7 @@ export function StaffManagement() {
                         </table>
                     </div>
 
-                    <div className="px-5 py-3 bg-gray-50 border-t border-border-gray flex items-center justify-between">
+                    <div className="px-4 sm:px-5 py-3 bg-gray-50 border-t border-border-gray flex items-center justify-between flex-wrap gap-3">
                         <button
                             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                             disabled={page === 1}
@@ -454,17 +454,17 @@ export function StaffManagement() {
                 title="Invite Staff Member"
                 width="max-w-md"
                 footer={
-                    <div className="flex justify-end gap-3">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                         <button
                             onClick={() => setShowInviteModal(false)}
-                            className="px-4 py-2 text-sm text-gray-600 hover:text-navy transition-base"
+                            className="w-full sm:w-auto px-4 py-2 text-sm text-gray-600 hover:text-navy transition-base"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleInvite}
                             disabled={inviteMutation.isPending || !inviteEmail || !inviteName}
-                            className="px-5 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2 disabled:opacity-50"
+                            className="w-full sm:w-auto justify-center px-5 py-2.5 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-dark transition-base flex items-center gap-2 disabled:opacity-50"
                         >
                             <Mail size={14} />
                             {inviteMutation.isPending ? 'Sending...' : 'Send Invite'}
