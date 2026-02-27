@@ -354,7 +354,69 @@ export function StaffManagement() {
                 )}
 
                 <div className="bg-white rounded-xl border border-border-gray shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
+                    <div className="md:hidden divide-y divide-border-gray">
+                        {pagedStaff.map((user) => (
+                            <div key={user.id} className="p-4 space-y-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <Avatar name={user.name} size="sm" color={!user.is_active ? 'bg-gray-400' : 'bg-admin-slate'} />
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-navy truncate">{user.name}</p>
+                                            <p className="text-xs text-gray-500 break-all">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <Badge variant={user.is_active ? 'green' : 'gray'}>
+                                        {user.is_active ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div>
+                                        <p className="text-gray-400 uppercase font-bold">Role</p>
+                                        <p className="text-gray-700 capitalize">{user.role}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400 uppercase font-bold">Desired Hrs</p>
+                                        <p className="text-navy font-semibold">{user.desired_hours_per_week}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-gray-400 uppercase font-bold">Timezone</p>
+                                        <p className="text-gray-700 break-all">{user.home_timezone || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 pt-1">
+                                    <button
+                                        onClick={() => setEditStaff(user)}
+                                        className="flex-1 px-3 py-2 rounded-lg border border-border-gray text-sm text-gray-600 hover:text-navy hover:bg-gray-50 transition-base flex items-center justify-center gap-2"
+                                        title="Edit user"
+                                    >
+                                        <Edit size={14} />
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => handleToggleActive(user)}
+                                        disabled={quickUpdateMutation.isPending}
+                                        className={`flex-1 px-3 py-2 rounded-lg text-sm transition-base disabled:opacity-50 flex items-center justify-center gap-2 ${user.is_active
+                                            ? 'border border-danger/30 text-danger hover:bg-danger/5'
+                                            : 'border border-success/30 text-success hover:bg-success/5'
+                                            }`}
+                                        title={user.is_active ? 'Deactivate user' : 'Activate user'}
+                                    >
+                                        {user.is_active ? <Trash2 size={14} /> : <Check size={14} />}
+                                        {user.is_active ? 'Deactivate' : 'Activate'}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        {!isLoading && pagedStaff.length === 0 && (
+                            <div className="px-5 py-10 text-center text-sm text-gray-500">
+                                No users match the selected filters.
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full min-w-[860px]">
                             <thead>
                                 <tr className="bg-gray-50 border-b border-border-gray">

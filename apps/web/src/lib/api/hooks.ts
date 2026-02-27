@@ -39,6 +39,7 @@ import {
     getUsers,
     markAllNotificationsRead,
     markNotificationRead,
+    getNotificationPreferences,
     notifyQualifiedStaff,
     pickupDrop,
     previewAssignment,
@@ -49,6 +50,7 @@ import {
     updateShift,
     updateUser,
     updateUserAvailability,
+    updateNotificationPreferences,
     getSkills,
 } from "./client";
 import {
@@ -61,6 +63,7 @@ import {
     LocationListResponse,
     LocationResponse,
     NotificationListResponse,
+    NotificationPreferencesUpdateRequest,
     OnDutyResponse,
     OvertimeDashboardResponse,
     PublishWeekRequest,
@@ -98,6 +101,7 @@ export const keys = {
     fairness: (locationId: string, startDate: string, endDate: string) => ["analytics", "fairness", locationId, startDate, endDate] as const,
     audit: (query: AuditLogQuery) => ["audit", query] as const,
     notifications: (unreadOnly: boolean) => ["notifications", { unreadOnly }] as const,
+    notificationPreferences: ["notifications", "preferences"] as const,
     suggestions: (shiftId: string) => ["shifts", shiftId, "suggestions"] as const,
 };
 
@@ -671,6 +675,29 @@ export function useMarkNotificationRead() {
         mutationFn: (notificationId: string) => markNotificationRead(notificationId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        },
+    });
+}
+
+export function useNotificationPreferences() {
+    return useQuery({
+        queryKey: keys.notificationPreferences,
+        queryFn: getNotificationPreferences,
+    });
+}
+
+export function useUpdateNotificationPreferences() {
+    const queryClient = useQueryClient();
+    const { showSuccess, showError } = useToast();
+    return useMutation({
+        mutationFn: (data: NotificationPreferencesUpdateRequest) => updateNotificationPreferences(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: keys.notificationPreferences });
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+            showSuccess("Notification preferences updated");
+        },
+        onError: (error) => {
+            showError("Failed to update notification preferences", getErrorMessage(error));
         },
     });
 }

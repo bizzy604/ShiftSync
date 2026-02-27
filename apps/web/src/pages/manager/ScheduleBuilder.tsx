@@ -152,6 +152,7 @@ export function ScheduleBuilder() {
     const requestedLocationId = searchParams.get("location_id");
     const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
     const [locationId, setLocationId] = useState<string>("");
+    const [activeMobileDayIndex, setActiveMobileDayIndex] = useState(0);
     const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
@@ -198,7 +199,14 @@ export function ScheduleBuilder() {
 
     const dayDates = Array.from({ length: 7 }).map((_, i) => format(addDays(weekStart, i), "MMM d"));
     const headerDateRange = `${format(weekStart, "eee MMM d")} – ${format(addDays(weekStart, 6), "eee MMM d, yyyy")}`;
+    const shortHeaderDateRange = `${format(weekStart, "MMM d")} - ${format(addDays(weekStart, 6), "MMM d")}`;
     const currentLocation = locations.find((loc) => loc.id === locationId);
+
+    const openCreateShiftForCell = (dayIndex: number, periodIndex: number) => {
+        setCreateDate(format(addDays(weekStart, dayIndex), "yyyy-MM-dd"));
+        setCreatePeriodIndex(periodIndex);
+        setIsCreateModalOpen(true);
+    };
 
     const locationSelector = (
         <div className="flex items-center justify-center flex-wrap gap-2 md:gap-4 text-xs md:text-sm">
@@ -206,7 +214,7 @@ export function ScheduleBuilder() {
                 <select
                     value={locationId}
                     onChange={(e) => setLocationId(e.target.value)}
-                    className="appearance-none bg-white/10 hover:bg-white/20 text-xs md:text-sm font-medium text-white px-2.5 md:px-3 py-1.5 pl-7 md:pl-8 pr-7 md:pr-8 rounded-lg outline-none transition-base cursor-pointer"
+                    className="appearance-none bg-white/10 hover:bg-white/20 text-xs md:text-sm font-medium text-white px-2.5 md:px-3 py-1.5 pl-7 md:pl-8 pr-7 md:pr-8 rounded-lg outline-none transition-base cursor-pointer max-w-[155px] sm:max-w-none"
                 >
                     {locations.map((loc) => (
                         <option key={loc.id} value={loc.id} className="text-navy">
@@ -222,7 +230,8 @@ export function ScheduleBuilder() {
                 <button onClick={handlePreviousWeek} className="p-1 rounded hover:bg-white/10 transition-base">
                     <ChevronLeft size={18} />
                 </button>
-                <span className="font-medium whitespace-nowrap min-w-0 sm:min-w-[130px] md:min-w-[180px] text-center">{headerDateRange}</span>
+                <span className="font-medium whitespace-nowrap text-center md:hidden">{shortHeaderDateRange}</span>
+                <span className="hidden md:inline font-medium whitespace-nowrap min-w-[180px] text-center">{headerDateRange}</span>
                 <button onClick={handleNextWeek} className="p-1 rounded hover:bg-white/10 transition-base">
                     <ChevronRight size={18} />
                 </button>
@@ -242,8 +251,73 @@ export function ScheduleBuilder() {
             <div className="flex flex-col h-full bg-gray-50/50">
                 {/* Schedule Grid */}
                 <div className="flex-1 overflow-auto p-3 sm:p-4">
-                    <div className="min-w-[760px] md:min-w-[900px]">
-                        {/* Day headers */}
+                    {/* Mobile Day View */}
+                    <div className="md:hidden space-y-4">
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                            {DAYS.map((day, dayIndex) => {
+                                const isActive = activeMobileDayIndex === dayIndex;
+                                return (
+                                    <button
+                                        key={day}
+                                        type="button"
+                                        onClick={() => setActiveMobileDayIndex(dayIndex)}
+                                        className={`px-3 py-2 rounded-lg text-left min-w-[92px] border transition-base ${isActive
+                                            ? "bg-teal/10 text-teal border-teal/30"
+                                            : "bg-white text-gray-500 border-border-gray"
+                                            }`}
+                                    >
+                                        <p className="text-[10px] font-bold uppercase">{day.slice(0, 3)}</p>
+                                        <p className="text-xs font-medium">{dayDates[dayIndex]}</p>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {isLoadingShifts ? (
+                            <div className="flex justify-center py-10">
+                                <Loader2 className="animate-spin text-teal" size={28} />
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {PERIODS.map((period, periodIndex) => {
+                                    const cellShifts = getShiftsForCell(activeMobileDayIndex, periodIndex);
+                                    return (
+                                        <div key={period} className="bg-white border border-border-gray rounded-xl p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{period}</p>
+                                                <span className="text-[11px] text-gray-500">
+                                                    {cellShifts.length} shift{cellShifts.length === 1 ? "" : "s"}
+                                                </span>
+                                            </div>
+                                            {cellShifts.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {cellShifts.map((shift) => (
+                                                        <ShiftTileComponent
+                                                            key={shift.id}
+                                                            shift={shift}
+                                                            onClick={() => setSelectedShiftId(shift.id)}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openCreateShiftForCell(activeMobileDayIndex, periodIndex)}
+                                                    className="w-full px-3 py-3 rounded-lg border-2 border-dashed border-border-gray text-gray-500 text-xs font-semibold hover:border-teal hover:text-teal transition-base flex items-center justify-center gap-1.5"
+                                                >
+                                                    <Plus size={14} />
+                                                    Add Shift
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Desktop Grid */}
+                    <div className="hidden md:block min-w-[900px]">
                         <div className="grid grid-cols-7 gap-2 mb-2">
                             {DAYS.map((day, i) => (
                                 <div key={day} className="text-center">
@@ -253,14 +327,12 @@ export function ScheduleBuilder() {
                             ))}
                         </div>
 
-                        {/* Loading Overlay */}
                         {isLoadingShifts && (
                             <div className="flex justify-center py-10">
                                 <Loader2 className="animate-spin text-teal" size={32} />
                             </div>
                         )}
 
-                        {/* Grid rows */}
                         {!isLoadingShifts &&
                             PERIODS.map((period, pi) => (
                                 <div key={period} className="mb-3">
@@ -285,11 +357,7 @@ export function ScheduleBuilder() {
                                                         </div>
                                                     ) : (
                                                         <div
-                                                            onClick={() => {
-                                                                setCreateDate(format(addDays(weekStart, di), "yyyy-MM-dd"));
-                                                                setCreatePeriodIndex(pi);
-                                                                setIsCreateModalOpen(true);
-                                                            }}
+                                                            onClick={() => openCreateShiftForCell(di, pi)}
                                                             className="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-base cursor-pointer"
                                                         >
                                                             <button className="w-8 h-8 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-teal hover:text-teal transition-base">

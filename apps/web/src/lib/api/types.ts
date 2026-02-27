@@ -457,6 +457,10 @@ export interface NotificationPreferencesUpdateRequest {
     notification_pref: NotificationPref;
 }
 
+export interface NotificationPreferencesResponse {
+    notification_pref: NotificationPref;
+}
+
 export interface NotificationResponse {
     id: string;
     type: string;

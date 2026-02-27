@@ -23,6 +23,7 @@ import { OvertimeFairness } from "./pages/manager/OvertimeFairness";
 import { StaffDashboard } from "./pages/staff/Dashboard";
 import { AvailabilitySetup } from "./pages/staff/AvailabilitySetup";
 import { SwapInbox } from "./pages/staff/SwapInbox";
+import { NotificationSettings } from "./pages/common/NotificationSettings";
 
 // Shared
 import { LoginPage } from "./pages/LoginPage";
@@ -69,6 +70,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <Route path="/staff" element={<StaffDashboard />} />
                   <Route path="/staff/availability" element={<AvailabilitySetup />} />
                   <Route path="/staff/swaps" element={<SwapInbox />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowRoles={["admin", "manager", "staff"]} />}>
+                  <Route path="/settings/notifications" element={<NotificationSettings />} />
                 </Route>
               </Routes>
             </RealtimeProvider>

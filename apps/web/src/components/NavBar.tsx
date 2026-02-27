@@ -91,12 +91,14 @@ const managerNavItems: NavItem[] = [
     { label: 'Schedule Builder', path: '/manager', icon: <Calendar size={18} /> },
     { label: 'Swap Requests', path: '/manager/swaps', icon: <ArrowLeftRight size={18} /> },
     { label: 'Analytics', path: '/manager/analytics', icon: <BarChart3 size={18} /> },
+    { label: 'Notifications', path: '/settings/notifications', icon: <Bell size={18} /> },
 ];
 
 const staffNavItems: NavItem[] = [
     { label: 'My Schedule', path: '/staff', icon: <Calendar size={18} /> },
     { label: 'Swap Inbox', path: '/staff/swaps', icon: <ArrowLeftRight size={18} /> },
     { label: 'Availability', path: '/staff/availability', icon: <Clock size={18} /> },
+    { label: 'Notifications', path: '/settings/notifications', icon: <Bell size={18} /> },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -104,6 +106,7 @@ const adminNavItems: NavItem[] = [
     { label: 'Staff Management', path: '/admin/staff', icon: <Users size={18} /> },
     { label: 'Skill Catalog', path: '/admin/skills', icon: <Settings size={18} /> },
     { label: 'Audit Log', path: '/admin/audit', icon: <FileText size={18} /> },
+    { label: 'Notifications', path: '/settings/notifications', icon: <Bell size={18} /> },
     { label: 'Ops Mode', path: '/manager', icon: <Calendar size={18} /> },
 ];
 
@@ -111,16 +114,18 @@ interface SidebarProps {
     role: 'admin' | 'manager' | 'staff';
     onNavigate?: () => void;
     children?: React.ReactNode;
+    className?: string;
+    showChildren?: boolean;
 }
 
-export function Sidebar({ role, onNavigate, children }: SidebarProps) {
+export function Sidebar({ role, onNavigate, children, className = '', showChildren = true }: SidebarProps) {
     const location = useLocation();
     const items = role === 'admin' ? adminNavItems : role === 'manager' ? managerNavItems : staffNavItems;
 
     const accentColor = role === 'admin' ? 'admin-slate' : role === 'manager' ? 'teal' : 'staff-purple';
 
     return (
-        <aside className="w-56 h-full bg-gray-bg border-r border-border-gray flex flex-col flex-shrink-0">
+        <aside className={`w-56 h-full bg-gray-bg border-r border-border-gray flex flex-col flex-shrink-0 ${className}`}>
             <nav className="p-3 space-y-1">
                 {items.map((item) => {
                     const isActive = location.pathname === item.path;
@@ -158,7 +163,7 @@ export function Sidebar({ role, onNavigate, children }: SidebarProps) {
                     );
                 })}
             </nav>
-            {children && <div className="flex-1 overflow-y-auto">{children}</div>}
+            {showChildren && children && <div className="flex-1 overflow-y-auto">{children}</div>}
         </aside>
     );
 }
@@ -207,10 +212,13 @@ export function AppLayout({
                             onClick={() => setMobileNavOpen(false)}
                             aria-label="Close navigation"
                         />
-                        <div className="fixed top-14 bottom-0 left-0 z-40 md:hidden">
-                            <Sidebar role={role} onNavigate={() => setMobileNavOpen(false)}>
-                                {sidebar}
-                            </Sidebar>
+                        <div className="fixed top-14 bottom-0 left-0 z-40 md:hidden w-[86vw] max-w-[320px]">
+                            <Sidebar
+                                role={role}
+                                onNavigate={() => setMobileNavOpen(false)}
+                                className="w-full h-full"
+                                showChildren={false}
+                            />
                         </div>
                     </>
                 )}

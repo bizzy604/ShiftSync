@@ -14,6 +14,8 @@ import {
     LocationResponse,
     MyAssignmentListResponse,
     NotificationListResponse,
+    NotificationPreferencesResponse,
+    NotificationPreferencesUpdateRequest,
     OnDutyResponse,
     OvertimeDashboardResponse,
     PublishWeekRequest,
@@ -360,6 +362,18 @@ export async function markAllNotificationsRead(): Promise<void> {
 
 export async function markNotificationRead(notificationId: string): Promise<void> {
     await api.put(`/notifications/${notificationId}/read`);
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferencesResponse> {
+    const response = await api.get(`/notifications/preferences`);
+    return response.data;
+}
+
+export async function updateNotificationPreferences(
+    data: NotificationPreferencesUpdateRequest
+): Promise<NotificationPreferencesResponse> {
+    const response = await api.put(`/notifications/preferences`, data);
+    return response.data;
 }
 
 export default api;

@@ -247,7 +247,55 @@ export function AuditLog() {
                 )}
 
                 <div className="bg-white rounded-xl border border-border-gray shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
+                    <div className="md:hidden divide-y divide-border-gray">
+                        {filteredEntries.map((entry) => (
+                            <button
+                                key={entry.id}
+                                type="button"
+                                onClick={() => setSelectedEntry(entry)}
+                                className="w-full text-left p-4 space-y-3 hover:bg-gray-50 transition-base"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-[11px] font-mono text-gray-500">
+                                            {new Date(entry.created_at).toLocaleString()}
+                                        </p>
+                                        <p className="text-sm font-semibold text-navy truncate">{entry.actor_name}</p>
+                                    </div>
+                                    <code className="text-[10px] bg-gray-100 px-2 py-0.5 rounded font-mono text-navy font-bold uppercase whitespace-nowrap">
+                                        {entry.action_type}
+                                    </code>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div>
+                                        <p className="text-gray-400 uppercase font-bold">Entity</p>
+                                        <p className="text-gray-600 break-all">{entry.entity_type}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400 uppercase font-bold">Entity ID</p>
+                                        <p className="text-gray-600 font-mono break-all">{entry.entity_id}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-3">
+                                    <Badge variant="gray">{entry.location_name || entry.location_id || 'Global'}</Badge>
+                                    <span className="text-[11px] text-teal font-semibold">View detail</span>
+                                </div>
+
+                                <p className="text-xs text-navy">
+                                    {entry.reason || '-'}
+                                </p>
+                            </button>
+                        ))}
+                        {!isLoading && filteredEntries.length === 0 && (
+                            <div className="px-4 py-10 text-center text-sm text-gray-500">
+                                No audit entries match these filters.
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full min-w-[980px]">
                             <thead>
                                 <tr className="bg-gray-50 border-b border-border-gray">
