@@ -1,3 +1,4 @@
 {"timestamp_utc": "2026-02-27T06:53:51.384577+00:00", "to": "maria@coastaleats.com", "type": "drop.approved", "message": "You are assigned to the shift.", "payload": {"requestId": "6e5fd929-2680-4606-b4e1-ae81b19a4f41"}}
 {"timestamp_utc": "2026-02-27T07:00:18.684496+00:00", "to": "maria@coastaleats.com", "type": "swap.approved", "message": "Swap approved.", "payload": {"requestId": "66d84dea-3f57-47f3-a923-6f47c2d319da"}}
 {"timestamp_utc": "2026-02-27T07:08:29.403556+00:00", "to": "maria@coastaleats.com", "type": "swap.approved", "message": "Swap approved.", "payload": {"requestId": "9d1e75b2-b597-4362-a19a-5287aea0219a"}}
+{"timestamp_utc": "2026-02-27T09:21:29.525097+00:00", "to": "maria@coastaleats.com", "type": "shift.assigned", "message": "You have been assigned to a shift at Ocean Ave.", "payload": {"shiftId": "c155a478-c4fd-466f-b542-92f315464881", "locationId": "67da4fb3-2f8a-4128-8010-5aad12863717"}}

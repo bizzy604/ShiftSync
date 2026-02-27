@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { format, startOfWeek, addDays, parseISO, differenceInDays } from "date-fns";
+import { format, startOfWeek, addDays, parseISO, differenceInDays, startOfDay } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, AlertTriangle, X, Clock, MapPin, Loader2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "../../components/NavBar";
@@ -29,6 +29,14 @@ const getShiftPeriod = (timeStr: string) => {
     if (h < 12) return 0;
     if (h < 18) return 1; // 12pm - 5:59pm is Afternoon
     return 2; // 6pm+ is Night
+};
+
+const getDefaultMobileDayIndex = (targetWeekStart: Date) => {
+    const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const isCurrentWeek = differenceInDays(startOfDay(targetWeekStart), startOfDay(currentWeekStart)) === 0;
+    if (!isCurrentWeek) return 0;
+    const dayIndex = differenceInDays(startOfDay(new Date()), startOfDay(targetWeekStart));
+    return Math.min(Math.max(dayIndex, 0), 6);
 };
 
 /* ========== Sub-Components ========== */
@@ -152,7 +160,9 @@ export function ScheduleBuilder() {
     const requestedLocationId = searchParams.get("location_id");
     const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
     const [locationId, setLocationId] = useState<string>("");
-    const [activeMobileDayIndex, setActiveMobileDayIndex] = useState(0);
+    const [activeMobileDayIndex, setActiveMobileDayIndex] = useState(() =>
+        getDefaultMobileDayIndex(startOfWeek(new Date(), { weekStartsOn: 1 }))
+    );
     const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
@@ -173,6 +183,10 @@ export function ScheduleBuilder() {
             setLocationId(requestedExists ? requestedLocationId! : locations[0].id);
         }
     }, [locations, locationId, requestedLocationId]);
+
+    useEffect(() => {
+        setActiveMobileDayIndex(getDefaultMobileDayIndex(weekStart));
+    }, [weekStart]);
 
     const weekStartStr = format(weekStart, "yyyy-MM-dd");
     const { data: shiftsData, isLoading: isLoadingShifts } = useShifts(locationId, weekStartStr);

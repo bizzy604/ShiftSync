@@ -1,6 +1,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.config import get_settings
+from app.core.database import prisma
 from app.core.security import decode_access_token
 
 
@@ -35,10 +36,10 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     role = payload.get("role")
-    location_ids = payload.get("location_ids", [])
-    if not isinstance(location_ids, list):
-        location_ids = []
-    join_locations = location_ids if role == "manager" else []
+    join_locations: list[str] = []
+    if role == "manager":
+        assignments = await prisma.managerlocationassignment.find_many(where={"manager_id": user_id})
+        join_locations = sorted({item.location_id for item in assignments})
 
     ws_manager = websocket.app.state.ws_manager
     await ws_manager.connect(websocket, user_id=user_id, location_ids=join_locations)

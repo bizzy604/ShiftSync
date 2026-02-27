@@ -4,6 +4,7 @@ from typing import Callable
 from fastapi import Depends, HTTPException, Request, status
 
 from app.core.config import get_settings
+from app.core.database import prisma
 from app.core.security import decode_access_token
 from app.core.session_store import SessionStore
 
@@ -54,6 +55,14 @@ async def get_current_user(
     location_ids = payload.get("location_ids", [])
     if not isinstance(location_ids, list):
         location_ids = []
+
+    if role == "manager":
+        manager_assignments = await prisma.managerlocationassignment.find_many(
+            where={"manager_id": user_id},
+        )
+        location_ids = sorted({item.location_id for item in manager_assignments})
+    else:
+        location_ids = [item for item in location_ids if isinstance(item, str)]
 
     return CurrentUser(id=user_id, role=role, location_ids=location_ids)
 

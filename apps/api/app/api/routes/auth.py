@@ -105,16 +105,24 @@ async def refresh_token(
 
     user_id = payload.get("sub")
     role = payload.get("role")
-    location_ids = payload.get("location_ids", [])
     if not user_id or not role:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token.")
+
+    if role == "manager":
+        assignments = await prisma.managerlocationassignment.find_many(where={"manager_id": user_id})
+        location_ids = sorted({item.location_id for item in assignments})
+    else:
+        location_ids = payload.get("location_ids", [])
+        if not isinstance(location_ids, list):
+            location_ids = []
+        location_ids = [item for item in location_ids if isinstance(item, str)]
 
     await session_store.delete(f"session:{sid}")
 
     new_token, new_sid, expires_at = create_access_token(
         user_id=user_id,
         role=role,
-        location_ids=location_ids if isinstance(location_ids, list) else [],
+        location_ids=location_ids,
     )
     ttl_seconds = int((expires_at - datetime.now(tz=timezone.utc)).total_seconds())
     await session_store.set(f"session:{new_sid}", user_id, ttl_seconds)

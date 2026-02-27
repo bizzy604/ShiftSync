@@ -83,6 +83,39 @@ async def _ensure_staff_location_access(user_id: str, location_id: str) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
 
+async def _prune_past_unclaimed_shifts(shifts: list[object], *, now_utc: datetime | None = None) -> list[object]:
+    if not shifts:
+        return shifts
+
+    effective_now = now_utc or datetime.now(tz=timezone.utc)
+    candidate_shift_ids = [
+        shift.id
+        for shift in shifts
+        if shift.status in {"draft", "published"} and shift.end_utc <= effective_now
+    ]
+    if not candidate_shift_ids:
+        return shifts
+
+    assignments = await prisma.shiftassignment.find_many(
+        where={"shift_id": {"in": candidate_shift_ids}, "status": "assigned"},
+    )
+    assigned_counts: dict[str, int] = {}
+    for assignment in assignments:
+        assigned_counts[assignment.shift_id] = assigned_counts.get(assignment.shift_id, 0) + 1
+
+    filtered: list[object] = []
+    for shift in shifts:
+        if shift.id not in candidate_shift_ids:
+            filtered.append(shift)
+            continue
+
+        assigned = assigned_counts.get(shift.id, 0)
+        if assigned >= int(shift.headcount_needed or 0):
+            filtered.append(shift)
+
+    return filtered
+
+
 @router.get("", response_model=ShiftListResponse)
 async def list_shifts(
     location_id: str = Query(...),
@@ -127,6 +160,8 @@ async def list_shifts(
         include={"required_skill": True, "location": True},
         order={"start_utc": "asc"},
     )
+    if current_user.role in {"admin", "manager"}:
+        shifts = await _prune_past_unclaimed_shifts(shifts)
     return ShiftListResponse(shifts=[_to_shift_response(shift, location.iana_timezone) for shift in shifts])
 
 

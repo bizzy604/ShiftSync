@@ -547,12 +547,11 @@ async def replace_user_availability(
     for exception in payload.exceptions:
         _ensure_clock(exception.start_clock_time)
         _ensure_clock(exception.end_clock_time)
-        specific_date = datetime.combine(exception.date, datetime.min.time())
         create_data.append(
             {
                 "user_id": user_id,
                 "avail_type": "exception",
-                "specific_date": specific_date,
+                "specific_date": exception.date,
                 "start_clock": exception.start_clock_time,
                 "end_clock": exception.end_clock_time,
                 "is_available": exception.is_available,

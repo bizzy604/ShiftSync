@@ -20,6 +20,7 @@ interface DayAvailability {
 interface Exception {
     id: string;
     date: string;
+    rawDate: string;
     type: 'unavailable' | 'available';
     startTime?: string;
     endTime?: string;
@@ -51,6 +52,10 @@ function formatTime(time: string): string {
     return `${displayH}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
+function toIsoDate(rawDate: string): string {
+    return rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+}
+
 const DEFAULT_START = '09:00';
 const DEFAULT_END = '17:00';
 
@@ -73,6 +78,8 @@ export function AvailabilitySetup() {
 
     const [newExceptionDate, setNewExceptionDate] = useState('');
     const [newExceptionType, setNewExceptionType] = useState<'unavailable' | 'available'>('unavailable');
+    const [newExceptionStartTime, setNewExceptionStartTime] = useState(DEFAULT_START);
+    const [newExceptionEndTime, setNewExceptionEndTime] = useState(DEFAULT_END);
 
     // Initialize state from API data
     useEffect(() => {
@@ -99,14 +106,19 @@ export function AvailabilitySetup() {
         setAvailability(initialAvail);
 
         // Map exceptions
-        const initialExceptions: Exception[] = availData.exceptions.map(ex => ({
-            id: ex.id,
-            date: ex.specific_date ? format(parseISO(ex.specific_date), 'MMM d, yyyy') : 'Unknown',
-            rawDate: ex.specific_date,
-            type: (ex.is_available ? 'available' : 'unavailable') as 'available' | 'unavailable',
-            startTime: ex.start_clock || undefined,
-            endTime: ex.end_clock || undefined,
-        }));
+        const initialExceptions: Exception[] = availData.exceptions
+            .filter((ex) => !!ex.specific_date)
+            .map((ex) => {
+                const rawDate = toIsoDate(ex.specific_date!);
+                return {
+                    id: ex.id,
+                    date: format(parseISO(rawDate), 'MMM d, yyyy'),
+                    rawDate,
+                    type: (ex.is_available ? 'available' : 'unavailable') as 'available' | 'unavailable',
+                    startTime: ex.start_clock || undefined,
+                    endTime: ex.end_clock || undefined,
+                };
+            });
         setExceptions(initialExceptions);
         setHasChanges(false);
     }, [availData]);
@@ -136,17 +148,24 @@ export function AvailabilitySetup() {
 
     const addException = () => {
         if (!newExceptionDate) return;
+        const startTime = newExceptionType === 'available' ? newExceptionStartTime : undefined;
+        const endTime = newExceptionType === 'available' ? newExceptionEndTime : undefined;
         setExceptions((prev) => [
             ...prev,
             {
                 id: `temp-${Date.now()}`,
                 date: format(parseISO(newExceptionDate), 'MMM d, yyyy'),
                 rawDate: newExceptionDate,
-                type: newExceptionType
+                type: newExceptionType,
+                startTime,
+                endTime,
             },
         ]);
         setShowAddException(false);
         setNewExceptionDate('');
+        setNewExceptionType('unavailable');
+        setNewExceptionStartTime(DEFAULT_START);
+        setNewExceptionEndTime(DEFAULT_END);
         setHasChanges(true);
     };
 
@@ -162,7 +181,7 @@ export function AvailabilitySetup() {
                     end_clock_time: a.endTime
                 })),
             exceptions: exceptions.map(ex => ({
-                date: (ex as any).rawDate.split('T')[0],
+                date: toIsoDate(ex.rawDate),
                 is_available: ex.type === 'available',
                 start_clock_time: ex.type === 'available' ? (ex.startTime || '09:00') : undefined,
                 end_clock_time: ex.type === 'available' ? (ex.endTime || '17:00') : undefined
@@ -374,7 +393,7 @@ export function AvailabilitySetup() {
                         </button>
                         <button
                             onClick={addException}
-                            disabled={!newExceptionDate}
+                            disabled={!newExceptionDate || (newExceptionType === 'available' && (!newExceptionStartTime || !newExceptionEndTime))}
                             className="w-full sm:w-auto px-8 py-2.5 text-xs font-black uppercase tracking-widest bg-staff-purple text-white rounded-xl hover:bg-staff-purple-light shadow-lg hover:shadow-staff-purple/20 transition-all disabled:opacity-50 active:scale-95"
                         >
                             Add Exception
@@ -417,6 +436,38 @@ export function AvailabilitySetup() {
                             </button>
                         </div>
                     </div>
+                    {newExceptionType === 'available' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[10px] font-black text-navy uppercase tracking-widest mb-2 opacity-60">Start Time</label>
+                                <select
+                                    value={newExceptionStartTime}
+                                    onChange={(e) => setNewExceptionStartTime(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-border-gray bg-white text-sm font-bold text-navy outline-none"
+                                >
+                                    {timeOptions.map((t) => (
+                                        <option key={`start-${t}`} value={t}>
+                                            {formatTime(t)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-navy uppercase tracking-widest mb-2 opacity-60">End Time</label>
+                                <select
+                                    value={newExceptionEndTime}
+                                    onChange={(e) => setNewExceptionEndTime(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-border-gray bg-white text-sm font-bold text-navy outline-none"
+                                >
+                                    {timeOptions.map((t) => (
+                                        <option key={`end-${t}`} value={t}>
+                                            {formatTime(t)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </Modal>
 
