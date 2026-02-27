@@ -13,7 +13,8 @@
     "db:downgrade": "python scripts/alembic_migrate.py downgrade",
     "db:stamp": "python scripts/alembic_migrate.py stamp",
     "db:revision": "python scripts/alembic_migrate.py revision",
-    "prisma:deploy": "python scripts/alembic_migrate.py upgrade"
+    "prisma:deploy": "python scripts/alembic_migrate.py upgrade",
+    "seed:prod": "python seed/seed_production.py"
   },
   "dependencies": {
     "docx": "^9.6.0"

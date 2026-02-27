@@ -239,6 +239,7 @@ python scripts/smoke_phase3.py
 ## Deployment
 
 Backend deployment is defined in `render.yaml`.
+Python runtime is pinned by `.python-version` (`3.11.11`) to avoid Render defaulting to Python 3.14.
 
 Required production environment variables (use real values in your platform, not in repo files):
 - `DATABASE_URL=<PRODUCTION_POSTGRES_CONNECTION_STRING>`
@@ -248,6 +249,18 @@ Required production environment variables (use real values in your platform, not
 - `FRONTEND_URLS=https://<your-frontend-domain>`
 - `COOKIE_SECURE=true`
 - `COOKIE_SAMESITE=none`
+
+Optional one-time production seed (non-destructive):
+- `INITIAL_ADMIN_EMAIL=<admin-email>`
+- `INITIAL_ADMIN_PASSWORD=<strong-password-at-least-12-chars>`
+- `INITIAL_ADMIN_NAME=<optional-display-name>`
+- `INITIAL_ADMIN_TIMEZONE=<optional-iana-timezone>`
+- `RUN_PROD_SEED_ON_DEPLOY=true` for one deploy only, then set it back to `false`
+
+Notes:
+- Startup now runs migrations, optional one-time seed gate, then Uvicorn with `--app-dir apps/api`.
+- If `RUN_PROD_SEED_ON_DEPLOY` is `false`, seeding is skipped.
+- You can run production seed manually from a Render Shell: `python seed/seed_production.py`
 
 Frontend environment variable:
 - `VITE_API_BASE_URL=https://<your-backend-domain>/api/v1`
