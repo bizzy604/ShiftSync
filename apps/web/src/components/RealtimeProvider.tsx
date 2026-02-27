@@ -59,6 +59,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                     console.log(`[Realtime] Received event: ${eventName}`, payload);
                     setLastEvent(eventName);
 
+                    const invalidateScheduleData = () => {
+                        queryClient.invalidateQueries({ queryKey: ['shifts'] });
+                        queryClient.invalidateQueries({ queryKey: ['assignments'] });
+                        queryClient.invalidateQueries({ queryKey: keys.myAssignments });
+                        queryClient.invalidateQueries({ queryKey: ['analytics', 'onDuty'] });
+                    };
+
                     // Handle specific events
                     if (eventName === 'notification.new') {
                         queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -68,8 +75,12 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                         if (payload.swapRequestId) {
                             queryClient.invalidateQueries({ queryKey: keys.swap(payload.swapRequestId) });
                         }
-                    } else if (eventName === 'shifts.published') {
-                        queryClient.invalidateQueries({ queryKey: ['shifts'] });
+                    } else if (eventName === 'schedule.published' || eventName === 'schedule.updated') {
+                        invalidateScheduleData();
+                    } else if (eventName === 'assignment.changed') {
+                        invalidateScheduleData();
+                    } else if (eventName === 'assignment.conflict') {
+                        queryClient.invalidateQueries({ queryKey: ['assignments'] });
                     }
                 } catch (err) {
                     console.error('[Realtime] Error parsing message', err);

@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     token_cookie_name: str = Field(default="shiftsync_token", alias="TOKEN_COOKIE_NAME")
 
     frontend_url: str = Field(default="http://localhost:5173", alias="FRONTEND_URL")
+    simulated_email_log_path: str = Field(
+        default=str(ROOT_DIR / "simulated_emails.log"),
+        alias="SIMULATED_EMAIL_LOG_PATH",
+    )
 
 
 @lru_cache

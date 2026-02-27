@@ -40,6 +40,12 @@ async def get_current_user(
     if not await session_store.exists(f"session:{sid}"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
 
+    # Slide session TTL on activity to enforce inactivity-based expiration.
+    await session_store.touch(
+        f"session:{sid}",
+        settings.access_token_expire_minutes * 60,
+    )
+
     user_id = payload.get("sub")
     role = payload.get("role")
     if not user_id or not role:

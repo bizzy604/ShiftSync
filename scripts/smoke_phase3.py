@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "apps" / "api"
 PORT = int(os.getenv("SMOKE_PORT", "8015"))
 BASE = f"http://127.0.0.1:{PORT}"
-WS_BASE = f"ws://127.0.0.1:{PORT}/api/v1/ws"
+WS_BASE = f"ws://127.0.0.1:{PORT}/api/v1/realtime/ws"
 
 
 def wait_for_health(timeout_seconds: int = 60) -> None:
@@ -139,7 +139,8 @@ async def run_smoke() -> dict:
 
         async def create_shift(shift_date: date, start_time: str, end_time: str) -> dict:
             response = await manager.post(
-                f"/api/v1/locations/{location_id}/shifts",
+                "/api/v1/shifts",
+                params={"location_id": location_id},
                 json={
                     "date": shift_date.isoformat(),
                     "start_time": start_time,
@@ -158,7 +159,7 @@ async def run_smoke() -> dict:
         shift_5 = await create_shift(day_4, "15:00", "19:00")
 
         async def assign(shift_id: str, user_id: str, client: httpx.AsyncClient) -> httpx.Response:
-            return await client.post(f"/api/v1/shifts/{shift_id}/assignments", json={"user_id": user_id})
+            return await client.post("/api/v1/assignments", params={"shift_id": shift_id}, json={"user_id": user_id})
 
         assignment_1 = await assign(shift_1["id"], carlos_id, manager)
         assert assignment_1.status_code == 200, assignment_1.text
@@ -174,7 +175,7 @@ async def run_smoke() -> dict:
 
         # Phase 3 swap flow
         swap_create = await carlos.post(
-            "/api/v1/swap-requests",
+            "/api/v1/swaps",
             json={
                 "my_assignment_id": assignment_1_id,
                 "target_user_id": maria_id,
@@ -184,32 +185,32 @@ async def run_smoke() -> dict:
         assert swap_create.status_code == 200, swap_create.text
         swap_id = swap_create.json()["id"]
 
-        swap_accept = await maria.put(f"/api/v1/swap-requests/{swap_id}/accept", json={"note": "ok"})
+        swap_accept = await maria.post(f"/api/v1/swaps/{swap_id}/accept", json={"note": "ok"})
         assert swap_accept.status_code == 200, swap_accept.text
 
-        swap_approve = await manager.put(f"/api/v1/swap-requests/{swap_id}/approve", json={"note": "approved"})
+        swap_approve = await manager.post(f"/api/v1/swaps/{swap_id}/approve", json={"note": "approved"})
         assert swap_approve.status_code == 200, swap_approve.text
 
-        shift_1_assignments = await manager.get(f"/api/v1/shifts/{shift_1['id']}/assignments")
+        shift_1_assignments = await manager.get("/api/v1/assignments", params={"shift_id": shift_1["id"]})
         assert shift_1_assignments.status_code == 200, shift_1_assignments.text
         assert any(item["user_id"] == maria_id for item in shift_1_assignments.json()["assignments"])
 
         # Phase 3 drop flow
-        drop_create = await carlos.post("/api/v1/drop-requests", json={"assignment_id": assignment_3_id})
+        drop_create = await carlos.post("/api/v1/swaps/drops", json={"assignment_id": assignment_3_id})
         assert drop_create.status_code == 200, drop_create.text
         drop_id = drop_create.json()["id"]
 
-        drops_available = await maria.get("/api/v1/drop-requests/available")
+        drops_available = await maria.get("/api/v1/swaps/drops/available")
         assert drops_available.status_code == 200, drops_available.text
         assert any(item["drop_request_id"] == drop_id for item in drops_available.json()["available"])
 
-        drop_pickup = await maria.post(f"/api/v1/drop-requests/{drop_id}/pickup", json={"note": "can cover"})
+        drop_pickup = await maria.post(f"/api/v1/swaps/drops/{drop_id}/pickup", json={"note": "can cover"})
         assert drop_pickup.status_code == 200, drop_pickup.text
 
-        drop_approve = await manager.put(f"/api/v1/drop-requests/{drop_id}/approve", json={"note": "approved"})
+        drop_approve = await manager.post(f"/api/v1/swaps/drops/{drop_id}/approve", json={"note": "approved"})
         assert drop_approve.status_code == 200, drop_approve.text
 
-        shift_3_assignments = await manager.get(f"/api/v1/shifts/{shift_3['id']}/assignments")
+        shift_3_assignments = await manager.get("/api/v1/assignments", params={"shift_id": shift_3["id"]})
         assert shift_3_assignments.status_code == 200, shift_3_assignments.text
         assert any(item["user_id"] == maria_id for item in shift_3_assignments.json()["assignments"])
 
@@ -249,7 +250,8 @@ async def run_smoke() -> dict:
             assert pong.get("event") == "pong", pong
 
             publish = await manager.post(
-                f"/api/v1/locations/{location_id}/shifts/publish-week",
+                "/api/v1/shifts/publish",
+                params={"location_id": location_id},
                 json={"week_start": monday.isoformat()},
             )
             assert publish.status_code == 200, publish.text
@@ -261,16 +263,21 @@ async def run_smoke() -> dict:
 
         # Conflict event check (real concurrent writers)
         admin_token = admin.cookies.get("shiftsync_token")
-        assert admin_token
-        async with websockets.connect(f"{WS_BASE}?token={admin_token}") as admin_ws:
+        manager_token = manager.cookies.get("shiftsync_token")
+        assert admin_token and manager_token
+        async with (
+            websockets.connect(f"{WS_BASE}?token={manager_token}") as manager_ws,
+            websockets.connect(f"{WS_BASE}?token={admin_token}") as admin_ws,
+        ):
             first, second = await asyncio.gather(
-                manager.post(f"/api/v1/shifts/{shift_5['id']}/assignments", json={"user_id": maria_id}),
-                admin.post(f"/api/v1/shifts/{shift_5['id']}/assignments", json={"user_id": maria_id}),
+                manager.post("/api/v1/assignments", params={"shift_id": shift_5["id"]}, json={"user_id": maria_id}),
+                admin.post("/api/v1/assignments", params={"shift_id": shift_5["id"]}, json={"user_id": maria_id}),
             )
             codes = sorted([first.status_code, second.status_code])
             assert codes == [200, 409], (first.status_code, first.text, second.status_code, second.text)
-            conflict_message = json.loads(await asyncio.wait_for(admin_ws.recv(), timeout=3))
-            assert conflict_message.get("event") == "assignment.conflict", conflict_message
+            manager_events = await recv_events(manager_ws, 2.0)
+            admin_events = await recv_events(admin_ws, 2.0)
+            assert "assignment.conflict" in (manager_events + admin_events), (manager_events, admin_events)
 
         # Phase 4 analytics + audit checks
         overtime = await manager.get(
@@ -303,10 +310,10 @@ async def run_smoke() -> dict:
         )
         assert distribution.status_code == 200, distribution.text
 
-        on_duty = await manager.get("/api/v1/on-duty", params={"location_id": location_id})
+        on_duty = await manager.get("/api/v1/analytics/on-duty", params={"location_id": location_id})
         assert on_duty.status_code == 200, on_duty.text
 
-        audit_list = await manager.get("/api/v1/audit-logs", params={"location_id": location_id})
+        audit_list = await manager.get("/api/v1/audit/audit-logs", params={"location_id": location_id})
         assert audit_list.status_code == 200, audit_list.text
         audit_json = audit_list.json()
         assert len(audit_json["logs"]) >= 1
@@ -314,7 +321,7 @@ async def run_smoke() -> dict:
         revoke_cert = await admin.delete(f"/api/v1/users/{dana_id}/certifications/{pier_id}")
         assert revoke_cert.status_code == 200, revoke_cert.text
         cert_audit = await admin.get(
-            "/api/v1/audit-logs",
+            "/api/v1/audit/audit-logs",
             params={"entity_type": "certification", "location_id": pier_id, "limit": 100},
         )
         assert cert_audit.status_code == 200, cert_audit.text
@@ -322,7 +329,7 @@ async def run_smoke() -> dict:
         assert any(log["action_type"] == "cert.revoke" for log in cert_logs), cert_logs
 
         audit_export = await admin.get(
-            "/api/v1/audit-logs/export",
+            "/api/v1/audit/audit-logs/export",
             params={
                 "start_date": (date.today() - timedelta(days=30)).isoformat(),
                 "end_date": date.today().isoformat(),
@@ -338,8 +345,8 @@ async def run_smoke() -> dict:
                 "availability_updated": True,
             },
             "phase2": {
-                "shifts_created": 4,
-                "assignments_created": 4,
+                "shifts_created": 5,
+                "assignments_created": 3,
             },
             "phase3": {
                 "swap_approved": swap_id,

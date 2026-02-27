@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.core.database import prisma
+from app.services.email_simulator import should_simulate_email, simulate_email_delivery
 
 
 async def create_notification(
@@ -14,6 +15,11 @@ async def create_notification(
 ) -> object:
     safe_payload = payload or {}
     client = db or prisma
+
+    user = await client.user.find_unique(where={"id": user_id})
+    if user is None:
+        raise ValueError(f"Cannot create notification for unknown user '{user_id}'.")
+
     record = await client.notification.create(
         data={
             "user_id": user_id,
@@ -22,6 +28,14 @@ async def create_notification(
             "payload": safe_payload,
         }
     )
+
+    if should_simulate_email(getattr(user, "notification_pref", None)):
+        simulate_email_delivery(
+            user_email=user.email,
+            notif_type=notif_type,
+            message=message,
+            payload=safe_payload,
+        )
 
     if ws_manager is not None:
         await ws_manager.emit_to_user(

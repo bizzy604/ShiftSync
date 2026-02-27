@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.api.deps import CurrentUser, ensure_self_or_admin, get_current_user, require_roles
 from app.core.database import prisma
@@ -21,6 +21,7 @@ from app.schemas.user import (
     UserUpdateRequest,
 )
 from app.services.audit import create_audit_log
+from app.services.notifications import create_notification
 from app.services.user_access import get_manager_user_scope
 
 
@@ -358,6 +359,7 @@ async def add_user_certification(
 async def remove_user_certification(
     user_id: str,
     location_id: str,
+    request: Request,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> dict[str, bool]:
     record = await prisma.userlocationcertification.find_unique(
@@ -367,6 +369,12 @@ async def remove_user_certification(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certification not found.")
 
     revoked_at = datetime.now(timezone.utc)
+    location = await prisma.location.find_unique(where={"id": location_id})
+    if location is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found.")
+
+    removed_assignment_events: list[dict[str, str]] = []
+    manager_notifications: list[object] = []
     async with prisma.tx() as tx:
         await tx.userlocationcertification.update(
             where={"user_id_location_id": {"user_id": user_id, "location_id": location_id}},
@@ -385,6 +393,90 @@ async def remove_user_certification(
             after_state={"revoked_at": revoked_at.isoformat()},
             db=tx,
         )
+
+        now = datetime.now(tz=timezone.utc)
+        active_assignments = await tx.shiftassignment.find_many(
+            where={"user_id": user_id, "status": "assigned"},
+            include={"shift": True},
+        )
+        future_unassignments = [
+            assignment
+            for assignment in active_assignments
+            if assignment.shift is not None
+            and assignment.shift.location_id == location_id
+            and assignment.shift.start_utc > now
+            and assignment.shift.status != "cancelled"
+        ]
+        for assignment in future_unassignments:
+            await tx.shiftassignment.update(
+                where={"id": assignment.id},
+                data={
+                    "status": "removed",
+                    "version": assignment.version + 1,
+                    "override_reason": "Auto-unassigned after certification revocation.",
+                },
+            )
+            removed_assignment_events.append({"shift_id": assignment.shift_id, "user_id": assignment.user_id})
+            await create_audit_log(
+                actor_id=current_user.id,
+                action_type="shift.unassign.decertification",
+                entity_type="assignment",
+                entity_id=assignment.id,
+                location_id=location_id,
+                before_state={
+                    "status": assignment.status,
+                    "user_id": assignment.user_id,
+                    "shift_id": assignment.shift_id,
+                },
+                after_state={"status": "removed"},
+                reason="Certification revoked for location.",
+                db=tx,
+            )
+
+        manager_links = await tx.managerlocationassignment.find_many(where={"location_id": location_id})
+        for link in manager_links:
+            record_notif = await create_notification(
+                user_id=link.manager_id,
+                notif_type="staff.decertified",
+                message=(
+                    "A staff certification was revoked and future shifts were auto-unassigned."
+                    if future_unassignments
+                    else "A staff certification was revoked."
+                ),
+                payload={
+                    "userId": user_id,
+                    "locationId": location_id,
+                    "locationName": location.name,
+                    "autoUnassignedCount": len(future_unassignments),
+                },
+                db=tx,
+                ws_manager=None,
+            )
+            manager_notifications.append(record_notif)
+
+    ws_manager = request.app.state.ws_manager
+    if ws_manager is not None:
+        for item in removed_assignment_events:
+            await ws_manager.emit_to_user(
+                item["user_id"],
+                "assignment.changed",
+                {
+                    "shiftId": item["shift_id"],
+                    "userId": item["user_id"],
+                    "status": "removed",
+                    "changedBy": current_user.id,
+                },
+            )
+        for notif in manager_notifications:
+            await ws_manager.emit_to_user(
+                notif.user_id,
+                "notification.new",
+                {
+                    "notificationId": notif.id,
+                    "type": notif.type,
+                    "message": notif.message,
+                },
+            )
     return {"revoked": True}
 
 
@@ -424,6 +516,7 @@ async def get_user_availability(
 async def replace_user_availability(
     user_id: str,
     payload: AvailabilityReplaceRequest,
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
 ) -> AvailabilityResponse:
     ensure_self_or_admin(current_user, user_id)
@@ -468,6 +561,11 @@ async def replace_user_availability(
     next_recurring = sum(1 for row in create_data if row["avail_type"] == "recurring")
     next_exceptions = len(create_data) - next_recurring
 
+    manager_notifications: list[object] = []
+    active_certs = await prisma.userlocationcertification.find_many(
+        where={"user_id": user_id, "revoked_at": None},
+    )
+    active_location_ids = sorted({item.location_id for item in active_certs})
     async with prisma.tx() as tx:
         await tx.availability.delete_many(where={"user_id": user_id})
         if create_data:
@@ -489,5 +587,33 @@ async def replace_user_availability(
             },
             db=tx,
         )
+        if current_user.role == "staff" and active_location_ids:
+            manager_links = await tx.managerlocationassignment.find_many(
+                where={"location_id": {"in": active_location_ids}},
+            )
+            manager_ids = sorted({item.manager_id for item in manager_links})
+            for manager_id in manager_ids:
+                notif = await create_notification(
+                    user_id=manager_id,
+                    notif_type="staff.availability_changed",
+                    message=f"{user.name} updated availability.",
+                    payload={"userId": user_id, "locationIds": active_location_ids},
+                    db=tx,
+                    ws_manager=None,
+                )
+                manager_notifications.append(notif)
+
+    ws_manager = request.app.state.ws_manager
+    if ws_manager is not None:
+        for notif in manager_notifications:
+            await ws_manager.emit_to_user(
+                notif.user_id,
+                "notification.new",
+                {
+                    "notificationId": notif.id,
+                    "type": notif.type,
+                    "message": notif.message,
+                },
+            )
 
     return await get_user_availability(user_id=user_id, current_user=current_user)

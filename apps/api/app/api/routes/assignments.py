@@ -405,6 +405,22 @@ async def create_assignment(
 
         hard_violations = [item for item in result.violations if item.severity == "HARD_BLOCK"]
         if hard_violations:
+            double_booking = next((item for item in hard_violations if item.rule == "DOUBLE_BOOKING"), None)
+            if double_booking is not None:
+                await _emit_assignment_conflict(
+                    request,
+                    manager_user_id=current_user.id,
+                    shift_id=shift_id,
+                    conflicting_user_id=user.id,
+                    message=double_booking.description,
+                )
+                return _json_error(
+                    status_code=status.HTTP_409_CONFLICT,
+                    code="CONCURRENT_CONFLICT",
+                    message=double_booking.description,
+                    details=_constraint_details(result.violations) + _constraint_details(result.warnings),
+                    suggestions=suggestion_dicts,
+                )
             return _json_error(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 code="CONSTRAINT_VIOLATION",

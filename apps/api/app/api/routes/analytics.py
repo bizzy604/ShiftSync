@@ -250,7 +250,8 @@ async def fairness_report(
             )
         )
 
-    staff_rows.sort(key=lambda row: row.name)
+    # Prioritize largest variance (under/over desired hours) first for managerial review.
+    staff_rows.sort(key=lambda row: (-abs(row.scheduling_variance_pct), row.name.lower()))
     premium_values = [float(row.premium_shift_count) for row in staff_rows]
     fairness_score = round(float(pstdev(premium_values)) if len(premium_values) > 1 else 0.0, 2)
 

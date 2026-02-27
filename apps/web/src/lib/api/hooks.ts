@@ -453,6 +453,8 @@ export function useOnDuty(locationId?: string) {
     return useQuery({
         queryKey: keys.onDuty(locationId),
         queryFn: () => getOnDuty(locationId),
+        refetchInterval: 60_000,
+        refetchIntervalInBackground: false,
     });
 }
 

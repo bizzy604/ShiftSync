@@ -23,6 +23,7 @@ from app.schemas.shift import (
 )
 from app.services.audit import create_audit_log
 from app.services.notifications import create_notification
+from app.services.swap_lifecycle import cancel_pending_swaps_for_shift
 from app.services.timezone_utils import format_local_iso, parse_shift_local_range, week_start_monday
 
 
@@ -270,6 +271,8 @@ async def update_shift(
         "week_start": _date_as_datetime(week_start_value),
     }
 
+    affected_user_ids: list[str] = []
+    notification_records: list[object] = []
     async with prisma.tx() as tx:
         updated = await tx.shift.update(
             where={"id": shift_id},
@@ -301,23 +304,52 @@ async def update_shift(
             reason=payload.override_reason,
             db=tx,
         )
+        active_assignments = await tx.shiftassignment.find_many(where={"shift_id": shift_id, "status": "assigned"})
+        affected_user_ids = sorted({item.user_id for item in active_assignments})
+        for user_id in affected_user_ids:
+            record = await create_notification(
+                user_id=user_id,
+                notif_type="shift.changed",
+                message=f"Your shift at {location.name} was updated.",
+                payload={"shiftId": shift_id, "locationId": location_id},
+                db=tx,
+                ws_manager=None,
+            )
+            notification_records.append(record)
+
+    ws_manager = request.app.state.ws_manager
+    await cancel_pending_swaps_for_shift(
+        shift_id=shift_id,
+        actor_id=current_user.id,
+        reason="Swap request cancelled because the shift was edited.",
+        ws_manager=ws_manager,
+    )
 
     if shift.status == "published":
-        await request.app.state.ws_manager.emit_to_location(
+        payload_data = {
+            "locationId": location_id,
+            "shiftId": shift_id,
+            "changes": {
+                "shiftDate": new_date.isoformat(),
+                "startUtc": start_utc.isoformat(),
+                "endUtc": end_utc.isoformat(),
+                "requiredSkillId": required_skill_id,
+                "headcountNeeded": update_data["headcount_needed"],
+            },
+        }
+        await ws_manager.emit_to_location(
             location_id,
             "schedule.updated",
-            {
-                "locationId": location_id,
-                "shiftId": shift_id,
-                "changes": {
-                    "shiftDate": new_date.isoformat(),
-                    "startUtc": start_utc.isoformat(),
-                    "endUtc": end_utc.isoformat(),
-                    "requiredSkillId": required_skill_id,
-                    "headcountNeeded": update_data["headcount_needed"],
-                },
-            },
+            payload_data,
         )
+        if affected_user_ids:
+            await ws_manager.emit_to_users(affected_user_ids, "schedule.updated", payload_data)
+            for record in notification_records:
+                await ws_manager.emit_to_user(
+                    record.user_id,
+                    "notification.new",
+                    {"notificationId": record.id, "type": record.type, "message": record.message},
+                )
 
     return _to_shift_response(updated, location.iana_timezone)
 
@@ -348,7 +380,14 @@ async def delete_shift(
             after_state={"status": "cancelled"},
             db=tx,
         )
-    await request.app.state.ws_manager.emit_to_location(
+    ws_manager = request.app.state.ws_manager
+    await cancel_pending_swaps_for_shift(
+        shift_id=shift_id,
+        actor_id=current_user.id,
+        reason="Swap request cancelled because the shift was cancelled.",
+        ws_manager=ws_manager,
+    )
+    await ws_manager.emit_to_location(
         location_id,
         "schedule.updated",
         {

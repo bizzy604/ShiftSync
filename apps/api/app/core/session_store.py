@@ -44,6 +44,21 @@ class SessionStore:
             return False
         return True
 
+    async def touch(self, key: str, ttl_seconds: int) -> bool:
+        if self._redis is not None:
+            # EXPIRE returns 1 when key exists and timeout set.
+            updated = await self._redis.expire(key, ttl_seconds)
+            return updated == 1
+
+        expiry = self._memory.get(key)
+        if expiry is None:
+            return False
+        if expiry < time.time():
+            self._memory.pop(key, None)
+            return False
+        self._memory[key] = time.time() + ttl_seconds
+        return True
+
     async def delete(self, key: str) -> None:
         if self._redis is not None:
             await self._redis.delete(key)
