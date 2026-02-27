@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     ChevronLeft,
     ChevronRight,
@@ -83,7 +84,7 @@ interface LocationCardProps {
     iana_timezone: string;
 }
 
-function LocationCardComponent({ loc }: { loc: LocationCardProps }) {
+function LocationCardComponent({ loc, onManageLocation }: { loc: LocationCardProps; onManageLocation: (locationId: string) => void }) {
     // Note: To get real assigned staff/unassigned shifts per location, we'd need a specific dashboard endpoint.
     // For now, we'll keep the visual layout but fetch the real name/timezone.
     return (
@@ -118,7 +119,10 @@ function LocationCardComponent({ loc }: { loc: LocationCardProps }) {
             </div>
 
             {/* Quick link */}
-            <button className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-admin-slate hover:text-navy border border-border-gray rounded-lg hover:bg-gray-50 transition-base">
+            <button
+                onClick={() => onManageLocation(loc.id)}
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-admin-slate hover:text-navy border border-border-gray rounded-lg hover:bg-gray-50 transition-base"
+            >
                 Manage Location <ArrowRight size={14} />
             </button>
         </div>
@@ -128,11 +132,11 @@ function LocationCardComponent({ loc }: { loc: LocationCardProps }) {
 /* ========== Main Component ========== */
 
 export function AdminOverview() {
+    const navigate = useNavigate();
     const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
     const { data: locationsData, isLoading: isLoadingLocs } = useLocations();
     const { data: usersData } = useUsers();
 
-    const weekStartStr = format(weekStart, "yyyy-MM-dd");
     const headerDateRange = `Week of ${format(weekStart, "MMM d, yyyy")}`;
 
     const centerContent = (
@@ -177,7 +181,11 @@ export function AdminOverview() {
                             </div>
                         ) : (
                             locations.map((loc) => (
-                                <LocationCardComponent key={loc.id} loc={loc} />
+                                <LocationCardComponent
+                                    key={loc.id}
+                                    loc={loc}
+                                    onManageLocation={(locationId) => navigate(`/admin/staff?location_id=${encodeURIComponent(locationId)}`)}
+                                />
                             ))
                         )}
                         {locations.length === 0 && !isLoadingLocs && (
@@ -230,7 +238,11 @@ export function AdminOverview() {
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Est. Weekly Budget</p>
                             <p className="text-lg font-bold text-navy truncate max-w-[120px]">Calculated in Reports</p>
                         </div>
-                        <button className="p-2 bg-navy text-white rounded-lg hover:bg-navy-light transition-base shadow-sm">
+                        <button
+                            onClick={() => navigate('/admin/audit')}
+                            className="p-2 bg-navy text-white rounded-lg hover:bg-navy-light transition-base shadow-sm"
+                            title="Open audit log"
+                        >
                             <ArrowRight size={18} />
                         </button>
                     </div>

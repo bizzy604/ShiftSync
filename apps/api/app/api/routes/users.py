@@ -69,11 +69,15 @@ async def _assert_user_visible_to_actor(actor: CurrentUser, target_user_id: str)
 async def list_users(
     location_id: str | None = Query(default=None),
     skill_id: str | None = Query(default=None),
+    include_inactive: bool = Query(default=False),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=25, ge=1, le=100),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> UserListResponse:
-    where: dict[str, Any] = {"is_active": True}
+    where: dict[str, Any] = {}
+
+    if not include_inactive or current_user.role != "admin":
+        where["is_active"] = True
 
     if current_user.role == "manager":
         scoped_ids = await get_manager_user_scope(current_user)

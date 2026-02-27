@@ -32,6 +32,7 @@ import {
     DropCreateRequest,
     DropPickupRequest,
     AuditLogListResponse,
+    AuditLogQuery,
     SkillAttachRequest,
     CertificationAttachRequest,
     UserCreateRequest,
@@ -76,9 +77,10 @@ export async function getLocation(id: string): Promise<LocationResponse> {
 }
 
 // --- Users ---
-export async function getUsers(locationId?: string): Promise<UserListResponse> {
+export async function getUsers(locationId?: string, includeInactive = false): Promise<UserListResponse> {
     const params = new URLSearchParams();
     if (locationId) params.append("location_id", locationId);
+    if (includeInactive) params.append("include_inactive", "true");
     params.append("limit", "100"); // Getting all users for UI lists
     const response = await api.get(`/users?${params.toString()}`);
     return response.data;
@@ -287,11 +289,50 @@ export async function getOnDuty(locationId?: string): Promise<OnDutyResponse> {
 }
 
 // --- Audit ---
-export async function getAuditLogs(page: number = 1): Promise<AuditLogListResponse> {
+function normalizeAuditLogResponse(raw: any): AuditLogListResponse {
+    const pagination = raw?.pagination ?? {};
+    const logs = Array.isArray(raw?.logs)
+        ? raw.logs.map((entry: any) => ({
+            ...entry,
+            location_name: entry.location_name ?? entry.location_id ?? null,
+            details: entry.details ?? entry.reason ?? null,
+        }))
+        : [];
+    return {
+        logs,
+        total: Number(pagination.total ?? raw?.total ?? logs.length),
+        page: Number(pagination.page ?? raw?.page ?? 1),
+        limit: Number(pagination.limit ?? raw?.limit ?? 50),
+    };
+}
+
+export async function getAuditLogs(query: AuditLogQuery = {}): Promise<AuditLogListResponse> {
     const response = await api.get(`/audit/audit-logs`, {
-        params: { page, limit: 50 },
+        params: {
+            page: query.page ?? 1,
+            limit: query.limit ?? 50,
+            entity_type: query.entity_type,
+            entity_id: query.entity_id,
+            location_id: query.location_id,
+            start_date: query.start_date,
+            end_date: query.end_date,
+        },
     });
-    return response.data;
+    return normalizeAuditLogResponse(response.data);
+}
+
+export async function exportAuditLogs(query: AuditLogQuery = {}): Promise<Blob> {
+    const response = await api.get(`/audit/audit-logs/export`, {
+        params: {
+            entity_type: query.entity_type,
+            entity_id: query.entity_id,
+            location_id: query.location_id,
+            start_date: query.start_date,
+            end_date: query.end_date,
+        },
+        responseType: "blob",
+    });
+    return response.data as Blob;
 }
 
 // --- Notifications ---

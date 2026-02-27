@@ -433,6 +433,16 @@ export interface AuditLogListResponse {
     limit: number;
 }
 
+export interface AuditLogQuery {
+    page?: number;
+    limit?: number;
+    entity_type?: string;
+    entity_id?: string;
+    location_id?: string;
+    start_date?: string;
+    end_date?: string;
+}
+
 // Notifications
 export interface NotificationPreferencesUpdateRequest {
     notification_pref: NotificationPref;

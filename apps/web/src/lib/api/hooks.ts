@@ -19,6 +19,7 @@ import {
     getAssignments,
     getShiftSuggestions,
     getAuditLogs,
+    exportAuditLogs,
     getAvailableDrops,
     getFairnessReport,
     getMyAssignments,
@@ -66,6 +67,7 @@ import {
     SkillAttachRequest,
     SwapActionRequest,
     SwapCreateRequest,
+    AuditLogQuery,
     UserCreateRequest,
     UserUpdateRequest,
 } from "./types";
@@ -76,7 +78,7 @@ export const keys = {
     me: ["auth", "me"] as const,
     locations: ["locations"] as const,
     location: (id: string) => ["locations", id] as const,
-    users: (locationId?: string) => ["users", locationId] as const,
+    users: (locationId?: string, includeInactive?: boolean) => ["users", locationId, !!includeInactive] as const,
     user: (id: string) => ["users", id] as const,
     availability: (id: string) => ["users", id, "availability"] as const,
     shifts: (locationId: string, weekStart: string) => ["shifts", locationId, weekStart] as const,
@@ -91,7 +93,7 @@ export const keys = {
     onDuty: (locationId?: string) => ["analytics", "onDuty", locationId] as const,
     overtime: (locationId: string, weekStart: string) => ["analytics", "overtime", locationId, weekStart] as const,
     fairness: (locationId: string, startDate: string, endDate: string) => ["analytics", "fairness", locationId, startDate, endDate] as const,
-    audit: (page: number) => ["audit", page] as const,
+    audit: (query: AuditLogQuery) => ["audit", query] as const,
     notifications: (unreadOnly: boolean) => ["notifications", { unreadOnly }] as const,
     suggestions: (shiftId: string) => ["shifts", shiftId, "suggestions"] as const,
 };
@@ -133,10 +135,10 @@ export function useLocation(id: string) {
 }
 
 // --- Users ---
-export function useUsers(locationId?: string) {
+export function useUsers(locationId?: string, includeInactive = false) {
     return useQuery({
-        queryKey: keys.users(locationId),
-        queryFn: () => getUsers(locationId),
+        queryKey: keys.users(locationId, includeInactive),
+        queryFn: () => getUsers(locationId, includeInactive),
     });
 }
 
@@ -163,7 +165,7 @@ export function useUpdateUser() {
         mutationFn: ({ id, data }: { id: string; data: UserUpdateRequest }) => updateUser(id, data),
         onSuccess: (_, { id }) => {
             queryClient.invalidateQueries({ queryKey: keys.user(id) });
-            queryClient.invalidateQueries({ queryKey: keys.users() });
+            queryClient.invalidateQueries({ queryKey: ["users"] });
             showSuccess("User updated");
         },
         onError: (error) => {
@@ -209,7 +211,7 @@ export function useCreateUser() {
     return useMutation({
         mutationFn: (data: UserCreateRequest) => createUser(data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: keys.users() });
+            queryClient.invalidateQueries({ queryKey: ["users"] });
             showSuccess("User created");
         },
         onError: (error) => {
@@ -224,7 +226,7 @@ export function useDeleteUser() {
     return useMutation({
         mutationFn: (id: string) => deleteUser(id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: keys.users() });
+            queryClient.invalidateQueries({ queryKey: ["users"] });
             showSuccess("User deactivated");
         },
         onError: (error) => {
@@ -585,11 +587,24 @@ export function useOnDuty(locationId?: string) {
 }
 
 // --- Audit ---
-export function useAuditLogs(page: number) {
+export function useAuditLogs(query: AuditLogQuery) {
     return useQuery({
-        queryKey: keys.audit(page),
-        queryFn: () => getAuditLogs(page),
+        queryKey: keys.audit(query),
+        queryFn: () => getAuditLogs(query),
         placeholderData: keepPreviousData,
+    });
+}
+
+export function useExportAuditLogs() {
+    const { showSuccess, showError } = useToast();
+    return useMutation({
+        mutationFn: (query: AuditLogQuery) => exportAuditLogs(query),
+        onSuccess: () => {
+            showSuccess("Audit export ready");
+        },
+        onError: (error) => {
+            showError("Failed to export audit logs", getErrorMessage(error));
+        },
     });
 }
 
