@@ -212,10 +212,10 @@ export function MySchedule() {
             notificationCount={unreadCount}
             onBellClick={() => setIsNotificationOpen(true)}
         >
-            <div className="max-w-3xl mx-auto p-4 md:p-6">
+            <div className="w-full h-full min-h-0 px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 flex flex-col gap-3">
                 {/* Notification Banner */}
                 {showNotificationBanner && swapsData?.requests.some(r => r.status === 'APPROVED') && (
-                    <div className="mb-4 px-4 py-3 bg-staff-purple-50 border border-staff-purple/20 rounded-xl flex items-center gap-3 animate-fade-in">
+                    <div className="px-4 py-3 bg-staff-purple-50 border border-staff-purple/20 rounded-xl flex items-center gap-3 animate-fade-in shrink-0">
                         <Info size={16} className="text-staff-purple flex-shrink-0" />
                         <p className="text-sm text-staff-purple flex-1">
                             Your recent swap request was approved by the manager.
@@ -230,34 +230,34 @@ export function MySchedule() {
                 )}
 
                 {/* Week Header */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-center gap-2 sm:gap-6 mb-4">
+                <div className="shrink-0 bg-white border border-border-gray rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm">
+                    <div className="flex items-center justify-center gap-2 sm:gap-6">
                         <button
                             onClick={() => setWeekOffset(prev => prev - 1)}
-                            className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-all active:scale-90"
+                            className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-500 transition-all active:scale-90"
                         >
-                            <ChevronLeft size={24} />
+                            <ChevronLeft size={20} />
                         </button>
-                        <h1 className="text-lg sm:text-2xl font-black text-navy text-center whitespace-nowrap">
+                        <h1 className="text-base sm:text-xl font-black text-navy text-center whitespace-nowrap">
                             {format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'd, yyyy')}
                         </h1>
                         <button
                             onClick={() => setWeekOffset(prev => prev + 1)}
-                            className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-all active:scale-90"
+                            className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-500 transition-all active:scale-90"
                         >
-                            <ChevronRight size={24} />
+                            <ChevronRight size={20} />
                         </button>
                     </div>
-                    <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
                         <Badge variant="purple">{weeklyAssignments.length} shifts this week</Badge>
                         <Badge variant="purple">{totalHours.toFixed(1)} hours</Badge>
                     </div>
                 </div>
 
                 {/* Day Groups */}
-                <div className="space-y-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 mb-4">
                     {isLoading ? (
-                        <div className="py-20 flex flex-col items-center justify-center text-gray-300">
+                        <div className="py-20 flex flex-col items-center justify-center text-gray-300 lg:col-span-2 2xl:col-span-3">
                             <Loader2 size={40} className="animate-spin mb-4" />
                             <span className="text-sm font-medium">Fetching your schedule…</span>
                         </div>
@@ -265,13 +265,13 @@ export function MySchedule() {
                         weekDays.map((day) => {
                             const dayAssignments = weeklyAssignments.filter(a => isSameDay(parseISO(a.shift.shift_date), day));
                             return (
-                                <div key={day.toISOString()} className="group">
-                                    <div className="flex items-center gap-3 mb-3">
+                                <div key={day.toISOString()} className="group bg-white border border-border-gray rounded-xl p-3 shadow-sm">
+                                    <div className="flex items-center gap-2.5 mb-2">
                                         <p className="text-sm font-black text-navy uppercase tracking-widest">{format(day, 'eeee, MMM d')}</p>
                                         <div className="h-px flex-1 bg-gray-100 group-hover:bg-gray-200 transition-colors" />
                                     </div>
 
-                                    <div className="space-y-3">
+                                    <div className="space-y-2.5">
                                         {dayAssignments.length > 0 ? (
                                             dayAssignments.map((a) => (
                                                 <ShiftCard
@@ -283,7 +283,7 @@ export function MySchedule() {
                                                 />
                                             ))
                                         ) : (
-                                            <div className="bg-gray-50/50 rounded-xl border border-dashed border-border-gray p-4 text-center">
+                                            <div className="bg-gray-50/50 rounded-xl border border-dashed border-border-gray p-3 text-center">
                                                 <p className="text-sm text-gray-400 font-medium">No shifts scheduled</p>
                                             </div>
                                         )}
@@ -294,42 +294,43 @@ export function MySchedule() {
                     )}
                 </div>
 
-                {/* My Pending Requests */}
-                <div className="border border-border-gray rounded-2xl overflow-hidden shadow-sm bg-white mb-8">
-                    <div className="px-4 sm:px-5 py-4 bg-gray-50 border-b border-border-gray flex items-center justify-between gap-3 flex-wrap">
-                        <span className="text-sm font-bold text-navy">My Pending Swap/Drop Requests</span>
-                        <Badge variant="amber">{myPendingRequests.length}</Badge>
-                    </div>
-                    <div className="p-4 space-y-3">
-                        {myPendingRequests.map((request) => (
-                            <div key={request.id} className="border border-border-gray rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
-                                <div>
-                                    <p className="text-sm font-semibold text-navy capitalize">
-                                        {request.type} request - {request.status.replace("_", " ")}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        {request.shift_date ? format(parseISO(request.shift_date), 'MMM d') : 'Unknown date'} - {request.shift_label || 'Shift'} - {request.shift_time || 'Time unknown'}
-                                    </p>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                    {/* My Pending Requests */}
+                    <div className="border border-border-gray rounded-2xl overflow-hidden shadow-sm bg-white">
+                        <div className="px-4 sm:px-5 py-4 bg-gray-50 border-b border-border-gray flex items-center justify-between gap-3 flex-wrap">
+                            <span className="text-sm font-bold text-navy">My Pending Swap/Drop Requests</span>
+                            <Badge variant="amber">{myPendingRequests.length}</Badge>
+                        </div>
+                        <div className="p-4 space-y-3 xl:max-h-[42vh] xl:overflow-y-auto">
+                            {myPendingRequests.map((request) => (
+                                <div key={request.id} className="border border-border-gray rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
+                                    <div>
+                                        <p className="text-sm font-semibold text-navy capitalize">
+                                            {request.type} request - {request.status.replace("_", " ")}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {request.shift_date ? format(parseISO(request.shift_date), 'MMM d') : 'Unknown date'} - {request.shift_label || 'Shift'} - {request.shift_time || 'Time unknown'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCancelPendingRequest(request.id, request.type === 'drop')}
+                                        disabled={cancelRequestMutation.isPending}
+                                        className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50"
+                                    >
+                                        {cancelRequestMutation.isPending ? 'Cancelling...' : 'Cancel Request'}
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => handleCancelPendingRequest(request.id, request.type === 'drop')}
-                                    disabled={cancelRequestMutation.isPending}
-                                    className="px-3 py-1.5 text-xs font-semibold border border-danger/30 text-danger rounded-lg hover:bg-danger-50 transition-base disabled:opacity-50"
-                                >
-                                    {cancelRequestMutation.isPending ? 'Cancelling...' : 'Cancel Request'}
-                                </button>
-                            </div>
-                        ))}
-                        {myPendingRequests.length === 0 && (
-                            <div className="py-6 text-center text-sm text-gray-400">
-                                You have no pending swap or drop requests.
-                            </div>
-                        )}
+                            ))}
+                            {myPendingRequests.length === 0 && (
+                                <div className="py-6 text-center text-sm text-gray-400">
+                                    You have no pending swap or drop requests.
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
 
-                {/* Available Shifts */}
-                <div className="border border-border-gray rounded-2xl overflow-hidden shadow-sm bg-white">
+                    {/* Available Shifts */}
+                    <div className="border border-border-gray rounded-2xl overflow-hidden shadow-sm bg-white">
                     <button
                         onClick={() => setShowAvailableShifts(!showAvailableShifts)}
                         className="w-full px-4 sm:px-5 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-all gap-3"
@@ -347,7 +348,7 @@ export function MySchedule() {
                         </div>
                     </button>
                     {showAvailableShifts && (
-                        <div className="p-4 space-y-3 animate-fade-in divide-y divide-gray-50">
+                        <div className="p-4 space-y-3 animate-fade-in divide-y divide-gray-50 xl:max-h-[42vh] xl:overflow-y-auto">
                             {highlightedDropRequestId && !isLoadingAvailable && !highlightedDropStillOpen && (
                                 <div className="rounded-xl border border-amber-warn/40 bg-amber-warn-50 p-3 text-xs text-amber-warn">
                                     This request is no longer open for pickup.
@@ -386,6 +387,7 @@ export function MySchedule() {
                             )}
                         </div>
                     )}
+                </div>
                 </div>
             </div>
 

@@ -17,6 +17,21 @@ export interface AssignmentModalProps {
     onClose: () => void;
 }
 
+function extractClockTime(value: string): string {
+    if (!value) return '';
+    const clock = value.includes('T') ? value.slice(11, 16) : value.slice(0, 5);
+    return /^([01]\d|2[0-3]):([0-5]\d)$/.test(clock) ? clock : '';
+}
+
+function formatTime(value: string) {
+    const clock = extractClockTime(value);
+    if (!clock) return '';
+    const [h, m] = clock.split(':').map(Number);
+    const period = h >= 12 ? 'pm' : 'am';
+    const h12 = h % 12 || 12;
+    return `${h12}${m > 0 ? `:${m.toString().padStart(2, '0')}` : ''}${period}`;
+}
+
 export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,8 +41,8 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
     const [showOverrideInput, setShowOverrideInput] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
     const [editDate, setEditDate] = useState(shift.date);
-    const [editStartTime, setEditStartTime] = useState(shift.start_local.slice(11, 16));
-    const [editEndTime, setEditEndTime] = useState(shift.end_local.slice(11, 16));
+    const [editStartTime, setEditStartTime] = useState(extractClockTime(shift.start_local));
+    const [editEndTime, setEditEndTime] = useState(extractClockTime(shift.end_local));
     const [editSkillId, setEditSkillId] = useState(shift.required_skill.id);
     const [editHeadcount, setEditHeadcount] = useState(shift.headcount_needed);
     const [shiftOverrideReason, setShiftOverrideReason] = useState('');
@@ -45,8 +60,8 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
     useEffect(() => {
         if (!open) return;
         setEditDate(shift.date);
-        setEditStartTime(shift.start_local.slice(11, 16));
-        setEditEndTime(shift.end_local.slice(11, 16));
+        setEditStartTime(extractClockTime(shift.start_local));
+        setEditEndTime(extractClockTime(shift.end_local));
         setEditSkillId(shift.required_skill.id);
         setEditHeadcount(shift.headcount_needed);
         setShiftOverrideReason('');
@@ -154,14 +169,6 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
     };
 
     const shiftDateStr = format(parseISO(shift.date), "eeee, MMMM d, yyyy");
-
-    function formatTime(t24: string) {
-        if (!t24) return '';
-        const [h, m] = t24.split(':').map(Number);
-        const period = h >= 12 ? 'pm' : 'am';
-        const h12 = h % 12 || 12;
-        return `${h12}${m > 0 ? `:${m.toString().padStart(2, '0')}` : ''}${period}`;
-    }
 
     if (isSuccess) {
         const assignedName = allStaff.find(u => u.id === selectedStaff)?.name;

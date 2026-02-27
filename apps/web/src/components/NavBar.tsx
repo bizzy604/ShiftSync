@@ -178,6 +178,7 @@ interface AppLayoutProps {
     sidebar?: React.ReactNode;
     notificationCount?: number;
     onBellClick?: () => void;
+    mainClassName?: string;
     children: React.ReactNode;
 }
 
@@ -188,6 +189,7 @@ export function AppLayout({
     sidebar,
     notificationCount,
     onBellClick,
+    mainClassName,
     children,
 }: AppLayoutProps) {
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -224,7 +226,7 @@ export function AppLayout({
                     </>
                 )}
 
-                <main className="flex-1 overflow-y-auto min-w-0">{children}</main>
+                <main className={`flex-1 overflow-y-auto min-w-0 ${mainClassName ?? ''}`}>{children}</main>
             </div>
         </div>
     );

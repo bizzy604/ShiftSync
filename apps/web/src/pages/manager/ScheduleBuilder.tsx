@@ -16,16 +16,27 @@ import { CreateShiftModal } from "./CreateShiftModal";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const PERIODS = ["Morning", "Afternoon", "Night"];
 
-function formatTime(t24: string) {
-    if (!t24) return "";
-    const [h, m] = t24.split(":").map(Number);
+function extractClockParts(value: string): { hour: number; minute: number } | null {
+    if (!value) return null;
+    const clock = value.includes("T") ? value.slice(11, 16) : value.slice(0, 5);
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(clock);
+    if (!match) return null;
+    return { hour: Number(match[1]), minute: Number(match[2]) };
+}
+
+function formatTime(value: string) {
+    const parts = extractClockParts(value);
+    if (!parts) return "";
+    const { hour: h, minute: m } = parts;
     const period = h >= 12 ? "pm" : "am";
     const h12 = h % 12 || 12;
     return `${h12}${m > 0 ? `:${m.toString().padStart(2, "0")}` : ""}${period}`;
 }
 
 const getShiftPeriod = (timeStr: string) => {
-    const h = parseInt(timeStr.split(":")[0], 10);
+    const parts = extractClockParts(timeStr);
+    if (!parts) return 0;
+    const h = parts.hour;
     if (h < 12) return 0;
     if (h < 18) return 1; // 12pm - 5:59pm is Afternoon
     return 2; // 6pm+ is Night
@@ -261,10 +272,11 @@ export function ScheduleBuilder() {
             sidebar={locationId ? <StaffSidebar locationId={locationId} weekStart={weekStartStr} /> : null}
             notificationCount={unreadCount}
             onBellClick={() => setIsNotificationOpen(true)}
+            mainClassName="md:overflow-hidden"
         >
-            <div className="flex flex-col h-full bg-gray-50/50">
+            <div className="flex h-full min-h-0 flex-col bg-gray-50/50">
                 {/* Schedule Grid */}
-                <div className="flex-1 overflow-auto p-3 sm:p-4">
+                <div className="flex-1 min-h-0 overflow-auto p-2 md:p-2 lg:p-3">
                     {/* Mobile Day View */}
                     <div className="md:hidden space-y-4">
                         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -331,12 +343,12 @@ export function ScheduleBuilder() {
                     </div>
 
                     {/* Desktop Grid */}
-                    <div className="hidden md:block min-w-[900px]">
-                        <div className="grid grid-cols-7 gap-2 mb-2">
+                    <div className="hidden md:block w-full min-w-[860px]">
+                        <div className="grid grid-cols-7 gap-1.5 mb-1.5">
                             {DAYS.map((day, i) => (
                                 <div key={day} className="text-center">
                                     <p className="text-xs font-bold text-navy uppercase">{day.slice(0, 3)}</p>
-                                    <p className="text-[11px] text-gray-500">{dayDates[i]}</p>
+                                    <p className="text-[10px] text-gray-500">{dayDates[i]}</p>
                                 </div>
                             ))}
                         </div>
@@ -349,15 +361,15 @@ export function ScheduleBuilder() {
 
                         {!isLoadingShifts &&
                             PERIODS.map((period, pi) => (
-                                <div key={period} className="mb-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 pl-1">{period}</p>
-                                    <div className="grid grid-cols-7 gap-2">
+                                <div key={period} className="mb-2.5 last:mb-0">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 pl-1">{period}</p>
+                                    <div className="grid grid-cols-7 gap-1.5">
                                         {DAYS.map((_, di) => {
                                             const cellShifts = getShiftsForCell(di, pi);
                                             return (
                                                 <div
                                                     key={`${di}-${pi}`}
-                                                    className="min-h-[72px] bg-white border border-border-gray rounded-lg p-1.5 relative group hover:border-teal/30 transition-base"
+                                                    className="min-h-[62px] bg-white border border-border-gray rounded-lg p-1.5 relative group hover:border-teal/30 transition-base"
                                                 >
                                                     {cellShifts.length > 0 ? (
                                                         <div className="space-y-1">
@@ -389,7 +401,7 @@ export function ScheduleBuilder() {
                 </div>
 
                 {/* Bottom Action Bar */}
-                <div className="px-4 sm:px-6 py-3 bg-white border-t border-border-gray flex flex-wrap items-center justify-between gap-3 flex-shrink-0 shadow-sm z-10 relative">
+                <div className="px-3 md:px-4 py-2.5 bg-white border-t border-border-gray flex flex-wrap items-center justify-between gap-2.5 flex-shrink-0 shadow-sm z-10 relative">
                     <Badge variant={isPublished ? "green" : "gray"}>{isPublished ? "Published" : "Draft"}</Badge>
                     <p className="text-sm text-gray-600 w-full sm:w-auto order-3 sm:order-none">
                         {shifts.length} total shifts scheduled
