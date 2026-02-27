@@ -6,7 +6,7 @@ services:
     rootDir: .
     autoDeploy: true
     healthCheckPath: /health
-    buildCommand: pip install --upgrade pip && pip install -r apps/api/requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: python scripts/alembic_migrate.py upgrade && python apps/api/run.py
     envVars:
       - key: PYTHON_VERSION

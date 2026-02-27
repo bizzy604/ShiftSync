@@ -1,74 +1,130 @@
-# ShiftSync
+<div align="center">
 
-ShiftSync is a scheduling and workforce coordination platform for multi-location hospitality teams.
+# ShiftSync Workforce Scheduling System
 
-This repository is a monorepo with:
-- FastAPI backend (`apps/api`)
-- React + Vite frontend (`apps/web`)
-- PostgreSQL data model and migrations managed with Prisma (`prisma/`)
+### Enterprise-Grade Scheduling for Multi-Location Hospitality Teams
 
-## Table of Contents
-- Overview
-- Current Implementation Status
-- Technology Stack
-- Repository Structure
-- Getting Started
-- Environment Configuration
-- Running the System
-- Operational Commands
-- API Surface (Implemented)
-- Smoke Testing
-- Demo Accounts
-- Reference Documents
-- Troubleshooting
+[![Backend Status](https://img.shields.io/badge/Backend-Production%20Ready-brightgreen)](apps/api/)
+[![Frontend Status](https://img.shields.io/badge/Frontend-Production%20Ready-brightgreen)](apps/web/)
+[![Security](https://img.shields.io/badge/Security-RBAC%20%2B%20JWT-blue)](#security)
+[![Realtime](https://img.shields.io/badge/Realtime-WebSocket-blue)](#core-capabilities)
+[![Timezone](https://img.shields.io/badge/Timezone-UTC%20Storage-orange)](#core-capabilities)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](#license)
 
-## Overview
-ShiftSync supports:
-- Role-based access (`admin`, `manager`, `staff`)
-- Skills, certifications, and availability management
-- Shift creation and weekly publishing
-- Constraint-based assignment validation (8-rule engine)
-- Swap/drop request workflows with manager approvals
-- Real-time events (WebSocket) and in-app notifications
+</div>
 
-## Current Implementation Status
-- Phase 1: Foundation API and auth implemented
-- Phase 2: Constraint engine + shifts + assignments implemented
-- Phase 3: Swap/drop workflows + notifications + realtime implemented
-- Phase 4: Analytics (`overtime`, `fairness`, `hours distribution`, `on-duty`) + audit log APIs implemented
+---
 
-## Technology Stack
-- Backend: Python 3.11, FastAPI, Uvicorn
-- ORM and migrations: SQLAlchemy 2.0 + Alembic
-- Database: PostgreSQL
-- Session/cache: Redis (with in-memory fallback for local dev if Redis is unavailable)
-- Frontend: React 18, TypeScript, Vite, React Query
-- Auth: JWT in HttpOnly cookies
+## About ShiftSync
 
-## Repository Structure
+ShiftSync is a production-ready workforce scheduling platform built for restaurant operations across multiple locations and time zones. It gives Admins, Managers, and Staff a single system to create schedules, enforce labor rules, manage coverage requests, and monitor fairness.
+
+### What Is ShiftSync?
+
+ShiftSync is an operations platform focused on high-friction scheduling workflows:
+- Shift planning and publishing
+- Rule-based assignment validation
+- Swap and drop coverage lifecycle
+- Real-time notifications and status updates
+- Overtime and fairness analytics
+- Auditable schedule change history
+
+### The Problem It Solves
+
+Hospitality teams typically face:
+- Unstructured call-out coverage
+- Overtime surprises from weak weekly visibility
+- Unfair distribution of premium shifts
+- Location-level staffing conflicts
+- No central cross-location schedule view
+
+### The ShiftSync Solution
+
+ShiftSync addresses these with:
+- Constraint-first scheduling logic
+- Real-time conflict detection and event delivery
+- Manager-approved swap and drop workflows
+- Timezone-correct date/time handling
+- Immutable audit records for schedule-affecting actions
+
+---
+
+## Core Capabilities
+
+- Role-based access control (`admin`, `manager`, `staff`)
+- Shift lifecycle management (`draft`, `published`, edit/unpublish flow)
+- Assignment engine with 8 scheduling constraints and clear violation details
+- Qualified alternative staff suggestions after assignment failures
+- Swap/drop requests with explicit state transitions and manager approvals
+- Real-time updates via WebSocket (schedule, swaps, conflicts, notifications)
+- Overtime, on-duty, and fairness analytics
+- Persistent notification center with read state tracking
+- UTC storage with location-timezone display and DST-aware resolution
+- Audit trail with actor/action timestamps and change snapshots
+
+---
+
+## Tools Used
+
+### Backend
+- Python 3.11
+- FastAPI
+- SQLAlchemy 2.0 (async) + `asyncpg`
+- Alembic
+- Redis (`redis`)
+- Pydantic Settings
+- `python-jose`, `passlib`, `bcrypt`
+- Uvicorn
+
+### Frontend
+- React 18
+- TypeScript
+- Vite
+- TanStack React Query
+- React Router
+- Axios
+- Tailwind CSS
+
+### Infrastructure
+- PostgreSQL
+- Redis
+- Render (backend deployment blueprint in `render.yaml`)
+- Vercel (frontend hosting)
+
+### Testing and Validation
+- Pytest + `pytest-asyncio`
+- API smoke runner (`scripts/smoke_phase3.py`)
+
+---
+
+## Architecture Overview
+
+Monorepo layout:
+
 ```text
 ShiftSync/
   apps/
-    api/                  # FastAPI service
-    web/                  # React application
-  scripts/                # Prisma and smoke-test scripts
-  seed/                   # Seed script
-  01_ShiftSync_PRD.md
-  02_ShiftSync_System_Design.md
-  03_ShiftSync_API_Architecture.md
-  04_ShiftSync_Database_Architecture.md
-  05_ShiftSync_Software_Dev_Plan.md
+    api/                    # FastAPI backend service
+    web/                    # React frontend application
+  Docs/                     # PRD and architecture documents
+  scripts/                  # Migration/smoke utilities
+  seed/                     # Baseline seed data
+  render.yaml               # Backend deployment blueprint
 ```
 
-## Getting Started
+---
+
+## Quick Start
 
 ### 1) Prerequisites
+
 - Python 3.11+
 - Node.js 18+ and npm
-- PostgreSQL 15+ (or Dockerized PostgreSQL)
-- Redis (optional in local development)
+- PostgreSQL 15+
+- Redis 6+
 
-### 2) Install dependencies
+### 2) Install Dependencies
+
 ```bash
 npm install
 python -m venv .venv
@@ -76,194 +132,149 @@ python -m venv .venv
 pip install -r apps/api/requirements.txt
 ```
 
-### 3) Configure environment
-Use separate env files:
-- `.env.local` for local development
-- `.env.production` for production values (Supabase/Render)
+### 3) Configure Environment
 
-Current local defaults are set for Docker PostgreSQL on port `5434`:
+Use:
+- `.env.local` for local development
+- `.env.production` for production values
+
+Local example (placeholders only):
+
 ```env
 APP_ENV="development"
-DATABASE_URL="postgresql://postgres:postgres@localhost:5434/shiftsync"
-DIRECT_URL="postgresql://postgres:postgres@localhost:5434/shiftsync"
-REDIS_URL="redis://localhost:6379/0"
+DATABASE_URL="<POSTGRES_CONNECTION_STRING>"
+DIRECT_URL="<POSTGRES_DIRECT_CONNECTION_STRING>"
+REDIS_URL="<REDIS_CONNECTION_STRING>"
+
+JWT_SECRET="<LONG_RANDOM_SECRET>"
+JWT_ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=480
+TOKEN_COOKIE_NAME="shiftsync_token"
+
+FRONTEND_URL="http://localhost:5173"
+FRONTEND_URLS="http://localhost:5173"
+CORS_ALLOWED_ORIGINS=""
+COOKIE_SECURE=false
+COOKIE_SAMESITE="lax"
 ```
 
-Production file example:
+Production example (placeholders only):
+
 ```env
 APP_ENV="production"
-DATABASE_URL="postgresql://postgres:%40Amoni_3350@db.uxmrjrseeqsvhlaaajba.supabase.co:5432/postgres?sslmode=require"
-REDIS_URL="redis://red-d3t94fvdiees7394qgv0:6379"
+DATABASE_URL="<PRODUCTION_POSTGRES_CONNECTION_STRING>"
+DIRECT_URL="<PRODUCTION_POSTGRES_DIRECT_CONNECTION_STRING>"
+REDIS_URL="<PRODUCTION_REDIS_CONNECTION_STRING>"
+
+JWT_SECRET="<LONG_RANDOM_SECRET>"
+JWT_ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=480
+TOKEN_COOKIE_NAME="shiftsync_token"
+
+FRONTEND_URL="https://<your-frontend-domain>"
+FRONTEND_URLS="https://<your-frontend-domain>"
+CORS_ALLOWED_ORIGINS=""
+COOKIE_SECURE=true
+COOKIE_SAMESITE="none"
 ```
 
-### 4) Start database (example Docker command)
-```bash
-docker run --name shiftsync-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=shiftsync \
-  -p 5434:5432 \
-  -d postgres:15
-```
+### 4) Run Migrations and Seed Data
 
-### 5) Generate Prisma client and apply migrations
 ```bash
-python scripts/prisma_generate.py
-npm run prisma:deploy
-```
-
-### 6) Seed baseline data
-```bash
+npm run db:upgrade
 python seed/seed.py
 ```
 
-Seed using production env file:
-```powershell
-$env:APP_ENV="production"
-python seed/seed.py
-```
+### 5) Start Services
 
-## Environment Configuration
-
-Key environment variables:
-
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string used by Prisma |
-| `DIRECT_URL` | Yes | Direct PostgreSQL URL for migrations/introspection |
-| `REDIS_URL` | No | Redis URL for session store |
-| `APP_ENV` | No | `development` (default) or `production` to select `.env.production` |
-| `ENV_FILE` | No | Explicit env file path override (highest priority) |
-| `JWT_SECRET` | Yes | JWT signing secret (HS256 mode) |
-| `JWT_ALGORITHM` | Yes | JWT algorithm (`HS256` by default) |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Yes | Access token lifetime |
-| `TOKEN_COOKIE_NAME` | Yes | Auth cookie name |
-| `FRONTEND_URL` | Yes | CORS allowlist origin |
-| `FRONTEND_URLS` | No | Comma-separated CORS origins (recommended for multi-origin setups) |
-| `CORS_ALLOWED_ORIGINS` | No | Extra comma-separated CORS origins |
-| `COOKIE_SECURE` | Yes (prod) | Set `true` on HTTPS deployments |
-| `COOKIE_SAMESITE` | Yes (prod) | Use `none` for cross-site frontend/backend auth cookies |
-
-## Running the System
-
-Run API:
 ```bash
 python apps/api/run.py
-```
-
-Run frontend:
-```bash
 npm run web:dev
 ```
 
-Default local URLs:
+Default local endpoints:
 - API: `http://localhost:8000`
 - Health: `http://localhost:8000/health`
-- API base: `http://localhost:8000/api/v1`
-- WebSocket: `ws://localhost:8000/api/v1/ws`
-- Swagger: `http://localhost:8000/docs`
-- Web: `http://localhost:5173`
+- API docs: `http://localhost:8000/docs`
+- Web app: `http://localhost:5173`
 
-## Deploying Backend to Render
+---
 
-This repo now includes a Render Blueprint at `render.yaml` that deploys:
-- `shiftsync-api` (FastAPI web service)
+## API Endpoints Summary
 
-Deploy steps:
-1. Push your latest changes to GitHub.
-2. In Render, create a new Blueprint and select this repository.
-3. Confirm the generated services from `render.yaml`, then deploy.
-4. After first deploy, copy your Render API URL and set `VITE_API_BASE_URL` in Vercel, for example:
-   - `https://<your-render-service>.onrender.com/api/v1`
-5. Set `DATABASE_URL` in Render to your Supabase Postgres URL (URL-encode special characters in password, add SSL):
-   - `postgresql://postgres:%40Amoni_3350@db.uxmrjrseeqsvhlaaajba.supabase.co:5432/postgres?sslmode=require`
-6. Set `REDIS_URL` in Render to your production Redis internal URL:
-   - `redis://red-d3t94fvdiees7394qgv0:6379`
-7. Keep backend CORS/auth env vars aligned with your frontend:
-   - `FRONTEND_URL=https://shift-sync-web.vercel.app`
-   - `FRONTEND_URLS=https://shift-sync-web.vercel.app`
-   - `COOKIE_SECURE=true`
-   - `COOKIE_SAMESITE=none`
-8. Seed Supabase data from local machine after migrations:
-   - `$env:APP_ENV="production"`
-   - `python seed/seed.py`
+Base path: `/api/v1`
 
-## Operational Commands
+- `/auth/*`
+- `/users/*`
+- `/locations/*`
+- `/locations/{location_id}/shifts*`
+- `/shifts/{shift_id}/assignments*`
+- `/swap-requests*`
+- `/drop-requests*`
+- `/notifications*`
+- `/analytics/*`
+- `/on-duty`
+- `/audit-logs*`
+- `/ws` (WebSocket)
 
-| Task | Command |
-|---|---|
-| Generate Prisma Python client | `python scripts/prisma_generate.py` |
-| Create/apply dev migration | `npm run prisma:migrate` |
-| Apply existing migrations | `npm run prisma:deploy` |
-| Seed baseline data | `python seed/seed.py` |
-| Build frontend | `npm run web:build` |
-| Run integrated API smoke checks | `python scripts/smoke_phase3.py` |
+---
 
-## API Surface (Implemented)
+## Testing
 
-Core route groups:
-- Auth: `/api/v1/auth/*`
-- Users: `/api/v1/users/*`
-- Locations: `/api/v1/locations/*`
-- Shifts: `/api/v1/locations/{location_id}/shifts*`
-- Assignments: `/api/v1/shifts/{shift_id}/assignments*`
-- Swaps/Drops: `/api/v1/swap-requests*`, `/api/v1/drop-requests*`
-- Notifications: `/api/v1/notifications*`
-- Analytics: `/api/v1/analytics/*`, `/api/v1/on-duty`
-- Audit: `/api/v1/audit-logs*`
-- Realtime WebSocket: `/api/v1/ws`
+Run backend unit/integration tests:
 
-## Smoke Testing
+```bash
+cd apps/api
+pytest -q
+```
 
-End-to-end smoke coverage is available via:
+Run end-to-end smoke coverage:
+
 ```bash
 python scripts/smoke_phase3.py
 ```
 
-The script verifies:
-- Login/auth and role-scoped access
-- Users/locations/availability APIs
-- Shift and assignment flows
-- Swap/drop lifecycle flows
-- Notifications read/write endpoints
-- WebSocket events (`schedule.published`, `assignment.conflict`, ping/pong)
+---
 
-Rule-level backend tests:
-```bash
-cd apps/api && python -m pytest -q tests/test_constraint_engine.py
-```
+## Deployment
 
-Quality gate tracker:
-- `BACKEND_QUALITY_GATES.md`
+Backend deployment is defined in `render.yaml`.
 
-## Demo Accounts
+Required production environment variables (use real values in your platform, not in repo files):
+- `DATABASE_URL=<PRODUCTION_POSTGRES_CONNECTION_STRING>`
+- `REDIS_URL=<PRODUCTION_REDIS_CONNECTION_STRING>`
+- `JWT_SECRET=<LONG_RANDOM_SECRET>`
+- `FRONTEND_URL=https://<your-frontend-domain>`
+- `FRONTEND_URLS=https://<your-frontend-domain>`
+- `COOKIE_SECURE=true`
+- `COOKIE_SAMESITE=none`
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@coastaleats.com` | `Admin123!` |
-| Manager | `jordan@coastaleats.com` | `Manager123!` |
-| Manager | `sam@coastaleats.com` | `Manager123!` |
-| Staff | `carlos@coastaleats.com` | `Staff123!` |
-| Staff | `maria@coastaleats.com` | `Staff123!` |
+Frontend environment variable:
+- `VITE_API_BASE_URL=https://<your-backend-domain>/api/v1`
 
-## Reference Documents
+---
 
-Primary project docs at the repo root:
-- `01_ShiftSync_PRD.md`
-- `02_ShiftSync_System_Design.md`
-- `03_ShiftSync_API_Architecture.md`
-- `04_ShiftSync_Database_Architecture.md`
-- `05_ShiftSync_Software_Dev_Plan.md`
+## Security
 
-## Troubleshooting
+- Server-side RBAC on protected routes
+- JWT authentication with HttpOnly cookie support
+- Manager access scoped to assigned locations
+- Concurrency protection for conflicting assignment writes
+- UTC-first datetime model with timezone-safe conversion
+- Append-only audit logging for schedule-affecting operations
 
-- Prisma client errors after schema changes:
-  - Run `python scripts/prisma_generate.py` again.
-- Migration issues:
-  - Confirm the active env file (`.env.local` or `.env.production`) points to the intended database.
-  - Run `npm run prisma:deploy` and review output.
-- Auth/session issues in local:
-  - If Redis is unavailable, local in-memory session fallback is used.
-  - Re-login if token/session has expired.
-- Port conflicts:
-  - Set `PORT` before starting API, for example: `set PORT=8010` (Windows cmd) or `$env:PORT='8010'` (PowerShell).
+---
+
+## Documentation
+
+- `Docs/01_ShiftSync_PRD.md`
+- `Docs/02_ShiftSync_System_Design.md`
+- `Docs/03_ShiftSync_API_Architecture.md`
+- `Docs/04_ShiftSync_Database_Architecture.md`
+- `Docs/05_ShiftSync_Software_Dev_Plan.md`
+
+---
+
+## License
+
+Proprietary.
