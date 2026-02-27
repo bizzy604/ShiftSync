@@ -1,12 +1,28 @@
+"""
+MODULE: /apps/api/app/main.py
+
+FUNCTION:
+    Implements module logic for `main`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of `main`.
+"""
+
 from contextlib import asynccontextmanager
 import asyncio
 
 from fastapi import FastAPI
+from fastapi.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.database import connect_db, disconnect_db
+from app.core.errors import AppError
 from app.core.session_store import SessionStore
 from app.services.assignment_lock import AssignmentLockManager
 from app.services.drop_expiry_worker import run_drop_expiry_worker
@@ -34,6 +50,11 @@ def _build_cors_origins() -> list[str]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Lifespan.
+    
+    Args:
+        app: Input parameter `app` used by this operation.
+    """
     settings = get_settings()
     app.state.session_store = SessionStore(settings.redis_url)
     app.state.ws_manager = RealtimeManager()
@@ -75,6 +96,28 @@ app.add_middleware(
 app.include_router(api_router)
 
 
+@app.exception_handler(AppError)
+async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
+    """Handle app error.
+    
+    Args:
+        _: Input parameter `_` used by this operation.
+        exc: Input parameter `exc` used by this operation.
+    
+    Returns:
+        Structured JSON error/response payload.
+    """
+    details = {"error": {"code": exc.code, "message": exc.message}}
+    if exc.details:
+        details["error"]["details"] = exc.details
+    return JSONResponse(status_code=exc.status_code, content=details)
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """Health.
+    
+    Returns:
+        Structured dictionary result.
+    """
     return {"status": "ok"}

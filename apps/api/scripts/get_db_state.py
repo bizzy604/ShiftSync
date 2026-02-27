@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/scripts/get_db_state.py
+
+FUNCTION:
+    Runs operational automation tasks for migrations, seeding, or smoke checks.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module supports operational reliability for setup, deployment, or data lifecycle
+    workflows.
+"""
+
 import asyncio
 from app.core.database import prisma, engine
 

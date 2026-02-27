@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/staff/SwapRequestFlow.tsx
+ *
+ * @description
+ * UI page module for `SwapRequestFlow` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useState } from 'react';
 import { Check, ArrowLeft, X, Loader2, Info, UserPlus } from 'lucide-react';
 import { Modal } from '../../components/Modal';

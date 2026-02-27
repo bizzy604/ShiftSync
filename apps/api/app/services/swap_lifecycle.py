@@ -1,13 +1,31 @@
+"""
+MODULE: /apps/api/app/services/swap_lifecycle.py
+
+FUNCTION:
+    Implements reusable domain service logic for `swap_lifecycle` workflows.
+
+DEPENDENCIES:
+    - /apps/api/app/api/routes/shifts.py
+    - /apps/api/tests/unit/test_swap_lifecycle.py
+
+IMPORTANCE:
+    This module keeps domain logic reusable and consistent across routes, workers, and
+    future extensions.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
 
 from app.core.database import prisma
+from app.services.contracts import RealtimeEmitterProtocol
 from app.services.audit import create_audit_log
 from app.services.notifications import create_notification
 
 
+# PATTERN: State Machine
+# Swap requests only transition from pending states to CANCELLED in this workflow.
 PENDING_SWAP_STATUSES = ["PENDING_ACCEPTEE", "PENDING_MANAGER"]
 
 
@@ -27,7 +45,7 @@ async def _cancel_rows(
     rows: list[object],
     actor_id: str,
     reason: str,
-    ws_manager: Any | None,
+    ws_manager: RealtimeEmitterProtocol | None,
 ) -> int:
     now = datetime.now(tz=timezone.utc)
     count = 0
@@ -109,9 +127,21 @@ async def cancel_pending_swaps_for_shift(
     shift_id: str,
     actor_id: str,
     reason: str,
-    ws_manager: Any | None = None,
+    ws_manager: RealtimeEmitterProtocol | None = None,
     db: Any | None = None,
 ) -> int:
+    """Cancel pending swaps for shift.
+    
+    Args:
+        shift_id: Target shift identifier.
+        actor_id: User identifier of the actor performing the operation.
+        reason: Reason for the state transition or audit action.
+        ws_manager: Optional realtime emitter for websocket fan-out.
+        db: Optional database client override for transaction control/testing.
+    
+    Returns:
+        Result typed as `int`.
+    """
     client = db or prisma
     rows = await client.swaprequest.find_many(
         where={

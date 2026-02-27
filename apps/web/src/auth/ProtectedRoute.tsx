@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/auth/ProtectedRoute.tsx
+ *
+ * @description
+ * Authentication and route-guard module for `ProtectedRoute` behavior.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module is critical for application access flow and role-based navigation
+ * safety.
+ */
+
 import { Navigate, Outlet } from "react-router-dom";
 
 import { Role } from "../lib/api";

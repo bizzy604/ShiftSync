@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/alembic/env.py
+
+FUNCTION:
+    Defines database migration/runtime infrastructure for schema evolution.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module supports operational reliability for setup, deployment, or data lifecycle
+    workflows.
+"""
+
 from __future__ import annotations
 
 from logging.config import fileConfig
@@ -67,4 +81,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-

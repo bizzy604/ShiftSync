@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/lib/api/hooks.ts
+ *
+ * @description
+ * API-layer module for `hooks` covering communication contracts and data hooks.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module controls API consistency and cache behavior, which directly impacts UI
+ * reliability.
+ */
+
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
 import {
@@ -82,6 +96,13 @@ import {
 } from "./types";
 import { useToast } from "../../components/ToastProvider";
 
+/**
+ * Centralized React Query hooks for all ShiftSync API domains.
+ *
+ * Keep query keys and invalidation logic here so cache behavior stays consistent
+ * across pages and role-based workflows.
+ */
+
 // --- Keys ---
 export const keys = {
     me: ["auth", "me"] as const,
@@ -108,6 +129,9 @@ export const keys = {
     suggestions: (shiftId: string) => ["shifts", shiftId, "suggestions"] as const,
 };
 
+/**
+ * Normalize backend and network failures into a user-facing message.
+ */
 function getErrorMessage(error: unknown): string {
     if (axios.isAxiosError(error)) {
         const detail = error.response?.data?.detail;
@@ -129,6 +153,9 @@ function getErrorMessage(error: unknown): string {
 }
 
 // --- Locations ---
+/**
+ * React Query hook for locations.
+ */
 export function useLocations() {
     return useQuery({
         queryKey: keys.locations,
@@ -136,6 +163,9 @@ export function useLocations() {
     });
 }
 
+/**
+ * React Query hook for location.
+ */
 export function useLocation(id: string) {
     return useQuery({
         queryKey: keys.location(id),
@@ -145,6 +175,9 @@ export function useLocation(id: string) {
 }
 
 // --- Users ---
+/**
+ * React Query hook for users.
+ */
 export function useUsers(locationId?: string, includeInactive = false) {
     return useQuery({
         queryKey: keys.users(locationId, includeInactive),
@@ -152,6 +185,9 @@ export function useUsers(locationId?: string, includeInactive = false) {
     });
 }
 
+/**
+ * React Query hook for me.
+ */
 export function useMe() {
     return useQuery({
         queryKey: keys.me,
@@ -160,6 +196,9 @@ export function useMe() {
     });
 }
 
+/**
+ * React Query hook for user.
+ */
 export function useUser(id: string) {
     return useQuery({
         queryKey: keys.user(id),
@@ -168,6 +207,9 @@ export function useUser(id: string) {
     });
 }
 
+/**
+ * React Query hook for update user.
+ */
 export function useUpdateUser() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -184,6 +226,9 @@ export function useUpdateUser() {
     });
 }
 
+/**
+ * React Query hook for user availability.
+ */
 export function useUserAvailability(id: string) {
     return useQuery({
         queryKey: keys.availability(id),
@@ -193,6 +238,9 @@ export function useUserAvailability(id: string) {
 }
 
 // --- Skills ---
+/**
+ * React Query hook for skills.
+ */
 export function useSkills() {
     return useQuery({
         queryKey: keys.skills,
@@ -200,6 +248,9 @@ export function useSkills() {
     });
 }
 
+/**
+ * React Query hook for create skill.
+ */
 export function useCreateSkill() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -215,6 +266,9 @@ export function useCreateSkill() {
     });
 }
 
+/**
+ * React Query hook for delete skill catalog.
+ */
 export function useDeleteSkillCatalog() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -231,6 +285,9 @@ export function useDeleteSkillCatalog() {
     });
 }
 
+/**
+ * React Query hook for update availability.
+ */
 export function useUpdateAvailability() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -246,6 +303,9 @@ export function useUpdateAvailability() {
     });
 }
 
+/**
+ * React Query hook for create user.
+ */
 export function useCreateUser() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -261,6 +321,9 @@ export function useCreateUser() {
     });
 }
 
+/**
+ * React Query hook for delete user.
+ */
 export function useDeleteUser() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -276,6 +339,9 @@ export function useDeleteUser() {
     });
 }
 
+/**
+ * React Query hook for add skill.
+ */
 export function useAddSkill() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -291,6 +357,9 @@ export function useAddSkill() {
     });
 }
 
+/**
+ * React Query hook for remove skill.
+ */
 export function useRemoveSkill() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -306,6 +375,9 @@ export function useRemoveSkill() {
     });
 }
 
+/**
+ * React Query hook for add certification.
+ */
 export function useAddCertification() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -321,6 +393,9 @@ export function useAddCertification() {
     });
 }
 
+/**
+ * React Query hook for remove certification.
+ */
 export function useRemoveCertification() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -337,6 +412,9 @@ export function useRemoveCertification() {
 }
 
 // --- Shifts ---
+/**
+ * React Query hook for shifts.
+ */
 export function useShifts(locationId: string, weekStart: string) {
     return useQuery({
         queryKey: keys.shifts(locationId, weekStart),
@@ -345,6 +423,9 @@ export function useShifts(locationId: string, weekStart: string) {
     });
 }
 
+/**
+ * React Query hook for create shift.
+ */
 export function useCreateShift() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -360,6 +441,9 @@ export function useCreateShift() {
     });
 }
 
+/**
+ * React Query hook for update shift.
+ */
 export function useUpdateShift() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -376,6 +460,9 @@ export function useUpdateShift() {
     });
 }
 
+/**
+ * React Query hook for delete shift.
+ */
 export function useDeleteShift() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -391,6 +478,9 @@ export function useDeleteShift() {
     });
 }
 
+/**
+ * React Query hook for unpublish shift.
+ */
 export function useUnpublishShift() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -407,6 +497,9 @@ export function useUnpublishShift() {
     });
 }
 
+/**
+ * React Query hook for publish week.
+ */
 export function usePublishWeek() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -424,6 +517,9 @@ export function usePublishWeek() {
 }
 
 // --- Assignments ---
+/**
+ * React Query hook for assignments.
+ */
 export function useAssignments(shiftId: string) {
     return useQuery({
         queryKey: keys.assignments(shiftId),
@@ -432,6 +528,9 @@ export function useAssignments(shiftId: string) {
     });
 }
 
+/**
+ * React Query hook for my assignments.
+ */
 export function useMyAssignments() {
     return useQuery({
         queryKey: keys.myAssignments,
@@ -439,6 +538,9 @@ export function useMyAssignments() {
     });
 }
 
+/**
+ * React Query hook for shift suggestions.
+ */
 export function useShiftSuggestions(shiftId: string) {
     return useQuery({
         queryKey: keys.suggestions(shiftId),
@@ -447,6 +549,9 @@ export function useShiftSuggestions(shiftId: string) {
     });
 }
 
+/**
+ * React Query hook for notify qualified staff.
+ */
 export function useNotifyQualifiedStaff() {
     const { showSuccess, showError } = useToast();
     return useMutation({
@@ -460,6 +565,9 @@ export function useNotifyQualifiedStaff() {
     });
 }
 
+/**
+ * React Query hook for assignment preview.
+ */
 export function useAssignmentPreview(shiftId: string, userId: string) {
     return useQuery({
         queryKey: keys.assignmentPreview(shiftId, userId),
@@ -468,6 +576,9 @@ export function useAssignmentPreview(shiftId: string, userId: string) {
     });
 }
 
+/**
+ * React Query hook for create assignment.
+ */
 export function useCreateAssignment() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -484,6 +595,9 @@ export function useCreateAssignment() {
     });
 }
 
+/**
+ * React Query hook for delete assignment.
+ */
 export function useDeleteAssignment() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -501,6 +615,9 @@ export function useDeleteAssignment() {
 }
 
 // --- Swaps & Drops ---
+/**
+ * React Query hook for swap requests.
+ */
 export function useSwapRequests() {
     return useQuery({
         queryKey: keys.swaps,
@@ -508,6 +625,9 @@ export function useSwapRequests() {
     });
 }
 
+/**
+ * React Query hook for swap request.
+ */
 export function useSwapRequest(id: string) {
     return useQuery({
         queryKey: keys.swap(id),
@@ -516,6 +636,9 @@ export function useSwapRequest(id: string) {
     });
 }
 
+/**
+ * React Query hook for create swap request.
+ */
 export function useCreateSwapRequest() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -533,6 +656,9 @@ export function useCreateSwapRequest() {
     });
 }
 
+/**
+ * React Query hook for available drops.
+ */
 export function useAvailableDrops() {
     return useQuery({
         queryKey: keys.drops,
@@ -540,6 +666,9 @@ export function useAvailableDrops() {
     });
 }
 
+/**
+ * React Query hook for create drop request.
+ */
 export function useCreateDropRequest() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -558,6 +687,9 @@ export function useCreateDropRequest() {
     });
 }
 
+/**
+ * React Query hook for pickup drop.
+ */
 export function usePickupDrop() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -574,6 +706,9 @@ export function usePickupDrop() {
     });
 }
 
+/**
+ * React Query hook for swap action.
+ */
 export function useSwapAction(action: "accept" | "reject" | "approve" | "decline" | "cancel") {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -622,6 +757,9 @@ export function useSwapAction(action: "accept" | "reject" | "approve" | "decline
 }
 
 // --- Analytics ---
+/**
+ * React Query hook for overtime dashboard.
+ */
 export function useOvertimeDashboard(locationId: string, weekStart: string) {
     return useQuery({
         queryKey: keys.overtime(locationId, weekStart),
@@ -630,6 +768,9 @@ export function useOvertimeDashboard(locationId: string, weekStart: string) {
     });
 }
 
+/**
+ * React Query hook for fairness report.
+ */
 export function useFairnessReport(locationId: string, startDate: string, endDate: string) {
     return useQuery({
         queryKey: keys.fairness(locationId, startDate, endDate),
@@ -638,6 +779,9 @@ export function useFairnessReport(locationId: string, startDate: string, endDate
     });
 }
 
+/**
+ * React Query hook for on duty.
+ */
 export function useOnDuty(locationId?: string) {
     return useQuery({
         queryKey: keys.onDuty(locationId),
@@ -648,6 +792,9 @@ export function useOnDuty(locationId?: string) {
 }
 
 // --- Audit ---
+/**
+ * React Query hook for audit logs.
+ */
 export function useAuditLogs(query: AuditLogQuery) {
     return useQuery({
         queryKey: keys.audit(query),
@@ -656,6 +803,9 @@ export function useAuditLogs(query: AuditLogQuery) {
     });
 }
 
+/**
+ * React Query hook for export audit logs.
+ */
 export function useExportAuditLogs() {
     const { showSuccess, showError } = useToast();
     return useMutation({
@@ -670,6 +820,9 @@ export function useExportAuditLogs() {
 }
 
 // --- Notifications ---
+/**
+ * React Query hook for notifications.
+ */
 export function useNotifications(unreadOnly = false) {
     return useQuery({
         queryKey: keys.notifications(unreadOnly),
@@ -677,6 +830,9 @@ export function useNotifications(unreadOnly = false) {
     });
 }
 
+/**
+ * React Query hook for mark all notifications read.
+ */
 export function useMarkAllNotificationsRead() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();
@@ -692,6 +848,9 @@ export function useMarkAllNotificationsRead() {
     });
 }
 
+/**
+ * React Query hook for mark notification read.
+ */
 export function useMarkNotificationRead() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -702,6 +861,9 @@ export function useMarkNotificationRead() {
     });
 }
 
+/**
+ * React Query hook for notification preferences.
+ */
 export function useNotificationPreferences() {
     return useQuery({
         queryKey: keys.notificationPreferences,
@@ -709,6 +871,9 @@ export function useNotificationPreferences() {
     });
 }
 
+/**
+ * React Query hook for update notification preferences.
+ */
 export function useUpdateNotificationPreferences() {
     const queryClient = useQueryClient();
     const { showSuccess, showError } = useToast();

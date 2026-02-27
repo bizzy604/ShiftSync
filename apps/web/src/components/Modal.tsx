@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/components/Modal.tsx
+ *
+ * @description
+ * Shared UI/component module for `Modal` used across multiple screens.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module provides reusable UI primitives that influence consistency and
+ * maintainability.
+ */
+
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 

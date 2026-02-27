@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/app/schemas/shift.py
+
+FUNCTION:
+    Defines Pydantic API contract models for `shift` requests and responses.
+
+DEPENDENCIES:
+    - /apps/api/app/api/routes/shifts.py
+    - /apps/api/app/api/routes/skills.py
+
+IMPORTANCE:
+    This module defines API contracts that protect type safety and compatibility between
+    backend and frontend.
+"""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -11,6 +26,7 @@ ShiftStatus = Literal["draft", "published", "cancelled"]
 
 
 class ShiftCreateRequest(BaseModel):
+    """ShiftCreateRequest request model."""
     model_config = ConfigDict(populate_by_name=True)
 
     shift_date: Annotated[date, Field(alias="date")]
@@ -21,6 +37,7 @@ class ShiftCreateRequest(BaseModel):
 
 
 class ShiftUpdateRequest(BaseModel):
+    """ShiftUpdateRequest request model."""
     model_config = ConfigDict(populate_by_name=True)
 
     shift_date: Annotated[date | None, Field(alias="date")] = None
@@ -32,19 +49,23 @@ class ShiftUpdateRequest(BaseModel):
 
 
 class PublishWeekRequest(BaseModel):
+    """PublishWeekRequest request model."""
     week_start: date
 
 
 class UnpublishShiftRequest(BaseModel):
+    """UnpublishShiftRequest request model."""
     override_reason: str | None = None
 
 
 class ShiftRequiredSkill(BaseModel):
+    """ShiftRequiredSkill domain type."""
     id: str
     name: str
 
 
 class ShiftResponse(BaseModel):
+    """ShiftResponse response model."""
     id: str
     location_id: str
     date: date
@@ -61,10 +82,12 @@ class ShiftResponse(BaseModel):
 
 
 class ShiftListResponse(BaseModel):
+    """ShiftListResponse response model."""
     shifts: list[ShiftResponse]
 
 
 class PublishWeekResponse(BaseModel):
+    """PublishWeekResponse response model."""
     published_shifts: int
     edit_cutoff_utc: datetime | None
     notified_staff_count: int = 0

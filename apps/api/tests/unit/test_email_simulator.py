@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/tests/unit/test_email_simulator.py
+
+FUNCTION:
+    Contains unit tests for `test_email_simulator` behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 import json
 from types import SimpleNamespace
 

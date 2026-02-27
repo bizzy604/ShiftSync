@@ -1,3 +1,17 @@
+"""
+MODULE: /scripts/prisma_generate.py
+
+FUNCTION:
+    Implements module logic for `prisma_generate`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of
+    `prisma_generate`.
+"""
+
 import os
 import site
 import subprocess

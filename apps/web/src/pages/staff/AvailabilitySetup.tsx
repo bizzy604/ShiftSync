@@ -1,3 +1,18 @@
+/**
+ * @file /apps/web/src/pages/staff/AvailabilitySetup.tsx
+ *
+ * @description
+ * UI page module for `AvailabilitySetup` workflows and role-specific interaction
+ * flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Save, Plus, X, Info, Clock, Loader2 } from 'lucide-react';
 import { AppLayout } from '../../components/NavBar';

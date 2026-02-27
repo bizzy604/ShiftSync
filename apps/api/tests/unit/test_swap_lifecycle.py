@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/tests/unit/test_swap_lifecycle.py
+
+FUNCTION:
+    Contains unit tests for `test_swap_lifecycle` behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 

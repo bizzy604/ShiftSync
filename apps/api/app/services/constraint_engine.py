@@ -1,8 +1,28 @@
+"""
+MODULE: /apps/api/app/services/constraint_engine.py
+
+FUNCTION:
+    Implements reusable domain service logic for `constraint_engine` workflows.
+
+DEPENDENCIES:
+    - /apps/api/app/api/routes/assignments.py
+    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/tests/unit/test_constraint_engine.py
+
+IMPORTANCE:
+    This module keeps domain logic reusable and consistent across routes, workers, and
+    future extensions.
+"""
+
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from app.services.errors import InvalidAvailabilityWindowError
 
+
+# PATTERN: Strategy
+# Each constraint block acts as an independent check in the evaluation pipeline.
 HARD_BLOCK = "HARD_BLOCK"
 WARNING = "WARNING"
 OVERRIDE_REQUIRED = "OVERRIDE_REQUIRED"
@@ -10,6 +30,7 @@ OVERRIDE_REQUIRED = "OVERRIDE_REQUIRED"
 
 @dataclass(frozen=True)
 class AvailabilityRule:
+    """AvailabilityRule type."""
     avail_type: str
     day_of_week: int | None
     specific_date: date | None
@@ -20,6 +41,7 @@ class AvailabilityRule:
 
 @dataclass(frozen=True)
 class AssignmentSnapshot:
+    """AssignmentSnapshot type."""
     shift_id: str
     start_utc: datetime
     end_utc: datetime
@@ -27,6 +49,7 @@ class AssignmentSnapshot:
 
 @dataclass(frozen=True)
 class ShiftSnapshot:
+    """ShiftSnapshot type."""
     id: str
     location_id: str
     location_name: str
@@ -39,6 +62,7 @@ class ShiftSnapshot:
 
 @dataclass(frozen=True)
 class UserSnapshot:
+    """UserSnapshot type."""
     id: str
     name: str
     home_timezone: str
@@ -50,6 +74,7 @@ class UserSnapshot:
 
 @dataclass(frozen=True)
 class ConstraintItem:
+    """ConstraintItem type."""
     rule: str
     description: str
     severity: str
@@ -57,6 +82,7 @@ class ConstraintItem:
 
 @dataclass(frozen=True)
 class ConstraintResult:
+    """ConstraintResult type."""
     valid: bool
     violations: list[ConstraintItem]
     warnings: list[ConstraintItem]
@@ -71,6 +97,16 @@ def evaluate_assignment(
     user: UserSnapshot,
     existing_assignments: list[AssignmentSnapshot],
 ) -> ConstraintResult:
+    """Evaluate assignment.
+    
+    Args:
+        shift: Input parameter `shift` used by this operation.
+        user: Input parameter `user` used by this operation.
+        existing_assignments: Input parameter `existing_assignments` used by this operation.
+    
+    Returns:
+        Result typed as `ConstraintResult`.
+    """
     violations: list[ConstraintItem] = []
     warnings: list[ConstraintItem] = []
 
@@ -366,7 +402,7 @@ def _resolve_windows_for_date(
 
 def _clock_window_to_utc(window_date: date, start_clock: str | None, end_clock: str | None, tz: ZoneInfo) -> tuple[datetime, datetime]:
     if start_clock is None or end_clock is None:
-        raise ValueError("Availability windows require start and end clock values.")
+        raise InvalidAvailabilityWindowError()
 
     start_local = datetime.combine(window_date, _parse_clock(start_clock), tzinfo=tz)
     end_local = datetime.combine(window_date, _parse_clock(end_clock), tzinfo=tz)

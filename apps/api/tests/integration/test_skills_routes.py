@@ -1,11 +1,26 @@
+"""
+MODULE: /apps/api/tests/integration/test_skills_routes.py
+
+FUNCTION:
+    Contains integration tests covering `test_skills_routes` API and workflow behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException
 
 from app.api.deps import CurrentUser
 from app.api.routes import skills
+from app.core.errors import AppError
+from app.services import skill_catalog
 
 
 @pytest.mark.asyncio
@@ -32,8 +47,8 @@ async def test_create_skill_success(monkeypatch) -> None:
 
     fake_prisma.tx = lambda: _TxContext()
 
-    monkeypatch.setattr(skills, "prisma", fake_prisma)
-    monkeypatch.setattr(skills, "create_audit_log", fake_audit)
+    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
+    monkeypatch.setattr(skill_catalog, "create_audit_log", fake_audit)
 
     result = await skills.create_skill(
         payload=skills.SkillCreateRequest(name="Expeditor"),
@@ -50,9 +65,9 @@ async def test_create_skill_duplicate_is_rejected(monkeypatch) -> None:
     fake_prisma = SimpleNamespace(
         skill=SimpleNamespace(find_many=AsyncMock(return_value=[SimpleNamespace(id="skill-1", name="Server")])),
     )
-    monkeypatch.setattr(skills, "prisma", fake_prisma)
+    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(AppError) as exc:
         await skills.create_skill(
             payload=skills.SkillCreateRequest(name="server"),
             current_user=CurrentUser(id="admin-1", role="admin", location_ids=[]),
@@ -68,9 +83,9 @@ async def test_delete_skill_in_use_is_rejected(monkeypatch) -> None:
         userskill=SimpleNamespace(count=AsyncMock(return_value=2)),
         shift=SimpleNamespace(count=AsyncMock(return_value=0)),
     )
-    monkeypatch.setattr(skills, "prisma", fake_prisma)
+    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(AppError) as exc:
         await skills.delete_skill(
             skill_id="skill-1",
             current_user=CurrentUser(id="admin-1", role="admin", location_ids=[]),
@@ -103,8 +118,8 @@ async def test_delete_skill_success(monkeypatch) -> None:
 
     fake_prisma.tx = lambda: _TxContext()
 
-    monkeypatch.setattr(skills, "prisma", fake_prisma)
-    monkeypatch.setattr(skills, "create_audit_log", fake_audit)
+    monkeypatch.setattr(skill_catalog, "prisma", fake_prisma)
+    monkeypatch.setattr(skill_catalog, "create_audit_log", fake_audit)
 
     result = await skills.delete_skill(
         skill_id="skill-1",

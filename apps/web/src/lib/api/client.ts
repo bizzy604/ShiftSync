@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/lib/api/client.ts
+ *
+ * @description
+ * API-layer module for `client` covering communication contracts and data hooks.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module controls API consistency and cache behavior, which directly impacts UI
+ * reliability.
+ */
+
 import axios from "axios";
 import {
     AssignmentCreateRequest,

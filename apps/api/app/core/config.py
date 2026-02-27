@@ -1,3 +1,24 @@
+"""
+MODULE: /apps/api/app/core/config.py
+
+FUNCTION:
+    Provides core infrastructure logic for `config` used across backend modules.
+
+DEPENDENCIES:
+    - /apps/api/alembic/env.py
+    - /apps/api/app/api/deps.py
+    - /apps/api/app/api/routes/auth.py
+    - /apps/api/app/api/routes/realtime.py
+    - /apps/api/app/core/database.py
+    - /apps/api/app/core/security.py
+    - /apps/api/app/main.py
+    - /apps/api/app/services/email_simulator.py
+
+IMPORTANCE:
+    This module is foundational infrastructure; regressions here can cascade across the
+    backend.
+"""
+
 from functools import lru_cache
 import os
 from pathlib import Path
@@ -42,6 +63,7 @@ def _parse_origins(value: str | None) -> list[str]:
 
 
 class Settings(BaseSettings):
+    """Settings type."""
     model_config = SettingsConfigDict(
         env_file=(ACTIVE_ENV_FILE, ROOT_DIR / ".env"),
         env_file_encoding="utf-8",
@@ -75,6 +97,11 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
+        """Cors origins.
+        
+        Returns:
+            List of resulting items.
+        """
         origins: list[str] = []
         origins.extend(_parse_origins(self.frontend_url))
         origins.extend(_parse_origins(self.frontend_urls))
@@ -88,4 +115,9 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Get settings.
+    
+    Returns:
+        Result typed as `Settings`.
+    """
     return Settings()

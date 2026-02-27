@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/tests/integration/test_users_availability_exceptions.py
+
+FUNCTION:
+    Contains integration tests covering `test_users_availability_exceptions` API and
+    workflow behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock

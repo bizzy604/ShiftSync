@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/app/schemas/audit.py
+
+FUNCTION:
+    Defines Pydantic API contract models for `audit` requests and responses.
+
+DEPENDENCIES:
+    - /apps/api/app/api/routes/audit.py
+
+IMPORTANCE:
+    This module defines API contracts that protect type safety and compatibility between
+    backend and frontend.
+"""
+
 from datetime import datetime
 from typing import Any
 
@@ -5,6 +19,7 @@ from pydantic import BaseModel
 
 
 class AuditLogResponse(BaseModel):
+    """AuditLogResponse response model."""
     id: str
     actor_id: str
     actor_name: str
@@ -19,5 +34,6 @@ class AuditLogResponse(BaseModel):
 
 
 class AuditLogListResponse(BaseModel):
+    """AuditLogListResponse response model."""
     logs: list[AuditLogResponse]
     pagination: dict[str, int]

@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/scripts/seed_prd_scenarios.py
+
+FUNCTION:
+    Runs operational automation tasks for migrations, seeding, or smoke checks.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module supports operational reliability for setup, deployment, or data lifecycle
+    workflows.
+"""
+
 import asyncio
 import uuid
 from datetime import datetime, timedelta, date, timezone

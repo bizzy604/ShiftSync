@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/manager/AssignmentModal.tsx
+ *
+ * @description
+ * UI page module for `AssignmentModal` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { Search, Check, AlertTriangle, X, Loader2, CheckCircle, Save, Trash2, RotateCcw, History } from 'lucide-react';

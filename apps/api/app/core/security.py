@@ -1,3 +1,20 @@
+"""
+MODULE: /apps/api/app/core/security.py
+
+FUNCTION:
+    Provides core infrastructure logic for `security` used across backend modules.
+
+DEPENDENCIES:
+    - /apps/api/app/api/deps.py
+    - /apps/api/app/api/routes/auth.py
+    - /apps/api/app/api/routes/realtime.py
+    - /apps/api/app/api/routes/users.py
+
+IMPORTANCE:
+    This module is foundational infrastructure; regressions here can cascade across the
+    backend.
+"""
+
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -11,10 +28,27 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
+    """Hash password.
+    
+    Args:
+        password: Input parameter `password` used by this operation.
+    
+    Returns:
+        Result typed as `str`.
+    """
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password.
+    
+    Args:
+        plain_password: Input parameter `plain_password` used by this operation.
+        hashed_password: Input parameter `hashed_password` used by this operation.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     return pwd_context.verify(plain_password, hashed_password)
 
 
@@ -25,6 +59,18 @@ def create_access_token(
     session_id: str | None = None,
     expires_delta: timedelta | None = None,
 ) -> tuple[str, str, datetime]:
+    """Create access token.
+    
+    Args:
+        user_id: Target user identifier.
+        role: Input parameter `role` used by this operation.
+        location_ids: Input parameter `location_ids` used by this operation.
+        session_id: Identifier for the target resource.
+        expires_delta: Input parameter `expires_delta` used by this operation.
+    
+    Returns:
+        Result typed as `tuple[str, str, datetime]`.
+    """
     settings = get_settings()
     now = datetime.now(tz=timezone.utc)
     ttl = expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
@@ -45,6 +91,14 @@ def create_access_token(
 
 
 def decode_access_token(token: str) -> dict:
+    """Decode access token.
+    
+    Args:
+        token: Encoded JWT access token.
+    
+    Returns:
+        Structured dictionary result.
+    """
     settings = get_settings()
     try:
         verification_key = _get_verification_key()

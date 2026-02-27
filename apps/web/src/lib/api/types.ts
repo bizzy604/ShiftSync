@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/lib/api/types.ts
+ *
+ * @description
+ * API-layer module for `types` covering communication contracts and data hooks.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module controls API consistency and cache behavior, which directly impacts UI
+ * reliability.
+ */
+
 // Auth / Users
 export type Role = "admin" | "manager" | "staff";
 export type NotificationPref = "in_app" | "in_app_email";

@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/app/api/routes/users.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `users` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+    - /apps/api/tests/integration/test_users_availability_exceptions.py
+    - /apps/api/tests/integration/test_users_list_filters.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 import re
 from datetime import date, datetime, timezone
 from typing import Any
@@ -74,6 +89,19 @@ async def list_users(
     limit: int = Query(default=25, ge=1, le=100),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> UserListResponse:
+    """List users.
+    
+    Args:
+        location_id: Target location identifier.
+        skill_id: Identifier for the target resource.
+        include_inactive: Input parameter `include_inactive` used by this operation.
+        page: 1-based page number.
+        limit: Maximum items to return per page.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `UserListResponse`.
+    """
     where: dict[str, Any] = {}
 
     if not include_inactive or current_user.role != "admin":
@@ -122,6 +150,15 @@ async def create_user(
     payload: UserCreateRequest,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> UserResponse:
+    """Create user.
+    
+    Args:
+        payload: Validated request payload model.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `UserResponse`.
+    """
     existing = await prisma.user.find_unique(where={"email": payload.email})
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists.")
@@ -149,6 +186,15 @@ async def create_user(
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(user_id: str, current_user: CurrentUser = Depends(get_current_user)) -> UserResponse:
+    """Get user.
+    
+    Args:
+        user_id: Target user identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `UserResponse`.
+    """
     await _assert_user_visible_to_actor(current_user, user_id)
 
     user = await prisma.user.find_unique(where={"id": user_id})
@@ -163,6 +209,16 @@ async def update_user(
     payload: UserUpdateRequest,
     current_user: CurrentUser = Depends(get_current_user),
 ) -> UserResponse:
+    """Update user.
+    
+    Args:
+        user_id: Target user identifier.
+        payload: Validated request payload model.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `UserResponse`.
+    """
     ensure_self_or_admin(current_user, user_id)
 
     user = await prisma.user.find_unique(where={"id": user_id})
@@ -209,6 +265,15 @@ async def delete_user(
     user_id: str,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> dict[str, bool]:
+    """Delete user.
+    
+    Args:
+        user_id: Target user identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     user = await prisma.user.find_unique(where={"id": user_id})
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
@@ -231,6 +296,15 @@ async def list_user_skills(
     user_id: str,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> list[UserSkillResponse]:
+    """List user skills.
+    
+    Args:
+        user_id: Target user identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        List of resulting items.
+    """
     await _assert_user_visible_to_actor(current_user, user_id)
     records = await prisma.userskill.find_many(
         where={"user_id": user_id},
@@ -245,6 +319,16 @@ async def add_user_skill(
     payload: SkillAttachRequest,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> UserSkillResponse:
+    """Add user skill.
+    
+    Args:
+        user_id: Target user identifier.
+        payload: Validated request payload model.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `UserSkillResponse`.
+    """
     user = await prisma.user.find_unique(where={"id": user_id})
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
@@ -277,6 +361,16 @@ async def remove_user_skill(
     skill_id: str,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> dict[str, bool]:
+    """Remove user skill.
+    
+    Args:
+        user_id: Target user identifier.
+        skill_id: Identifier for the target resource.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     existing = await prisma.userskill.find_unique(where={"user_id_skill_id": {"user_id": user_id, "skill_id": skill_id}})
     if existing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill link not found.")
@@ -298,6 +392,15 @@ async def list_user_certifications(
     user_id: str,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> list[UserCertificationResponse]:
+    """List user certifications.
+    
+    Args:
+        user_id: Target user identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        List of resulting items.
+    """
     await _assert_user_visible_to_actor(current_user, user_id)
     records = await prisma.userlocationcertification.find_many(
         where={"user_id": user_id},
@@ -320,6 +423,16 @@ async def add_user_certification(
     payload: CertificationAttachRequest,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> UserCertificationResponse:
+    """Add user certification.
+    
+    Args:
+        user_id: Target user identifier.
+        payload: Validated request payload model.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `UserCertificationResponse`.
+    """
     location = await prisma.location.find_unique(where={"id": payload.location_id})
     if location is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found.")
@@ -366,6 +479,17 @@ async def remove_user_certification(
     request: Request,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> dict[str, bool]:
+    """Remove user certification.
+    
+    Args:
+        user_id: Target user identifier.
+        location_id: Target location identifier.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     record = await prisma.userlocationcertification.find_unique(
         where={"user_id_location_id": {"user_id": user_id, "location_id": location_id}}
     )
@@ -489,6 +613,15 @@ async def get_user_availability(
     user_id: str,
     current_user: CurrentUser = Depends(get_current_user),
 ) -> AvailabilityResponse:
+    """Get user availability.
+    
+    Args:
+        user_id: Target user identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `AvailabilityResponse`.
+    """
     if current_user.role == "manager":
         await _assert_user_visible_to_actor(current_user, user_id)
     else:
@@ -523,6 +656,17 @@ async def replace_user_availability(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
 ) -> AvailabilityResponse:
+    """Replace user availability.
+    
+    Args:
+        user_id: Target user identifier.
+        payload: Validated request payload model.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `AvailabilityResponse`.
+    """
     ensure_self_or_admin(current_user, user_id)
 
     user = await prisma.user.find_unique(where={"id": user_id})

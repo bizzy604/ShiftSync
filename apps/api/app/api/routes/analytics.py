@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/app/api/routes/analytics.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `analytics` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+    - /apps/api/tests/integration/test_analytics_fairness_sort.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 from datetime import date, datetime, time, timedelta, timezone
 from statistics import pstdev
 from zoneinfo import ZoneInfo
@@ -68,6 +82,16 @@ async def overtime_dashboard(
     week_start: date = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> OvertimeDashboardResponse:
+    """Overtime dashboard.
+    
+    Args:
+        location_id: Target location identifier.
+        week_start: Input parameter `week_start` used by this operation.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `OvertimeDashboardResponse`.
+    """
     location = await _location_or_404(location_id)
     if current_user.role == "manager":
         ensure_manager_location_access(current_user, location_id)
@@ -172,6 +196,17 @@ async def fairness_report(
     end_date: date = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> FairnessReportResponse:
+    """Fairness report.
+    
+    Args:
+        location_id: Target location identifier.
+        start_date: Input parameter `start_date` used by this operation.
+        end_date: Input parameter `end_date` used by this operation.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `FairnessReportResponse`.
+    """
     if end_date < start_date:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="end_date must be >= start_date.")
 
@@ -271,6 +306,17 @@ async def hours_distribution(
     end_date: date = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> HoursDistributionResponse:
+    """Hours distribution.
+    
+    Args:
+        location_id: Target location identifier.
+        start_date: Input parameter `start_date` used by this operation.
+        end_date: Input parameter `end_date` used by this operation.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `HoursDistributionResponse`.
+    """
     if end_date < start_date:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="end_date must be >= start_date.")
 
@@ -334,6 +380,15 @@ async def on_duty(
     location_id: str | None = Query(default=None),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> OnDutyResponse:
+    """On duty.
+    
+    Args:
+        location_id: Target location identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `OnDutyResponse`.
+    """
     now = datetime.now(tz=timezone.utc)
 
     scoped_location_ids: list[str]

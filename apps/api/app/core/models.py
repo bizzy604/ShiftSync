@@ -1,3 +1,19 @@
+"""
+MODULE: /apps/api/app/core/models.py
+
+FUNCTION:
+    Provides core infrastructure logic for `models` used across backend modules.
+
+DEPENDENCIES:
+    - /apps/api/alembic/env.py
+    - /apps/api/app/core/database.py
+    - /apps/api/scripts/seed_prd_scenarios.py
+
+IMPORTANCE:
+    This module is foundational infrastructure; regressions here can cascade across the
+    backend.
+"""
+
 from __future__ import annotations
 
 from datetime import date, datetime

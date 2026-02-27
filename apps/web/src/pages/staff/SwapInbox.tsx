@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/staff/SwapInbox.tsx
+ *
+ * @description
+ * UI page module for `SwapInbox` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Check, Clock, Loader2, MessageSquare, X } from "lucide-react";
 import { format, parseISO } from "date-fns";

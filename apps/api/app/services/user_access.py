@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/app/services/user_access.py
+
+FUNCTION:
+    Implements reusable domain service logic for `user_access` workflows.
+
+DEPENDENCIES:
+    - /apps/api/app/api/routes/users.py
+
+IMPORTANCE:
+    This module keeps domain logic reusable and consistent across routes, workers, and
+    future extensions.
+"""
+
 from app.api.deps import CurrentUser
 from app.core.database import prisma
 

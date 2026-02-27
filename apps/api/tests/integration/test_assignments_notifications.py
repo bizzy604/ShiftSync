@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/tests/integration/test_assignments_notifications.py
+
+FUNCTION:
+    Contains integration tests covering `test_assignments_notifications` API and workflow
+    behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 

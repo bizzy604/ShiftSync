@@ -1,3 +1,18 @@
+/**
+ * @file /apps/web/src/pages/manager/SwapApprovalQueue.tsx
+ *
+ * @description
+ * UI page module for `SwapApprovalQueue` workflows and role-specific interaction
+ * flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useEffect, useState } from 'react';
 import {
     ArrowLeftRight,

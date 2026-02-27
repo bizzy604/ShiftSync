@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/components/NavBar.tsx
+ *
+ * @description
+ * Shared UI/component module for `NavBar` used across multiple screens.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module provides reusable UI primitives that influence consistency and
+ * maintainability.
+ */
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {

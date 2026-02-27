@@ -1,3 +1,16 @@
+"""
+MODULE: /apps/api/app/api/routes/auth.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `auth` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -29,6 +42,16 @@ async def login(
     response: Response,
     session_store: SessionStore = Depends(get_session_store),
 ) -> LoginResponse:
+    """Login.
+    
+    Args:
+        payload: Validated request payload model.
+        response: Mutable HTTP response object for cookies/headers.
+        session_store: Session store dependency used for token/session checks.
+    
+    Returns:
+        Result typed as `LoginResponse`.
+    """
     user = await prisma.user.find_unique(
         where={"email": payload.email},
         include={"manager_location_assignments": True},
@@ -68,6 +91,16 @@ async def logout(
     response: Response,
     session_store: SessionStore = Depends(get_session_store),
 ) -> dict[str, bool]:
+    """Logout.
+    
+    Args:
+        request: Incoming FastAPI request context.
+        response: Mutable HTTP response object for cookies/headers.
+        session_store: Session store dependency used for token/session checks.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     settings = get_settings()
     token = request.cookies.get(settings.token_cookie_name)
     if token:
@@ -94,6 +127,16 @@ async def refresh_token(
     response: Response,
     session_store: SessionStore = Depends(get_session_store),
 ) -> RefreshResponse:
+    """Refresh token.
+    
+    Args:
+        request: Incoming FastAPI request context.
+        response: Mutable HTTP response object for cookies/headers.
+        session_store: Session store dependency used for token/session checks.
+    
+    Returns:
+        Result typed as `RefreshResponse`.
+    """
     settings = get_settings()
     token = request.cookies.get(settings.token_cookie_name)
     if not token:
@@ -145,6 +188,14 @@ async def refresh_token(
 
 @router.get("/me", response_model=LoginResponse)
 async def get_me(current_user: CurrentUser = Depends(get_current_user)) -> LoginResponse:
+    """Get me.
+    
+    Args:
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `LoginResponse`.
+    """
     user = await prisma.user.find_unique(
         where={"id": current_user.id},
         include={"manager_location_assignments": True},

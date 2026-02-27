@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/app/api/routes/swaps.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `swaps` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+    - /apps/api/tests/integration/test_swaps_approve_transfer.py
+    - /apps/api/tests/integration/test_swaps_notify_qualified.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -50,6 +65,14 @@ def _safe_getattr(obj: object, attr: str):
 
 
 def to_resp(row: object) -> SwapRequestResponse:
+    """To resp.
+    
+    Args:
+        row: Input parameter `row` used by this operation.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     requester_name = None
     target_name = None
     pickup_name = None
@@ -118,6 +141,14 @@ def to_resp(row: object) -> SwapRequestResponse:
 
 
 def user_snapshot(user: object) -> UserSnapshot:
+    """User snapshot.
+    
+    Args:
+        user: Input parameter `user` used by this operation.
+    
+    Returns:
+        Result typed as `UserSnapshot`.
+    """
     return UserSnapshot(
         id=user.id,
         name=user.name,
@@ -140,6 +171,14 @@ def user_snapshot(user: object) -> UserSnapshot:
 
 
 def shift_snapshot(shift: object) -> ShiftSnapshot:
+    """Shift snapshot.
+    
+    Args:
+        shift: Input parameter `shift` used by this operation.
+    
+    Returns:
+        Result typed as `ShiftSnapshot`.
+    """
     return ShiftSnapshot(
         id=shift.id,
         location_id=shift.location_id,
@@ -153,6 +192,15 @@ def shift_snapshot(shift: object) -> ShiftSnapshot:
 
 
 async def existing_assignments(user_id: str, exclude_shift_ids: set[str] | None = None) -> list[AssignmentSnapshot]:
+    """Existing assignments.
+    
+    Args:
+        user_id: Target user identifier.
+        exclude_shift_ids: Input parameter `exclude_shift_ids` used by this operation.
+    
+    Returns:
+        List of resulting items.
+    """
     excluded = exclude_shift_ids or set()
     rows = await prisma.shiftassignment.find_many(
         where={"user_id": user_id, "status": "assigned"},
@@ -166,6 +214,14 @@ async def existing_assignments(user_id: str, exclude_shift_ids: set[str] | None 
 
 
 async def enforce_pending_limit(user_id: str) -> None:
+    """Enforce pending limit.
+    
+    Args:
+        user_id: Target user identifier.
+    
+    Returns:
+        None.
+    """
     count = await prisma.swaprequest.count(where={"initiated_by": user_id, "status": {"in": list(PENDING)}})
     if count >= 3:
         raise HTTPException(
@@ -175,6 +231,17 @@ async def enforce_pending_limit(user_id: str) -> None:
 
 
 async def manager_notify(location_id: str, message: str, payload: dict, db: object | None = None) -> list[object]:
+    """Manager notify.
+    
+    Args:
+        location_id: Target location identifier.
+        message: Input parameter `message` used by this operation.
+        payload: Validated request payload model.
+        db: Optional database client override for transaction control/testing.
+    
+    Returns:
+        List of resulting items.
+    """
     client = db or prisma
     links = await client.managerlocationassignment.find_many(where={"location_id": location_id})
     notifications = []
@@ -192,6 +259,15 @@ async def manager_notify(location_id: str, message: str, payload: dict, db: obje
 
 
 async def emit_notifications(ws_manager: object, notifications: list[object]) -> None:
+    """Emit notifications.
+    
+    Args:
+        ws_manager: Optional realtime emitter for websocket fan-out.
+        notifications: Input parameter `notifications` used by this operation.
+    
+    Returns:
+        None.
+    """
     for notif in notifications:
         await ws_manager.emit_to_user(
             notif.user_id,
@@ -213,6 +289,14 @@ async def _load_swap_for_response(request_id: str) -> object:
 
 @router.get("", response_model=SwapRequestListResponse)
 async def list_swap_requests(current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestListResponse:
+    """List swap requests.
+    
+    Args:
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestListResponse`.
+    """
     rows = await prisma.swaprequest.find_many(
         include={
             "requester_assignment": {
@@ -240,6 +324,15 @@ async def list_swap_requests(current_user: CurrentUser = Depends(get_current_use
 
 @router.get("/{request_id}", response_model=SwapRequestResponse)
 async def get_swap_request(request_id: str, current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestResponse:
+    """Get swap request.
+    
+    Args:
+        request_id: Target request identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(
         where={"id": request_id},
         include={
@@ -265,6 +358,16 @@ async def get_swap_request(request_id: str, current_user: CurrentUser = Depends(
 
 @router.post("", response_model=SwapRequestResponse)
 async def create_swap_request(payload: SwapCreateRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
+    """Create swap request.
+    
+    Args:
+        payload: Validated request payload model.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     await enforce_pending_limit(current_user.id)
     a = await prisma.shiftassignment.find_unique(where={"id": payload.my_assignment_id}, include={"shift": True})
     if a is None or a.user_id != current_user.id or a.status != "assigned":
@@ -327,6 +430,17 @@ async def create_swap_request(payload: SwapCreateRequest, request: Request, curr
 
 @router.post("/{request_id}/accept", response_model=SwapRequestResponse)
 async def accept_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
+    """Accept swap.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None or row.type != "swap":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Swap request not found.")
@@ -363,6 +477,17 @@ async def accept_swap(request_id: str, body: SwapActionRequest, request: Request
 
 @router.post("/{request_id}/reject", response_model=SwapRequestResponse)
 async def reject_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
+    """Reject swap.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id})
     if row is None or row.type != "swap":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Swap request not found.")
@@ -397,6 +522,17 @@ async def reject_swap(request_id: str, body: SwapActionRequest, request: Request
 
 @router.post("/{request_id}/cancel", response_model=SwapRequestResponse)
 async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(get_current_user)) -> SwapRequestResponse:
+    """Cancel swap.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id})
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")
@@ -423,6 +559,18 @@ async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request
 
 
 async def approve_transfer(row: object, actor: CurrentUser, note: str | None, request: Request, drop: bool) -> tuple[object, list[object], str]:
+    """Approve transfer.
+    
+    Args:
+        row: Input parameter `row` used by this operation.
+        actor: Input parameter `actor` used by this operation.
+        note: Input parameter `note` used by this operation.
+        request: Incoming FastAPI request context.
+        drop: Input parameter `drop` used by this operation.
+    
+    Returns:
+        List of resulting items.
+    """
     now = datetime.now(tz=timezone.utc)
     is_legacy_single_transfer = False
     requester_assignment = await prisma.shiftassignment.find_unique(
@@ -691,6 +839,17 @@ async def approve_transfer(row: object, actor: CurrentUser, note: str | None, re
 
 @router.post("/{request_id}/approve", response_model=SwapRequestResponse)
 async def approve_swap_like(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
+    """Approve swap like.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")
@@ -705,6 +864,17 @@ async def approve_swap_like(request_id: str, body: SwapActionRequest, request: R
 
 @router.post("/{request_id}/decline", response_model=SwapRequestResponse)
 async def decline_swap_like(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
+    """Decline swap like.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")
@@ -746,6 +916,16 @@ async def decline_swap_like(request_id: str, body: SwapActionRequest, request: R
 
 @router.post("/drops", response_model=SwapRequestResponse)
 async def create_drop(payload: DropCreateRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
+    """Create drop.
+    
+    Args:
+        payload: Validated request payload model.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     await enforce_pending_limit(current_user.id)
     a = await prisma.shiftassignment.find_unique(where={"id": payload.assignment_id}, include={"shift": True})
     if a is None or a.user_id != current_user.id or a.status != "assigned":
@@ -779,6 +959,15 @@ async def create_drop(payload: DropCreateRequest, request: Request, current_user
 
 @router.get("/drops/available", response_model=AvailableDropListResponse)
 async def available_drops(request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> AvailableDropListResponse:
+    """Available drops.
+    
+    Args:
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `AvailableDropListResponse`.
+    """
     now = datetime.now(tz=timezone.utc)
     await expire_due_drop_requests(now=now, ws_manager=request.app.state.ws_manager)
     rows = await prisma.swaprequest.find_many(
@@ -827,6 +1016,17 @@ async def available_drops(request: Request, current_user: CurrentUser = Depends(
 
 @router.post("/drops/{request_id}/pickup", response_model=SwapRequestResponse)
 async def pickup_drop(request_id: str, body: DropPickupRequest, request: Request, current_user: CurrentUser = Depends(require_roles("staff"))) -> SwapRequestResponse:
+    """Pickup drop.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": {"include": {"location": True, "required_skill": True}}}}})
     if row is None or row.type != "drop":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Drop request not found.")
@@ -887,6 +1087,17 @@ async def pickup_drop(request_id: str, body: DropPickupRequest, request: Request
 
 @router.post("/drops/{request_id}/approve", response_model=SwapRequestResponse)
 async def approve_drop(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
+    """Approve drop.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None or row.type != "drop":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Drop request not found.")
@@ -901,6 +1112,17 @@ async def approve_drop(request_id: str, body: SwapActionRequest, request: Reques
 
 @router.post("/drops/{request_id}/decline", response_model=SwapRequestResponse)
 async def decline_drop(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
+    """Decline drop.
+    
+    Args:
+        request_id: Target request identifier.
+        body: Input parameter `body` used by this operation.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `SwapRequestResponse`.
+    """
     row = await prisma.swaprequest.find_unique(where={"id": request_id}, include={"requester_assignment": {"include": {"shift": True}}})
     if row is None or row.type != "drop":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Drop request not found.")
@@ -956,6 +1178,16 @@ async def notify_qualified_staff(
     request: Request,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> dict[str, int]:
+    """Notify qualified staff.
+    
+    Args:
+        request_id: Target request identifier.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Structured dictionary result.
+    """
     row = await prisma.swaprequest.find_unique(
         where={"id": request_id},
         include={"requester_assignment": {"include": {"shift": {"include": {"location": True, "required_skill": True}}}}}

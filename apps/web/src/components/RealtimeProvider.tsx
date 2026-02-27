@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/components/RealtimeProvider.tsx
+ *
+ * @description
+ * Shared UI/component module for `RealtimeProvider` used across multiple screens.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module provides reusable UI primitives that influence consistency and
+ * maintainability.
+ */
+
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthContext';

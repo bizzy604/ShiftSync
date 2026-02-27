@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/staff/MySchedule.tsx
+ *
+ * @description
+ * UI page module for `MySchedule` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     ChevronLeft,

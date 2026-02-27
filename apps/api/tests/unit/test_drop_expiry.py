@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/tests/unit/test_drop_expiry.py
+
+FUNCTION:
+    Contains unit tests for `test_drop_expiry` behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock

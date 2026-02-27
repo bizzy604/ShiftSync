@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/manager/OvertimeFairness.tsx
+ *
+ * @description
+ * UI page module for `OvertimeFairness` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, AlertTriangle, TrendingUp, DollarSign, BarChart3, Loader2, CheckCircle } from 'lucide-react';
 import { format, startOfWeek, addDays, subDays, parseISO } from 'date-fns';

@@ -1,3 +1,17 @@
+"""
+MODULE: /scripts/prisma_migrate.py
+
+FUNCTION:
+    Implements module logic for `prisma_migrate`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of
+    `prisma_migrate`.
+"""
+
 import os
 import subprocess
 import sys

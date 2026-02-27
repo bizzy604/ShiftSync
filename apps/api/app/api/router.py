@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/app/api/router.py
+
+FUNCTION:
+    Registers all API routers and composes the public `/api/v1` surface.
+
+DEPENDENCIES:
+    - /apps/api/app/main.py
+    - /apps/api/tests/integration/test_route_surface.py
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of `router`.
+"""
+
 from fastapi import APIRouter
 
 from app.api.routes import analytics, assignments, audit, auth, locations, notifications, realtime, shifts, swaps, users, skills

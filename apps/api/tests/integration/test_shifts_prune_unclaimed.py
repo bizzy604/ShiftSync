@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/tests/integration/test_shifts_prune_unclaimed.py
+
+FUNCTION:
+    Contains integration tests covering `test_shifts_prune_unclaimed` API and workflow
+    behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock

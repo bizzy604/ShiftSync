@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/app/api/routes/assignments.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `assignments`
+    domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+    - /apps/api/tests/integration/test_assignments_notifications.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 from datetime import datetime, timezone
 from typing import Any
 
@@ -275,6 +290,14 @@ async def _compute_suggestions(shift_snapshot: ShiftSnapshot, target_user_id: st
 async def list_my_assignments(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> MyAssignmentListResponse:
+    """List my assignments.
+    
+    Args:
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `MyAssignmentListResponse`.
+    """
     assignments = await prisma.shiftassignment.find_many(
         where={"user_id": current_user.id, "status": "assigned"},
         include={"shift": {"include": {"location": True, "required_skill": True}}},
@@ -315,6 +338,15 @@ async def list_assignments(
     shift_id: str = Query(...),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> AssignmentListResponse:
+    """List assignments.
+    
+    Args:
+        shift_id: Target shift identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `AssignmentListResponse`.
+    """
     await _get_shift_with_access(shift_id, current_user)
     where = {"shift_id": shift_id}
     if current_user.role == "staff":
@@ -334,6 +366,16 @@ async def preview_assignment(
     user_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> AssignmentPreviewResponse:
+    """Preview assignment.
+    
+    Args:
+        shift_id: Target shift identifier.
+        user_id: Target user identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `AssignmentPreviewResponse`.
+    """
     shift = await _get_shift_with_access(shift_id, current_user)
 
     user = await prisma.user.find_unique(
@@ -372,6 +414,16 @@ async def list_shift_suggestions(
     limit: int = Query(10, ge=1, le=50),
     current_user: CurrentUser = Depends(require_roles("admin", "manager", "staff")),
 ) -> list[ConstraintSuggestion]:
+    """List shift suggestions.
+    
+    Args:
+        shift_id: Target shift identifier.
+        limit: Maximum items to return per page.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        List of resulting items.
+    """
     shift = await _get_shift_with_access(shift_id, current_user)
     shift_snapshot = _to_shift_snapshot(shift)
     suggestions = await _compute_suggestions(shift_snapshot, target_user_id="", limit=limit)
@@ -385,6 +437,14 @@ async def create_assignment(
     shift_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ):
+    """Create assignment.
+    
+    Args:
+        payload: Validated request payload model.
+        request: Incoming FastAPI request context.
+        shift_id: Target shift identifier.
+        current_user: Authenticated user from dependency resolution.
+    """
     shift = await _get_shift_with_access(shift_id, current_user)
     if shift.status == "cancelled":
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot assign to cancelled shift.")
@@ -571,6 +631,17 @@ async def delete_assignment(
     shift_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> dict[str, bool]:
+    """Delete assignment.
+    
+    Args:
+        assignment_id: Target assignment identifier.
+        request: Incoming FastAPI request context.
+        shift_id: Target shift identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     shift = await _get_shift_with_access(shift_id, current_user)
     if shift is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shift not found.")

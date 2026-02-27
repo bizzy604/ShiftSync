@@ -1,4 +1,4 @@
-# ShiftSync Backend API
+﻿# ShiftSync Backend API
 
 FastAPI-based REST API for the ShiftSync multi-location restaurant scheduling platform.
 
@@ -241,7 +241,7 @@ pytest
 pytest --cov=app --cov-report=html
 
 # Specific test file
-pytest tests/test_constraint_engine.py
+pytest tests/unit/test_constraint_engine.py`n`n# Route surface integration checks`npytest tests/integration/test_route_surface.py
 
 # Verbose output
 pytest -v
@@ -251,57 +251,57 @@ pytest -v
 
 ```
 apps/api/
-├── app/
-│   ├── main.py              # FastAPI app factory, lifespan, middleware
-│   ├── api/
-│   │   ├── router.py        # Main API router
-│   │   ├── deps.py          # FastAPI dependencies (auth, RBAC)
-│   │   └── routes/          # Route handlers (thin layer)
-│   │       ├── auth.py
-│   │       ├── users.py
-│   │       ├── locations.py
-│   │       ├── shifts.py
-│   │       ├── assignments.py
-│   │       ├── swaps.py
-│   │       ├── notifications.py
-│   │       ├── analytics.py
-│   │       ├── audit.py
-│   │       └── realtime.py
-│   ├── core/
-│   │   ├── config.py        # Settings (Pydantic)
-│   │   ├── database.py      # SQLAlchemy engine, Prisma-like facade
-│   │   ├── db_base.py       # Declarative base
-│   │   ├── models.py        # SQLAlchemy ORM models
-│   │   ├── security.py      # JWT encoding/decoding, password hashing
-│   │   └── session_store.py # Redis session management
-│   ├── schemas/             # Pydantic request/response models
-│   │   ├── auth.py
-│   │   ├── user.py
-│   │   ├── location.py
-│   │   ├── shift.py
-│   │   ├── assignment.py
-│   │   ├── swap.py
-│   │   ├── notification.py
-│   │   ├── analytics.py
-│   │   └── audit.py
-│   └── services/            # Business logic layer
-│       ├── constraint_engine.py    # 8 scheduling constraint checks
-│       ├── assignment_lock.py      # Concurrent assignment prevention
-│       ├── drop_expiry_worker.py    # Background job for drop expiry
-│       ├── realtime.py              # WebSocket manager
-│       ├── notifications.py         # Notification creation
-│       ├── audit.py                 # Audit log creation
-│       ├── user_access.py           # RBAC helpers
-│       └── timezone_utils.py        # DST-safe timezone utilities
-├── alembic/                 # Database migrations
-│   ├── versions/
-│   └── env.py
-├── alembic.ini              # Alembic configuration
-├── tests/                   # Test suite
-│   └── test_constraint_engine.py
-├── requirements.txt         # Python dependencies
-├── run.py                  # Convenience script to run server
-└── README.md               # This file
+â”œâ”€â”€ app/
+â”‚   â”œâ”€â”€ main.py              # FastAPI app factory, lifespan, middleware
+â”‚   â”œâ”€â”€ api/
+â”‚   â”‚   â”œâ”€â”€ router.py        # Main API router
+â”‚   â”‚   â”œâ”€â”€ deps.py          # FastAPI dependencies (auth, RBAC)
+â”‚   â”‚   â””â”€â”€ routes/          # Route handlers (thin layer)
+â”‚   â”‚       â”œâ”€â”€ auth.py
+â”‚   â”‚       â”œâ”€â”€ users.py
+â”‚   â”‚       â”œâ”€â”€ locations.py
+â”‚   â”‚       â”œâ”€â”€ shifts.py
+â”‚   â”‚       â”œâ”€â”€ assignments.py
+â”‚   â”‚       â”œâ”€â”€ swaps.py
+â”‚   â”‚       â”œâ”€â”€ notifications.py
+â”‚   â”‚       â”œâ”€â”€ analytics.py
+â”‚   â”‚       â”œâ”€â”€ audit.py
+â”‚   â”‚       â””â”€â”€ realtime.py
+â”‚   â”œâ”€â”€ core/
+â”‚   â”‚   â”œâ”€â”€ config.py        # Settings (Pydantic)
+â”‚   â”‚   â”œâ”€â”€ database.py      # SQLAlchemy engine, Prisma-like facade
+â”‚   â”‚   â”œâ”€â”€ db_base.py       # Declarative base
+â”‚   â”‚   â”œâ”€â”€ models.py        # SQLAlchemy ORM models
+â”‚   â”‚   â”œâ”€â”€ security.py      # JWT encoding/decoding, password hashing
+â”‚   â”‚   â””â”€â”€ session_store.py # Redis session management
+â”‚   â”œâ”€â”€ schemas/             # Pydantic request/response models
+â”‚   â”‚   â”œâ”€â”€ auth.py
+â”‚   â”‚   â”œâ”€â”€ user.py
+â”‚   â”‚   â”œâ”€â”€ location.py
+â”‚   â”‚   â”œâ”€â”€ shift.py
+â”‚   â”‚   â”œâ”€â”€ assignment.py
+â”‚   â”‚   â”œâ”€â”€ swap.py
+â”‚   â”‚   â”œâ”€â”€ notification.py
+â”‚   â”‚   â”œâ”€â”€ analytics.py
+â”‚   â”‚   â””â”€â”€ audit.py
+â”‚   â””â”€â”€ services/            # Business logic layer
+â”‚       â”œâ”€â”€ constraint_engine.py    # 8 scheduling constraint checks
+â”‚       â”œâ”€â”€ assignment_lock.py      # Concurrent assignment prevention
+â”‚       â”œâ”€â”€ drop_expiry_worker.py    # Background job for drop expiry
+â”‚       â”œâ”€â”€ realtime.py              # WebSocket manager
+â”‚       â”œâ”€â”€ notifications.py         # Notification creation
+â”‚       â”œâ”€â”€ audit.py                 # Audit log creation
+â”‚       â”œâ”€â”€ user_access.py           # RBAC helpers
+â”‚       â””â”€â”€ timezone_utils.py        # DST-safe timezone utilities
+â”œâ”€â”€ alembic/                 # Database migrations
+â”‚   â”œâ”€â”€ versions/
+â”‚   â””â”€â”€ env.py
+â”œâ”€â”€ alembic.ini              # Alembic configuration
+â”œâ”€â”€ tests/                   # Test suite
+â”‚   â””â”€â”€ test_constraint_engine.py
+â”œâ”€â”€ requirements.txt         # Python dependencies
+â”œâ”€â”€ run.py                  # Convenience script to run server
+â””â”€â”€ README.md               # This file
 ```
 
 ## Key Features
@@ -334,7 +334,7 @@ apps/api/
 - CSV export available for admin users
 
 ### 5. Swap/Drop Workflow
-- State machine: OPEN → PENDING_MANAGER → APPROVED/REJECTED
+- State machine: OPEN â†’ PENDING_MANAGER â†’ APPROVED/REJECTED
 - Max 3 pending requests per staff member
 - Drop requests expire 24 hours before shift start
 - Background worker automatically expires drops
@@ -399,3 +399,39 @@ OSError: Connect call failed ('127.0.0.1', 5432)
 ## License
 
 [Your License Here]
+
+
+## Test Layout (Current)
+
+```text
+apps/api/tests/
+  unit/
+    test_constraint_engine.py
+    test_drop_expiry.py
+    test_email_simulator.py
+    test_session_store.py
+    test_swap_lifecycle.py
+  integration/
+    test_analytics_fairness_sort.py
+    test_assignments_notifications.py
+    test_deps_manager_scope.py
+    test_route_surface.py
+    test_shifts_prune_unclaimed.py
+    test_skills_routes.py
+    test_swaps_approve_transfer.py
+    test_swaps_notify_qualified.py
+    test_users_availability_exceptions.py
+    test_users_list_filters.py
+```
+
+## Layer Guides
+
+The backend includes folder-level implementation guides:
+- `app/api/README.md`
+- `app/api/routes/README.md`
+- `app/core/README.md`
+- `app/services/README.md`
+- `app/schemas/README.md`
+
+Cross-layer conventions:
+- `../../Docs/MAINTAINABILITY_GUIDE.md`

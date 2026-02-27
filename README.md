@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # ShiftSync Workforce Scheduling System
 
@@ -225,7 +225,7 @@ Run backend unit/integration tests:
 
 ```bash
 cd apps/api
-pytest -q
+pytest -q`n`n# Unit only`npytest tests/unit -q`n`n# Integration only`npytest tests/integration -q
 ```
 
 Run end-to-end smoke coverage:
@@ -281,14 +281,18 @@ Frontend environment variable:
 ## Documentation
 
 - `ASSESSMENT_ACCESS.md` (assessment evaluator access + scenario test playbook)
+- `Docs/MAINTAINABILITY_GUIDE.md` (backend/frontend organization and maintainability conventions)
 - `Docs/01_ShiftSync_PRD.md`
 - `Docs/02_ShiftSync_System_Design.md`
 - `Docs/03_ShiftSync_API_Architecture.md`
 - `Docs/04_ShiftSync_Database_Architecture.md`
 - `Docs/05_ShiftSync_Software_Dev_Plan.md`
+- `apps/web/README.md` (frontend run/build/extend guide)
+- `apps/web/src/README.md` (frontend source folder responsibilities)
 
 ---
 
 ## License
 
 Proprietary.
+

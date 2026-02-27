@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/LoginPage.tsx
+ *
+ * @description
+ * UI page module for `LoginPage` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';

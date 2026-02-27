@@ -1,3 +1,17 @@
+"""
+MODULE: /scripts/seed_production_once.py
+
+FUNCTION:
+    Implements module logic for `seed_production_once`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of
+    `seed_production_once`.
+"""
+
 import os
 import subprocess
 import sys

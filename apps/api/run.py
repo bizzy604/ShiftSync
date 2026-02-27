@@ -1,3 +1,16 @@
+"""
+MODULE: /apps/api/run.py
+
+FUNCTION:
+    Implements module logic for `run`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of `run`.
+"""
+
 import os
 from pathlib import Path
 

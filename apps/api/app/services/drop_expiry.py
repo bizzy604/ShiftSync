@@ -1,3 +1,19 @@
+"""
+MODULE: /apps/api/app/services/drop_expiry.py
+
+FUNCTION:
+    Implements reusable domain service logic for `drop_expiry` workflows.
+
+DEPENDENCIES:
+    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/app/services/drop_expiry_worker.py
+    - /apps/api/tests/unit/test_drop_expiry.py
+
+IMPORTANCE:
+    This module keeps domain logic reusable and consistent across routes, workers, and
+    future extensions.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -5,6 +21,7 @@ from typing import Any
 
 from app.core.database import prisma
 from app.services.audit import create_audit_log
+from app.services.contracts import RealtimeEmitterProtocol
 from app.services.notifications import create_notification
 
 
@@ -16,8 +33,21 @@ async def expire_drop_request(
     request_row: object,
     now: datetime | None = None,
     db: Any | None = None,
-    ws_manager: Any | None = None,
+    ws_manager: RealtimeEmitterProtocol | None = None,
 ) -> bool:
+    # PATTERN: State Machine
+    # Drop requests are transitioned from OPEN/PENDING_MANAGER to EXPIRED.
+    """Expire drop request.
+    
+    Args:
+        request_row: Input parameter `request_row` used by this operation.
+        now: Clock override for deterministic behavior in tests.
+        db: Optional database client override for transaction control/testing.
+        ws_manager: Optional realtime emitter for websocket fan-out.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     if getattr(request_row, "type", None) != "drop":
         return False
     if getattr(request_row, "status", None) not in EXPIRABLE_DROP_STATUSES:
@@ -107,8 +137,18 @@ async def expire_due_drop_requests(
     *,
     now: datetime | None = None,
     db: Any | None = None,
-    ws_manager: Any | None = None,
+    ws_manager: RealtimeEmitterProtocol | None = None,
 ) -> int:
+    """Expire due drop requests.
+    
+    Args:
+        now: Clock override for deterministic behavior in tests.
+        db: Optional database client override for transaction control/testing.
+        ws_manager: Optional realtime emitter for websocket fan-out.
+    
+    Returns:
+        Result typed as `int`.
+    """
     resolved_at = now or datetime.now(tz=timezone.utc)
     client = db or prisma
     rows = await client.swaprequest.find_many(

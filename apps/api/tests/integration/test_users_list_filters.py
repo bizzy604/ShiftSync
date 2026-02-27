@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/tests/integration/test_users_list_filters.py
+
+FUNCTION:
+    Contains integration tests covering `test_users_list_filters` API and workflow behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 

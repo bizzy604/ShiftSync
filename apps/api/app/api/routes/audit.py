@@ -1,3 +1,16 @@
+"""
+MODULE: /apps/api/app/api/routes/audit.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `audit` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 import csv
 import io
 import json
@@ -88,6 +101,21 @@ async def list_audit_logs(
     limit: int = Query(default=50, ge=1, le=200),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> AuditLogListResponse:
+    """List audit logs.
+    
+    Args:
+        entity_type: Input parameter `entity_type` used by this operation.
+        entity_id: Identifier for the target resource.
+        location_id: Target location identifier.
+        start_date: Input parameter `start_date` used by this operation.
+        end_date: Input parameter `end_date` used by this operation.
+        page: 1-based page number.
+        limit: Maximum items to return per page.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `AuditLogListResponse`.
+    """
     where = _build_where(
         current_user=current_user,
         entity_type=entity_type,
@@ -120,6 +148,19 @@ async def export_audit_logs(
     end_date: date | None = Query(default=None),
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> StreamingResponse:
+    """Export audit logs.
+    
+    Args:
+        entity_type: Input parameter `entity_type` used by this operation.
+        entity_id: Identifier for the target resource.
+        location_id: Target location identifier.
+        start_date: Input parameter `start_date` used by this operation.
+        end_date: Input parameter `end_date` used by this operation.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `StreamingResponse`.
+    """
     where = _build_where(
         current_user=current_user,
         entity_type=entity_type,

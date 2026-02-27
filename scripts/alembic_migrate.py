@@ -1,3 +1,17 @@
+"""
+MODULE: /scripts/alembic_migrate.py
+
+FUNCTION:
+    Implements module logic for `alembic_migrate`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of
+    `alembic_migrate`.
+"""
+
 import os
 import site
 import subprocess

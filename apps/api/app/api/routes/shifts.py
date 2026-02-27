@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/app/api/routes/shifts.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `shifts` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+    - /apps/api/tests/integration/test_shifts_prune_unclaimed.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -123,6 +137,17 @@ async def list_shifts(
     status_filter: str | None = Query(default=None, alias="status"),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ShiftListResponse:
+    """List shifts.
+    
+    Args:
+        location_id: Target location identifier.
+        week_start: Input parameter `week_start` used by this operation.
+        status_filter: Input parameter `status_filter` used by this operation.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `ShiftListResponse`.
+    """
     location = await _get_location_or_404(location_id)
 
     if current_user.role == "manager":
@@ -171,6 +196,16 @@ async def create_shift(
     location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> ShiftResponse:
+    """Create shift.
+    
+    Args:
+        payload: Validated request payload model.
+        location_id: Target location identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `ShiftResponse`.
+    """
     location = await _get_location_or_404(location_id)
     if current_user.role == "manager":
         ensure_manager_location_access(current_user, location_id)
@@ -228,6 +263,16 @@ async def get_shift(
     location_id: str = Query(...),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ShiftResponse:
+    """Get shift.
+    
+    Args:
+        shift_id: Target shift identifier.
+        location_id: Target location identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `ShiftResponse`.
+    """
     location = await _get_location_or_404(location_id)
     shift = await prisma.shift.find_unique(
         where={"id": shift_id},
@@ -256,6 +301,18 @@ async def update_shift(
     location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> ShiftResponse:
+    """Update shift.
+    
+    Args:
+        shift_id: Target shift identifier.
+        payload: Validated request payload model.
+        request: Incoming FastAPI request context.
+        location_id: Target location identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `ShiftResponse`.
+    """
     location = await _get_location_or_404(location_id)
     if current_user.role == "manager":
         ensure_manager_location_access(current_user, location_id)
@@ -396,6 +453,17 @@ async def delete_shift(
     location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> dict[str, bool]:
+    """Delete shift.
+    
+    Args:
+        shift_id: Target shift identifier.
+        request: Incoming FastAPI request context.
+        location_id: Target location identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        True when the operation succeeds, otherwise False.
+    """
     if current_user.role == "manager":
         ensure_manager_location_access(current_user, location_id)
 
@@ -441,6 +509,17 @@ async def publish_week(
     location_id: str = Query(...),
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> PublishWeekResponse:
+    """Publish week.
+    
+    Args:
+        payload: Validated request payload model.
+        request: Incoming FastAPI request context.
+        location_id: Target location identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `PublishWeekResponse`.
+    """
     if current_user.role == "manager":
         ensure_manager_location_access(current_user, location_id)
 
@@ -529,6 +608,18 @@ async def unpublish_shift(
     request: Request,
     current_user: CurrentUser = Depends(require_roles("admin", "manager")),
 ) -> ShiftResponse:
+    """Unpublish shift.
+    
+    Args:
+        location_id: Target location identifier.
+        shift_id: Target shift identifier.
+        payload: Validated request payload model.
+        request: Incoming FastAPI request context.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `ShiftResponse`.
+    """
     location = await _get_location_or_404(location_id)
     if current_user.role == "manager":
         ensure_manager_location_access(current_user, location_id)

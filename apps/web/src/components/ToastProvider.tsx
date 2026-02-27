@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/components/ToastProvider.tsx
+ *
+ * @description
+ * Shared UI/component module for `ToastProvider` used across multiple screens.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module provides reusable UI primitives that influence consistency and
+ * maintainability.
+ */
+
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
 import { createPortal } from 'react-dom';

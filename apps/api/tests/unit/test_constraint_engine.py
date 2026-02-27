@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/tests/unit/test_constraint_engine.py
+
+FUNCTION:
+    Contains unit tests for `test_constraint_engine` behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 

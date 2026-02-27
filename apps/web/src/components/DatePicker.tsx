@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/components/DatePicker.tsx
+ *
+ * @description
+ * Shared UI/component module for `DatePicker` used across multiple screens.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module provides reusable UI primitives that influence consistency and
+ * maintainability.
+ */
+
 import React from "react";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";

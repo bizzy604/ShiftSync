@@ -1,3 +1,17 @@
+"""
+MODULE: /apps/api/tests/unit/test_session_store.py
+
+FUNCTION:
+    Contains unit tests for `test_session_store` behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 import time
 
 import pytest

@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/tests/integration/test_analytics_fairness_sort.py
+
+FUNCTION:
+    Contains integration tests covering `test_analytics_fairness_sort` API and workflow
+    behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock

@@ -1,9 +1,17 @@
-"""SQLAlchemy baseline after Prisma-managed schema.
-
-Revision ID: 0001_sqlalchemy_baseline
-Revises:
-Create Date: 2026-02-26
 """
+MODULE: /apps/api/alembic/versions/0001_sqlalchemy_baseline.py
+
+FUNCTION:
+    Defines database migration/runtime infrastructure for schema evolution.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module supports operational reliability for setup, deployment, or data lifecycle
+    workflows.
+"""
+
 from __future__ import annotations
 
 
@@ -26,4 +34,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Baseline downgrade is intentionally a no-op."""
     pass
-

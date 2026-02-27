@@ -1,3 +1,18 @@
+/**
+ * @file /apps/web/src/pages/manager/EmergencyCoverage.tsx
+ *
+ * @description
+ * UI page module for `EmergencyCoverage` workflows and role-specific interaction
+ * flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useState, useMemo } from 'react';
 import { AlertTriangle, Clock, Check, Bell, User, X, Loader2, Info } from 'lucide-react';
 import { format, parseISO, differenceInMinutes, addMinutes, isBefore } from 'date-fns';

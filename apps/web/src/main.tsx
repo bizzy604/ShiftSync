@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/main.tsx
+ *
+ * @description
+ * Application bootstrap and route composition for the web frontend.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module is critical for application access flow and role-based navigation
+ * safety.
+ */
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -32,6 +46,9 @@ import "./styles.css";
 
 const queryClient = new QueryClient();
 
+/**
+ * Redirect users from `/` to their role home or login when unauthenticated.
+ */
 function IndexRedirect() {
   const { user } = useAuth();
   if (!user) {

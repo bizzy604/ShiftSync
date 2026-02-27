@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/admin/AuditLog.tsx
+ *
+ * @description
+ * UI page module for `AuditLog` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Download, Loader2, Search } from 'lucide-react';
 import { format, subDays } from 'date-fns';

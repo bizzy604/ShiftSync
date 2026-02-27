@@ -1,3 +1,16 @@
+"""
+MODULE: /apps/api/app/api/routes/realtime.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `realtime` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.config import get_settings
@@ -10,6 +23,11 @@ router = APIRouter()
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """Websocket endpoint.
+    
+    Args:
+        websocket: Input parameter `websocket` used by this operation.
+    """
     settings = get_settings()
     token = websocket.query_params.get("token") or websocket.cookies.get(settings.token_cookie_name)
     

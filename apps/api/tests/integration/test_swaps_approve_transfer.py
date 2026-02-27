@@ -1,3 +1,18 @@
+"""
+MODULE: /apps/api/tests/integration/test_swaps_approve_transfer.py
+
+FUNCTION:
+    Contains integration tests covering `test_swaps_approve_transfer` API and workflow
+    behavior.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module guards against regressions and documents expected behavior for future
+    contributors.
+"""
+
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock

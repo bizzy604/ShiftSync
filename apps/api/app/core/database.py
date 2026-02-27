@@ -1,3 +1,29 @@
+"""
+MODULE: /apps/api/app/core/database.py
+
+FUNCTION:
+    Provides core infrastructure logic for `database` used across backend modules.
+
+DEPENDENCIES:
+    - /apps/api/alembic/env.py
+    - /apps/api/app/api/deps.py
+    - /apps/api/app/api/routes/analytics.py
+    - /apps/api/app/api/routes/assignments.py
+    - /apps/api/app/api/routes/audit.py
+    - /apps/api/app/api/routes/auth.py
+    - /apps/api/app/api/routes/locations.py
+    - /apps/api/app/api/routes/notifications.py
+    - /apps/api/app/api/routes/realtime.py
+    - /apps/api/app/api/routes/shifts.py
+    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/app/api/routes/users.py
+    - (11 additional dependents omitted for brevity.)
+
+IMPORTANCE:
+    This module is foundational infrastructure; regressions here can cascade across the
+    backend.
+"""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -279,10 +305,28 @@ class ModelAccessor:
         return row
 
     async def find_unique(self, *, where: dict[str, Any], include: dict[str, Any] | None = None) -> Any | None:
+        """Find unique.
+        
+        Args:
+            where: Filter criteria for the query operation.
+            include: Related entities to eager-load.
+        
+        Returns:
+            None.
+        """
         async with self._client.session_scope() as session:
             return await self._fetch_one(session, where=where, include=include)
 
     async def find_first(self, *, where: dict[str, Any], include: dict[str, Any] | None = None) -> Any | None:
+        """Find first.
+        
+        Args:
+            where: Filter criteria for the query operation.
+            include: Related entities to eager-load.
+        
+        Returns:
+            None.
+        """
         return await self.find_unique(where=where, include=include)
 
     async def find_many(
@@ -294,6 +338,18 @@ class ModelAccessor:
         skip: int | None = None,
         take: int | None = None,
     ) -> list[Any]:
+        """Find many.
+        
+        Args:
+            where: Filter criteria for the query operation.
+            include: Related entities to eager-load.
+            order: Sort ordering specification.
+            skip: Number of rows to skip.
+            take: Number of rows to take.
+        
+        Returns:
+            List of resulting items.
+        """
         async with self._client.session_scope() as session:
             return await self._fetch_many(
                 session,
@@ -305,6 +361,14 @@ class ModelAccessor:
             )
 
     async def count(self, *, where: dict[str, Any] | None = None) -> int:
+        """Count.
+        
+        Args:
+            where: Filter criteria for the query operation.
+        
+        Returns:
+            Result typed as `int`.
+        """
         async with self._client.session_scope() as session:
             stmt = select(func.count()).select_from(self._model)
             filters = _build_filters(self._model, where)
@@ -314,6 +378,15 @@ class ModelAccessor:
             return int(result.scalar_one())
 
     async def create(self, *, data: dict[str, Any], include: dict[str, Any] | None = None) -> Any:
+        """Create.
+        
+        Args:
+            data: Write payload for create/update operations.
+            include: Related entities to eager-load.
+        
+        Returns:
+            Result typed as `Any`.
+        """
         async with self._client.session_scope() as session:
             instance = self._model(**_normalize_data(self._model, data))
             session.add(instance)
@@ -324,6 +397,14 @@ class ModelAccessor:
             return instance
 
     async def create_many(self, *, data: list[dict[str, Any]]) -> dict[str, int]:
+        """Create many.
+        
+        Args:
+            data: Write payload for create/update operations.
+        
+        Returns:
+            Structured dictionary result.
+        """
         async with self._client.session_scope() as session:
             for item in data:
                 session.add(self._model(**_normalize_data(self._model, item)))
@@ -331,6 +412,16 @@ class ModelAccessor:
             return {"count": len(data)}
 
     async def update(self, *, where: dict[str, Any], data: dict[str, Any], include: dict[str, Any] | None = None) -> Any:
+        """Update.
+        
+        Args:
+            where: Filter criteria for the query operation.
+            data: Write payload for create/update operations.
+            include: Related entities to eager-load.
+        
+        Returns:
+            Result typed as `Any`.
+        """
         async with self._client.session_scope() as session:
             instance = await self._fetch_one(session, where=where)
             if instance is None:
@@ -344,6 +435,15 @@ class ModelAccessor:
             return instance
 
     async def update_many(self, *, where: dict[str, Any] | None = None, data: dict[str, Any]) -> dict[str, int]:
+        """Update many.
+        
+        Args:
+            where: Filter criteria for the query operation.
+            data: Write payload for create/update operations.
+        
+        Returns:
+            Structured dictionary result.
+        """
         async with self._client.session_scope() as session:
             stmt = sa_update(self._model).values(**_normalize_data(self._model, data))
             filters = _build_filters(self._model, where)
@@ -353,6 +453,14 @@ class ModelAccessor:
             return {"count": int(result.rowcount or 0)}
 
     async def delete(self, *, where: dict[str, Any]) -> Any:
+        """Delete.
+        
+        Args:
+            where: Filter criteria for the query operation.
+        
+        Returns:
+            Result typed as `Any`.
+        """
         async with self._client.session_scope() as session:
             instance = await self._fetch_one(session, where=where)
             if instance is None:
@@ -362,6 +470,14 @@ class ModelAccessor:
             return instance
 
     async def delete_many(self, *, where: dict[str, Any] | None = None) -> dict[str, int]:
+        """Delete many.
+        
+        Args:
+            where: Filter criteria for the query operation.
+        
+        Returns:
+            Structured dictionary result.
+        """
         async with self._client.session_scope() as session:
             stmt = sa_delete(self._model)
             filters = _build_filters(self._model, where)
@@ -371,6 +487,15 @@ class ModelAccessor:
             return {"count": int(result.rowcount or 0)}
 
     async def upsert(self, *, where: dict[str, Any], data: dict[str, Any]) -> Any:
+        """Upsert.
+        
+        Args:
+            where: Filter criteria for the query operation.
+            data: Write payload for create/update operations.
+        
+        Returns:
+            Result typed as `Any`.
+        """
         async with self._client.session_scope() as session:
             instance = await self._fetch_one(session, where=where)
             if instance is None:
@@ -421,6 +546,11 @@ class DatabaseClient:
 
     @asynccontextmanager
     async def session_scope(self) -> AsyncIterator[AsyncSession]:
+        """Session scope.
+        
+        Returns:
+            Result typed as `AsyncIterator[AsyncSession]`.
+        """
         if self._session is not None:
             yield self._session
             return
@@ -429,15 +559,35 @@ class DatabaseClient:
                 yield session
 
     def tx(self) -> TransactionClient:
+        """Tx.
+        
+        Returns:
+            Result typed as `TransactionClient`.
+        """
         return TransactionClient()
 
     async def connect(self) -> None:
+        """Connect.
+        
+        Returns:
+            None.
+        """
         await connect_db()
 
     async def disconnect(self) -> None:
+        """Disconnect.
+        
+        Returns:
+            None.
+        """
         await disconnect_db()
 
     def is_connected(self) -> bool:
+        """Is connected.
+        
+        Returns:
+            True when the operation succeeds, otherwise False.
+        """
         return True
 
 

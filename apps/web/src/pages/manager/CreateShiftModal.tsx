@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/manager/CreateShiftModal.tsx
+ *
+ * @description
+ * UI page module for `CreateShiftModal` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../components/Modal';
 import { useCreateShift, useSkills } from '../../lib/api/hooks';

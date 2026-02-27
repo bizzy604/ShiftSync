@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/manager/ShiftHistory.tsx
+ *
+ * @description
+ * UI page module for `ShiftHistory` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -198,4 +212,3 @@ export function ShiftHistory() {
         </AppLayout>
     );
 }
-

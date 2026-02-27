@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/manager/ScheduleBuilder.tsx
+ *
+ * @description
+ * UI page module for `ScheduleBuilder` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useState, useEffect } from "react";
 import { format, startOfWeek, addDays, parseISO, differenceInDays, startOfDay } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, AlertTriangle, X, Clock, MapPin, Loader2 } from "lucide-react";

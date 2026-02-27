@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/pages/admin/SkillCatalog.tsx
+ *
+ * @description
+ * UI page module for `SkillCatalog` workflows and role-specific interaction flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useMemo, useState } from 'react';
 import { Loader2, Plus, Search, Trash2 } from 'lucide-react';
 

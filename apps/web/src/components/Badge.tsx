@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/components/Badge.tsx
+ *
+ * @description
+ * Shared UI/component module for `Badge` used across multiple screens.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module provides reusable UI primitives that influence consistency and
+ * maintainability.
+ */
+
 import React from 'react';
 
 type BadgeVariant = 'teal' | 'purple' | 'amber' | 'red' | 'green' | 'gray' | 'slate' | 'blue';

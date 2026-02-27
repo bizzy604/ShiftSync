@@ -1,3 +1,30 @@
+"""
+MODULE: /apps/api/app/api/deps.py
+
+FUNCTION:
+    Defines shared FastAPI dependency helpers for auth, session validation, and access
+    control.
+
+DEPENDENCIES:
+    - /apps/api/app/api/routes/analytics.py
+    - /apps/api/app/api/routes/assignments.py
+    - /apps/api/app/api/routes/audit.py
+    - /apps/api/app/api/routes/auth.py
+    - /apps/api/app/api/routes/locations.py
+    - /apps/api/app/api/routes/notifications.py
+    - /apps/api/app/api/routes/shifts.py
+    - /apps/api/app/api/routes/skills.py
+    - /apps/api/app/api/routes/swaps.py
+    - /apps/api/app/api/routes/users.py
+    - /apps/api/app/services/user_access.py
+    - /apps/api/tests/integration/test_analytics_fairness_sort.py
+    - (6 additional dependents omitted for brevity.)
+
+IMPORTANCE:
+    This module centralizes security and authorization checks consumed by most protected
+    endpoints.
+"""
+
 from dataclasses import dataclass
 from typing import Callable
 
@@ -11,12 +38,21 @@ from app.core.session_store import SessionStore
 
 @dataclass
 class CurrentUser:
+    """CurrentUser type."""
     id: str
     role: str
     location_ids: list[str]
 
 
 def get_session_store(request: Request) -> SessionStore:
+    """Get session store.
+    
+    Args:
+        request: Incoming FastAPI request context.
+    
+    Returns:
+        Result typed as `SessionStore`.
+    """
     return request.app.state.session_store
 
 
@@ -24,6 +60,15 @@ async def get_current_user(
     request: Request,
     session_store: SessionStore = Depends(get_session_store),
 ) -> CurrentUser:
+    """Get current user.
+    
+    Args:
+        request: Incoming FastAPI request context.
+        session_store: Session store dependency used for token/session checks.
+    
+    Returns:
+        Result typed as `CurrentUser`.
+    """
     settings = get_settings()
     token = request.cookies.get(settings.token_cookie_name)
     if not token:
@@ -68,6 +113,14 @@ async def get_current_user(
 
 
 def require_roles(*roles: str) -> Callable[[CurrentUser], CurrentUser]:
+    """Require roles.
+    
+    Args:
+        *roles: Input parameter `roles` used by this operation.
+    
+    Returns:
+        Result typed as `Callable[[CurrentUser], CurrentUser]`.
+    """
     async def _require_role(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if current_user.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions.")
@@ -77,11 +130,29 @@ def require_roles(*roles: str) -> Callable[[CurrentUser], CurrentUser]:
 
 
 def ensure_self_or_admin(current_user: CurrentUser, target_user_id: str) -> None:
+    """Ensure self or admin.
+    
+    Args:
+        current_user: Authenticated user from dependency resolution.
+        target_user_id: Identifier for the target resource.
+    
+    Returns:
+        None.
+    """
     if current_user.role != "admin" and current_user.id != target_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
 
 def ensure_manager_location_access(current_user: CurrentUser, location_id: str) -> None:
+    """Ensure manager location access.
+    
+    Args:
+        current_user: Authenticated user from dependency resolution.
+        location_id: Target location identifier.
+    
+    Returns:
+        None.
+    """
     if current_user.role == "admin":
         return
     if current_user.role != "manager":

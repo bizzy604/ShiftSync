@@ -1,3 +1,18 @@
+/**
+ * @file /apps/web/src/pages/common/NotificationSettings.tsx
+ *
+ * @description
+ * UI page module for `NotificationSettings` workflows and role-specific interaction
+ * flows.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module defines user-facing workflows; changes here affect day-to-day product
+ * usability.
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, CheckCircle2, Loader2, Mail } from 'lucide-react';
 
@@ -131,4 +146,3 @@ export function NotificationSettings() {
         </AppLayout>
     );
 }
-

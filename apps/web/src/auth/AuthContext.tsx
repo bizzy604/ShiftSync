@@ -1,3 +1,17 @@
+/**
+ * @file /apps/web/src/auth/AuthContext.tsx
+ *
+ * @description
+ * Authentication and route-guard module for `AuthContext` behavior.
+ *
+ * @dependencies
+ * - (No in-repo dependents detected.)
+ *
+ * @importance
+ * This module is critical for application access flow and role-based navigation
+ * safety.
+ */
+
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { AuthUser, getMe, login as loginRequest, logout as logoutRequest } from "../lib/api";
@@ -11,6 +25,9 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/**
+ * Authentication provider that hydrates the current session and exposes login/logout actions.
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/**
+ * Access authenticated user state and auth actions.
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

@@ -1,3 +1,16 @@
+"""
+MODULE: /seed/seed.py
+
+FUNCTION:
+    Implements module logic for `seed`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of `seed`.
+"""
+
 import asyncio
 import os
 import sys

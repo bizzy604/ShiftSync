@@ -1,3 +1,16 @@
+"""
+MODULE: /apps/api/app/api/routes/locations.py
+
+FUNCTION:
+    Defines FastAPI endpoints and request/response orchestration for the `locations` domain.
+
+DEPENDENCIES:
+    - /apps/api/app/api/router.py
+
+IMPORTANCE:
+    This module directly shapes externally visible API behavior and role-based access flows.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import CurrentUser, get_current_user, require_roles
@@ -27,6 +40,14 @@ def _to_location_response(location: object) -> LocationResponse:
 
 @router.get("", response_model=LocationListResponse)
 async def list_locations(current_user: CurrentUser = Depends(get_current_user)) -> LocationListResponse:
+    """List locations.
+    
+    Args:
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `LocationListResponse`.
+    """
     if current_user.role == "admin":
         locations = await prisma.location.find_many(order={"name": "asc"})
     elif current_user.role == "manager":
@@ -50,6 +71,15 @@ async def create_location(
     payload: LocationCreateRequest,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> LocationResponse:
+    """Create location.
+    
+    Args:
+        payload: Validated request payload model.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `LocationResponse`.
+    """
     async with prisma.tx() as tx:
         location = await tx.location.create(data=payload.model_dump())
         await create_audit_log(
@@ -74,6 +104,15 @@ async def get_location(
     location_id: str,
     current_user: CurrentUser = Depends(get_current_user),
 ) -> LocationResponse:
+    """Get location.
+    
+    Args:
+        location_id: Target location identifier.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `LocationResponse`.
+    """
     location = await prisma.location.find_unique(where={"id": location_id})
     if location is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found.")
@@ -97,6 +136,16 @@ async def update_location(
     payload: LocationUpdateRequest,
     current_user: CurrentUser = Depends(require_roles("admin")),
 ) -> LocationResponse:
+    """Update location.
+    
+    Args:
+        location_id: Target location identifier.
+        payload: Validated request payload model.
+        current_user: Authenticated user from dependency resolution.
+    
+    Returns:
+        Result typed as `LocationResponse`.
+    """
     existing = await prisma.location.find_unique(where={"id": location_id})
     if existing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found.")

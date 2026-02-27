@@ -1,3 +1,16 @@
+"""
+MODULE: /scripts/smoke_phase3.py
+
+FUNCTION:
+    Implements module logic for `smoke_phase3`.
+
+DEPENDENCIES:
+    - (No in-repo dependents detected.)
+
+IMPORTANCE:
+    This module is important for maintainability and predictable behavior of `smoke_phase3`.
+"""
+
 import asyncio
 import json
 import os
