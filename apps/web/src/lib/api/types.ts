@@ -225,6 +225,7 @@ export type ConstraintSeverity = "HARD_BLOCK" | "WARNING" | "OVERRIDE_REQUIRED";
 export interface AssignmentCreateRequest {
     user_id: string;
     override_reason?: string;
+    acknowledge_weekly_overtime_warning?: boolean;
 }
 
 export interface AssignmentResponse {
@@ -489,8 +490,20 @@ export interface NotificationResponse {
     read_at: string | null;
 }
 
+export interface NotificationQuery {
+    unreadOnly?: boolean;
+    page?: number;
+    limit?: number;
+}
+
+export interface PaginationMeta {
+    page: number;
+    limit: number;
+    total: number;
+}
+
 export interface NotificationListResponse {
     unread_count: number;
     notifications: NotificationResponse[];
-    pagination: Record<string, number>;
+    pagination: PaginationMeta;
 }

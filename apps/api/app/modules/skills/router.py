@@ -28,7 +28,9 @@ from app.schemas.shift import ShiftRequiredSkill
 router = APIRouter()
 
 
-async def list_skills() -> list[ShiftRequiredSkill]:
+async def list_skills(
+    _: CurrentUser = Depends(require_roles("admin", "manager", "staff")),
+) -> list[ShiftRequiredSkill]:
     """Return skill catalog entries sorted by name."""
 
     skills = await list_skill_records()

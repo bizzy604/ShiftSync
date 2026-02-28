@@ -531,6 +531,14 @@ async def create_assignment(
             )
 
         weekly_warning = _weekly_hours_warning(result.warnings)
+        if weekly_warning is not None and not payload.acknowledge_weekly_overtime_warning:
+            return _json_error(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                code="OVERTIME_ACK_REQUIRED",
+                message="Weekly overtime warning must be acknowledged before assignment.",
+                details=_constraint_details([weekly_warning]),
+                suggestions=suggestion_dicts,
+            )
         overtime_warning_text = weekly_warning.description if weekly_warning is not None else ""
         manager_overtime_notifs: list[object] = []
 

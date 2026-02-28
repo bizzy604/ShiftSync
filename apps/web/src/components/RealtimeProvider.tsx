@@ -15,6 +15,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthContext';
+import { useToast } from './ToastProvider';
 import { keys } from '../lib/api/hooks';
 
 interface RealtimeContextType {
@@ -32,6 +33,7 @@ export const useRealtime = () => useContext(RealtimeContext);
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    const { showError } = useToast();
     const [isConnected, setIsConnected] = useState(false);
     const [lastEvent, setLastEvent] = useState<string | null>(null);
     const socketRef = useRef<WebSocket | null>(null);
@@ -99,6 +101,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                         invalidateScheduleData();
                     } else if (eventName === 'assignment.conflict') {
                         queryClient.invalidateQueries({ queryKey: ['assignments'] });
+                        const message =
+                            typeof payload?.message === 'string' && payload.message.trim().length > 0
+                                ? payload.message
+                                : 'Another manager just made a conflicting assignment.';
+                        showError('Assignment conflict', message);
                     }
                 } catch (err) {
                     console.error('[Realtime] Error parsing message', err);
@@ -133,7 +140,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                 window.clearTimeout(reconnectTimeoutRef.current);
             }
         };
-    }, [user, queryClient]);
+    }, [user, queryClient, showError]);
 
     return (
         <RealtimeContext.Provider value={{ isConnected, lastEvent }}>

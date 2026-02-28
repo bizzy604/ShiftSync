@@ -12,7 +12,7 @@
  * usability.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, AlertTriangle, TrendingUp, DollarSign, BarChart3, Loader2, CheckCircle } from 'lucide-react';
 import { format, startOfWeek, addDays, subDays, parseISO } from 'date-fns';
 
@@ -227,24 +227,58 @@ function FairnessReportUI({ staff, overallScore, grade }: { staff: FairnessStaff
 type TabType = 'overtime' | 'fairness';
 
 export function OvertimeFairness() {
+    const initialRangeStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const initialRangeEnd = format(addDays(parseISO(initialRangeStart), 6), 'yyyy-MM-dd');
+
     const [activeTab, setActiveTab] = useState<TabType>('overtime');
-    const [weekStart, setWeekStart] = useState(() => format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+    const [rangeStart, setRangeStart] = useState(initialRangeStart);
+    const [rangeEnd, setRangeEnd] = useState(initialRangeEnd);
+    const [selectedLocationId, setSelectedLocationId] = useState('');
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
     const { data: locationsData } = useLocations();
     const { data: notificationsData } = useNotifications();
-    const location = locationsData?.locations?.[0]; // Assume first location for demo/manager scope
+    const location = locationsData?.locations?.find((item) => item.id === selectedLocationId) || locationsData?.locations?.[0];
     const unreadCount = notificationsData?.unread_count || 0;
 
-    const { data: overtimeData, isLoading: isLoadingOT } = useOvertimeDashboard(location?.id || '', weekStart);
-    const { data: fairnessData, isLoading: isLoadingFairness } = useFairnessReport(location?.id || '', weekStart, format(addDays(parseISO(weekStart), 6), 'yyyy-MM-dd'));
+    useEffect(() => {
+        if (!selectedLocationId && locationsData?.locations?.length) {
+            setSelectedLocationId(locationsData.locations[0].id);
+        }
+    }, [locationsData, selectedLocationId]);
+
+    const { data: overtimeData, isLoading: isLoadingOT } = useOvertimeDashboard(location?.id || '', rangeStart);
+    const { data: fairnessData, isLoading: isLoadingFairness } = useFairnessReport(location?.id || '', rangeStart, rangeEnd);
 
     const handleNextWeek = () => {
-        setWeekStart(prev => format(addDays(parseISO(prev), 7), 'yyyy-MM-dd'));
+        setRangeStart(prev => format(addDays(parseISO(prev), 7), 'yyyy-MM-dd'));
+        setRangeEnd(prev => format(addDays(parseISO(prev), 7), 'yyyy-MM-dd'));
     };
 
     const handlePrevWeek = () => {
-        setWeekStart(prev => format(subDays(parseISO(prev), 7), 'yyyy-MM-dd'));
+        setRangeStart(prev => format(subDays(parseISO(prev), 7), 'yyyy-MM-dd'));
+        setRangeEnd(prev => format(subDays(parseISO(prev), 7), 'yyyy-MM-dd'));
+    };
+
+    const handleRangeStartChange = (value: string) => {
+        if (!value) return;
+        setRangeStart(value);
+        if (value > rangeEnd) {
+            setRangeEnd(value);
+        }
+    };
+
+    const handleRangeEndChange = (value: string) => {
+        if (!value) return;
+        setRangeEnd(value);
+        if (value < rangeStart) {
+            setRangeStart(value);
+        }
+    };
+
+    const resetToCurrentWeek = () => {
+        setRangeStart(initialRangeStart);
+        setRangeEnd(initialRangeEnd);
     };
 
     const isLoading = isLoadingOT || isLoadingFairness;
@@ -254,7 +288,9 @@ export function OvertimeFairness() {
             <button onClick={handlePrevWeek} className="p-1.5 rounded-full hover:bg-white/10 transition-base">
                 <ChevronLeft size={20} />
             </button>
-            <span className="font-bold min-w-0 sm:min-w-[140px] text-center whitespace-nowrap">Week of {format(parseISO(weekStart), 'MMM d, yyyy')}</span>
+            <span className="font-bold min-w-0 sm:min-w-[180px] text-center whitespace-nowrap">
+                {format(parseISO(rangeStart), 'MMM d')} - {format(parseISO(rangeEnd), 'MMM d, yyyy')}
+            </span>
             <button onClick={handleNextWeek} className="p-1.5 rounded-full hover:bg-white/10 transition-base">
                 <ChevronRight size={20} />
             </button>
@@ -275,6 +311,46 @@ export function OvertimeFairness() {
                     <div>
                         <h1 className="text-xl sm:text-2xl font-black text-navy">Overtime & Fairness</h1>
                         <p className="text-gray-500 text-sm mt-1">{location?.name || 'Loading location...'} · Data updated every 30m</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                        <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Location</label>
+                            <select
+                                value={location?.id || ''}
+                                onChange={(event) => setSelectedLocationId(event.target.value)}
+                                className="min-w-[180px] px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                            >
+                                {(locationsData?.locations || []).map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                        {item.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Start</label>
+                            <input
+                                type="date"
+                                value={rangeStart}
+                                onChange={(event) => handleRangeStartChange(event.target.value)}
+                                className="px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">End</label>
+                            <input
+                                type="date"
+                                value={rangeEnd}
+                                onChange={(event) => handleRangeEndChange(event.target.value)}
+                                className="px-3 py-2 border border-border-gray rounded-lg text-sm bg-white"
+                            />
+                        </div>
+                        <button
+                            onClick={resetToCurrentWeek}
+                            className="px-3 py-2 text-xs font-bold border border-border-gray text-gray-600 rounded-lg hover:bg-gray-50 transition-base"
+                        >
+                            This Week
+                        </button>
                     </div>
                     {isLoading && <Loader2 size={24} className="animate-spin text-teal" />}
                 </div>

@@ -13,7 +13,7 @@
  * usability.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     AlertTriangle,
     ArrowLeftRight,
@@ -50,6 +50,7 @@ const iconMap: Record<string, { Component: any; color: string }> = {
     'drop.picked_up': { Component: CheckCircle, color: 'text-success' },
     'drop.approved': { Component: CheckCircle, color: 'text-success' },
     'drop.rejected': { Component: XCircle, color: 'text-danger' },
+    'drop.cancelled': { Component: XCircle, color: 'text-gray-500' },
     'drop.expired': { Component: AlertTriangle, color: 'text-danger' },
     'staff.availability_changed': { Component: BellIcon, color: 'text-teal' },
     'staff.decertified': { Component: AlertTriangle, color: 'text-danger' },
@@ -134,18 +135,30 @@ interface NotificationCentreProps {
 }
 
 export function NotificationCentre({ open, onClose }: NotificationCentreProps) {
+    const PAGE_SIZE = 20;
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const [page, setPage] = useState(1);
 
-    const { data, isLoading } = useNotifications();
+    const { data, isLoading } = useNotifications(false, page, PAGE_SIZE);
     const markAllReadMutation = useMarkAllNotificationsRead();
     const markReadMutation = useMarkNotificationRead();
+
+    useEffect(() => {
+        if (open) {
+            setPage(1);
+        }
+    }, [open]);
 
     if (!open) return null;
 
     const notifications = data?.notifications || [];
     const unreadCount = data?.unread_count || 0;
+    const totalNotifications = data?.pagination?.total || notifications.length;
+    const totalPages = Math.max(1, Math.ceil(totalNotifications / PAGE_SIZE));
+    const canPrevious = page > 1;
+    const canNext = page < totalPages;
 
     const handleMarkAllRead = () => {
         markAllReadMutation.mutate();
@@ -256,6 +269,30 @@ export function NotificationCentre({ open, onClose }: NotificationCentreProps) {
                         </div>
                     )}
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="px-4 sm:px-6 py-3 border-t border-border-gray bg-white flex items-center justify-between">
+                        <button
+                            type="button"
+                            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                            disabled={!canPrevious}
+                            className="text-xs font-black uppercase tracking-widest text-staff-purple disabled:text-gray-300 transition-all"
+                        >
+                            Previous
+                        </button>
+                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                            Page {page} of {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                            disabled={!canNext}
+                            className="text-xs font-black uppercase tracking-widest text-staff-purple disabled:text-gray-300 transition-all"
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
 
                 <div className="px-4 sm:px-6 py-4 border-t border-border-gray bg-gray-50/30 text-center flex-shrink-0">
                     <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">

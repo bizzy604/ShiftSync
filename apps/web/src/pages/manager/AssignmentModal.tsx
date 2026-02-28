@@ -13,7 +13,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import axios from 'axios';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { Search, Check, AlertTriangle, X, Loader2, CheckCircle, Save, Trash2, RotateCcw, History } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -21,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/Modal';
 import { Avatar } from '../../components/Avatar';
 
-import { ShiftResponse } from '../../lib/api/types';
+import { AssignmentPreviewResponse, ConstraintSuggestion, ShiftResponse } from '../../lib/api/types';
 import { useUsers, useAssignments, useCreateAssignment, useUpdateShift, useDeleteShift, useUnpublishShift, useSkills, keys } from '../../lib/api/hooks';
 import { previewAssignment } from '../../lib/api/client';
 
@@ -46,13 +47,45 @@ function formatTime(value: string) {
     return `${h12}${m > 0 ? `:${m.toString().padStart(2, '0')}` : ''}${period}`;
 }
 
+interface AssignmentSubmitError {
+    code: string | null;
+    message: string;
+    suggestions: ConstraintSuggestion[];
+}
+
+function parseAssignmentSubmitError(error: unknown): AssignmentSubmitError | null {
+    if (!axios.isAxiosError(error)) return null;
+    const apiError = error.response?.data?.error;
+    if (!apiError || typeof apiError !== 'object') return null;
+
+    const message = typeof (apiError as any).message === 'string' ? (apiError as any).message : '';
+    if (!message) return null;
+
+    const rawSuggestions = Array.isArray((apiError as any).suggestions) ? (apiError as any).suggestions : [];
+    const suggestions: ConstraintSuggestion[] = rawSuggestions
+        .map((item: any) => ({
+            user_id: typeof item?.user_id === 'string' ? item.user_id : '',
+            name: typeof item?.name === 'string' ? item.name : '',
+            reason: typeof item?.reason === 'string' ? item.reason : '',
+        }))
+        .filter((item: ConstraintSuggestion) => item.user_id && item.name);
+
+    return {
+        code: typeof (apiError as any).code === 'string' ? (apiError as any).code : null,
+        message,
+        suggestions,
+    };
+}
+
 export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) {
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
     const [expandedViolation, setExpandedViolation] = useState<string | null>(null);
     const [overrideReason, setOverrideReason] = useState('');
     const [showOverrideInput, setShowOverrideInput] = useState<string | null>(null);
+    const [weeklyWarningAcks, setWeeklyWarningAcks] = useState<Record<string, boolean>>({});
     const [isSuccess, setIsSuccess] = useState(false);
     const [editDate, setEditDate] = useState(shift.date);
     const [editStartTime, setEditStartTime] = useState(extractClockTime(shift.start_local));
@@ -79,6 +112,8 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
         setEditSkillId(shift.required_skill.id);
         setEditHeadcount(shift.headcount_needed);
         setShiftOverrideReason('');
+        setWeeklyWarningAcks({});
+        createAssignmentMutation.reset();
     }, [open, shift]);
 
     const allStaff = usersData?.users.filter(u => u.role === 'staff' && u.is_active) || [];
@@ -103,10 +138,29 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
 
     const isFetchingPreviews = previewQueries.some(q => q.isLoading);
 
+    const getCachedPreview = (userId: string): AssignmentPreviewResponse | undefined =>
+        queryClient.getQueryData(keys.assignmentPreview(shift.id, userId)) as AssignmentPreviewResponse | undefined;
+
+    const hasWeeklyHoursWarning = (preview: AssignmentPreviewResponse | undefined) =>
+        !!preview?.warnings?.some((item) => item.rule === 'WEEKLY_HOURS');
+
+    const selectedPreview = selectedStaff ? getCachedPreview(selectedStaff) : undefined;
+    const selectedHasWeeklyWarning = selectedStaff ? hasWeeklyHoursWarning(selectedPreview) : false;
+    const selectedWeeklyWarningAcked = selectedStaff ? !!weeklyWarningAcks[selectedStaff] : false;
+    const assignmentSubmitError = parseAssignmentSubmitError(createAssignmentMutation.error);
+
     const handleAssign = () => {
         if (!selectedStaff) return;
+        if (selectedHasWeeklyWarning && !selectedWeeklyWarningAcked) return;
         createAssignmentMutation.mutate(
-            { shiftId: shift.id, data: { user_id: selectedStaff, override_reason: overrideReason || undefined } },
+            {
+                shiftId: shift.id,
+                data: {
+                    user_id: selectedStaff,
+                    override_reason: overrideReason || undefined,
+                    acknowledge_weekly_overtime_warning: selectedHasWeeklyWarning ? selectedWeeklyWarningAcked : undefined,
+                },
+            },
             {
                 onSuccess: () => {
                     setIsSuccess(true);
@@ -124,7 +178,9 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
         setExpandedViolation(null);
         setOverrideReason('');
         setShowOverrideInput(null);
+        setWeeklyWarningAcks({});
         setSearchQuery('');
+        createAssignmentMutation.reset();
         onClose();
     };
 
@@ -221,13 +277,20 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
                     </button>
                     <button
                         onClick={handleAssign}
-                        disabled={!selectedStaff || createAssignmentMutation.isPending || (!!showOverrideInput && overrideReason.length < 10)}
+                        disabled={
+                            !selectedStaff
+                            || createAssignmentMutation.isPending
+                            || (!!showOverrideInput && overrideReason.length < 10)
+                            || (selectedHasWeeklyWarning && !selectedWeeklyWarningAcked)
+                        }
                         className="w-full sm:w-auto justify-center px-5 py-2.5 bg-teal text-white font-semibold rounded-lg hover:bg-teal-dark disabled:opacity-50 disabled:cursor-not-allowed transition-base flex items-center gap-2"
                     >
                         {createAssignmentMutation.isPending ? (
                             <>
                                 <Loader2 size={16} className="animate-spin" /> Assigning…
                             </>
+                        ) : selectedHasWeeklyWarning && !selectedWeeklyWarningAcked ? (
+                            'Acknowledge warning to assign'
                         ) : selectedStaff ? (
                             `Assign selected staff`
                         ) : (
@@ -394,6 +457,26 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
                 </div>
             </div>
 
+            {createAssignmentMutation.isError && assignmentSubmitError && (
+                <div className="mb-4 rounded-lg border border-danger/30 bg-danger-50 p-3 animate-fade-in">
+                    <p className="text-xs font-bold uppercase tracking-wide text-danger">
+                        {assignmentSubmitError.code === 'CONCURRENT_CONFLICT' ? 'Assignment conflict' : 'Assignment blocked'}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-danger">{assignmentSubmitError.message}</p>
+                    {assignmentSubmitError.suggestions.length > 0 && (
+                        <div className="mt-3 rounded-md border border-danger/20 bg-white p-2">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Suggested alternatives</p>
+                            {assignmentSubmitError.suggestions.slice(0, 5).map((sug) => (
+                                <p key={`${sug.user_id}-${sug.name}`} className="mt-1 text-xs text-navy">
+                                    - {sug.name}
+                                    {sug.reason ? ` (${sug.reason})` : ''}
+                                </p>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Staff List */}
             {isLoadingUsers ? (
                 <div className="py-10 flex justify-center text-gray-400">
@@ -426,6 +509,8 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
 
                         const violation = previewResponse?.violations?.[0];
                         const warning = previewResponse?.warnings?.[0];
+                        const weeklyWarning = previewResponse?.warnings?.find((item) => item.rule === 'WEEKLY_HOURS');
+                        const hasWeeklyWarning = !!weeklyWarning;
                         const primaryMessage = violation?.description || warning?.description || 'All constraints passed';
 
                         const hours = previewResponse?.projected_weekly_hours ?? 0;
@@ -435,6 +520,9 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
                             <div key={c.id}>
                                 <button
                                     onClick={() => {
+                                        if (createAssignmentMutation.isError) {
+                                            createAssignmentMutation.reset();
+                                        }
                                         if (constraintStatus === 'violation') {
                                             setExpandedViolation(isExpanded ? null : c.id);
                                             return;
@@ -526,6 +614,26 @@ export function AssignmentModal({ shift, open, onClose }: AssignmentModalProps) 
                                         >
                                             {selectedStaff === c.id ? 'Override Saved. Click Assign.' : 'Save Override'}
                                         </button>
+                                    </div>
+                                )}
+
+                                {isSelected && hasWeeklyWarning && (
+                                    <div className="ml-4 mt-1 p-3 bg-amber-warn-50 border border-amber-warn/20 rounded-lg animate-fade-in">
+                                        <p className="text-xs text-amber-warn font-medium mb-2">{weeklyWarning?.description}</p>
+                                        <label className="flex items-center gap-2 text-xs text-navy font-medium">
+                                            <input
+                                                type="checkbox"
+                                                checked={!!weeklyWarningAcks[c.id]}
+                                                onChange={(event) =>
+                                                    setWeeklyWarningAcks((prev) => ({
+                                                        ...prev,
+                                                        [c.id]: event.target.checked,
+                                                    }))
+                                                }
+                                                className="rounded border-border-gray"
+                                            />
+                                            I acknowledge this weekly overtime warning.
+                                        </label>
                                     </div>
                                 )}
                             </div>

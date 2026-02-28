@@ -42,13 +42,13 @@ interface Exception {
 }
 
 const DAYS = [
-    { name: 'Monday', num: 0 },
-    { name: 'Tuesday', num: 1 },
-    { name: 'Wednesday', num: 2 },
-    { name: 'Thursday', num: 3 },
-    { name: 'Friday', num: 4 },
-    { name: 'Saturday', num: 5 },
-    { name: 'Sunday', num: 6 },
+    { name: 'Monday', num: 1 },
+    { name: 'Tuesday', num: 2 },
+    { name: 'Wednesday', num: 3 },
+    { name: 'Thursday', num: 4 },
+    { name: 'Friday', num: 5 },
+    { name: 'Saturday', num: 6 },
+    { name: 'Sunday', num: 0 },
 ];
 
 const timeOptions: string[] = [];

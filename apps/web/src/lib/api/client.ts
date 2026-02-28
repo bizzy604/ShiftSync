@@ -28,6 +28,7 @@ import {
     LocationResponse,
     MyAssignmentListResponse,
     NotificationListResponse,
+    NotificationQuery,
     NotificationPreferencesResponse,
     NotificationPreferencesUpdateRequest,
     OnDutyResponse,
@@ -373,9 +374,13 @@ export async function exportAuditLogs(query: AuditLogQuery = {}): Promise<Blob> 
 }
 
 // --- Notifications ---
-export async function getNotifications(unreadOnly = false): Promise<NotificationListResponse> {
+export async function getNotifications(query: NotificationQuery = {}): Promise<NotificationListResponse> {
     const response = await api.get(`/notifications`, {
-        params: { unreadOnly },
+        params: {
+            unreadOnly: query.unreadOnly ?? false,
+            page: query.page ?? 1,
+            limit: query.limit ?? 20,
+        },
     });
     return response.data;
 }

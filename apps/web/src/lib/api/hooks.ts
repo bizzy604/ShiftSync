@@ -124,7 +124,8 @@ export const keys = {
     overtime: (locationId: string, weekStart: string) => ["analytics", "overtime", locationId, weekStart] as const,
     fairness: (locationId: string, startDate: string, endDate: string) => ["analytics", "fairness", locationId, startDate, endDate] as const,
     audit: (query: AuditLogQuery) => ["audit", query] as const,
-    notifications: (unreadOnly: boolean) => ["notifications", { unreadOnly }] as const,
+    notifications: (unreadOnly: boolean, page: number, limit: number) =>
+        ["notifications", { unreadOnly, page, limit }] as const,
     notificationPreferences: ["notifications", "preferences"] as const,
     suggestions: (shiftId: string) => ["shifts", shiftId, "suggestions"] as const,
 };
@@ -138,6 +139,10 @@ function getErrorMessage(error: unknown): string {
         if (typeof detail === "string") return detail;
         if (detail && typeof detail === "object" && typeof detail.message === "string") {
             return detail.message;
+        }
+        const appError = error.response?.data?.error;
+        if (appError && typeof appError === "object" && typeof appError.message === "string") {
+            return appError.message;
         }
         if (typeof error.response?.data?.message === "string") {
             return error.response.data.message;
@@ -590,7 +595,27 @@ export function useCreateAssignment() {
             showSuccess("Staff assigned");
         },
         onError: (error) => {
-            showError("Failed to assign staff", getErrorMessage(error));
+            const baseMessage = getErrorMessage(error);
+            let title = "Failed to assign staff";
+            let message = baseMessage;
+
+            if (axios.isAxiosError(error)) {
+                const appError = error.response?.data?.error;
+                const code = typeof appError?.code === "string" ? appError.code : "";
+                if (code === "CONCURRENT_CONFLICT") {
+                    title = "Assignment conflict";
+                }
+                const suggestions = Array.isArray(appError?.suggestions) ? appError.suggestions : [];
+                const names = suggestions
+                    .slice(0, 3)
+                    .map((item: any) => (typeof item?.name === "string" ? item.name : ""))
+                    .filter((name: string) => name.length > 0);
+                if (names.length > 0) {
+                    message = `${baseMessage} Suggested alternatives: ${names.join(", ")}.`;
+                }
+            }
+
+            showError(title, message);
         },
     });
 }
@@ -823,10 +848,10 @@ export function useExportAuditLogs() {
 /**
  * React Query hook for notifications.
  */
-export function useNotifications(unreadOnly = false) {
+export function useNotifications(unreadOnly = false, page = 1, limit = 20) {
     return useQuery({
-        queryKey: keys.notifications(unreadOnly),
-        queryFn: () => getNotifications(unreadOnly),
+        queryKey: keys.notifications(unreadOnly, page, limit),
+        queryFn: () => getNotifications({ unreadOnly, page, limit }),
     });
 }
 

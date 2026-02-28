@@ -26,6 +26,7 @@ class AssignmentCreateRequest(BaseModel):
     """AssignmentCreateRequest request model."""
     user_id: str
     override_reason: str | None = None
+    acknowledge_weekly_overtime_warning: bool = False
 
 
 class AssignmentShiftInfo(BaseModel):

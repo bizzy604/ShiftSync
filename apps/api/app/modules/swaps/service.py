@@ -274,7 +274,7 @@ async def manager_notify(location_id: str, message: str, payload: dict, db: obje
     return notifications
 
 
-async def emit_notifications(ws_manager: object, notifications: list[object]) -> None:
+async def emit_notifications(ws_manager: object | None, notifications: list[object]) -> None:
     """Emit notifications.
     
     Args:
@@ -284,6 +284,9 @@ async def emit_notifications(ws_manager: object, notifications: list[object]) ->
     Returns:
         None.
     """
+    if ws_manager is None:
+        return
+
     for notif in notifications:
         await ws_manager.emit_to_user(
             notif.user_id,
@@ -294,6 +297,56 @@ async def emit_notifications(ws_manager: object, notifications: list[object]) ->
                 "message": notif.message,
             },
         )
+
+
+async def _create_drop_available_notifications(
+    *,
+    drop_request_id: str,
+    initiator_id: str,
+    shift: object,
+    db: object,
+) -> list[object]:
+    """Create `drop.available` notifications for currently-qualified staff."""
+
+    if getattr(shift, "required_skill_id", None) is None or getattr(shift, "location_id", None) is None:
+        return []
+
+    skill_links = await prisma.userskill.find_many(where={"skill_id": shift.required_skill_id})
+    cert_links = await prisma.userlocationcertification.find_many(
+        where={"location_id": shift.location_id, "revoked_at": None}
+    )
+    skill_uids = {link.user_id for link in skill_links}
+    cert_uids = {link.user_id for link in cert_links}
+    candidate_ids = list(skill_uids.intersection(cert_uids))
+    candidate_ids = [user_id for user_id in candidate_ids if user_id != initiator_id]
+    if not candidate_ids:
+        return []
+
+    candidates = await prisma.user.find_many(
+        where={"id": {"in": candidate_ids}, "role": "staff", "is_active": True},
+        include={"user_skills": True, "user_location_certifications": True, "availability": True},
+    )
+
+    notifications: list[object] = []
+    shift_ctx = shift_snapshot(shift)
+    for candidate in candidates:
+        result = evaluate_assignment(
+            shift_ctx,
+            user_snapshot(candidate),
+            await existing_assignments(candidate.id, {shift.id}),
+        )
+        if result.valid and not result.requires_override:
+            notif = await create_notification(
+                user_id=candidate.id,
+                notif_type="drop.available",
+                message=f"Urgent coverage needed for {shift.required_skill.name} at {shift.location.name}.",
+                payload={"dropRequestId": drop_request_id},
+                db=db,
+                ws_manager=None,
+            )
+            notifications.append(notif)
+
+    return notifications
 
 
 async def _load_swap_for_response(request_id: str) -> object:
@@ -499,7 +552,10 @@ async def reject_swap(request_id: str, body: SwapActionRequest, request: Request
     Returns:
         Result typed as `SwapRequestResponse`.
     """
-    row = await prisma.swaprequest.find_unique(where={"id": request_id})
+    row = await prisma.swaprequest.find_unique(
+        where={"id": request_id},
+        include={"requester_assignment": {"include": {"shift": True}}},
+    )
     if row is None or row.type != "swap":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Swap request not found.")
     if row.target_user_id != current_user.id:
@@ -550,21 +606,58 @@ async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only initiator can cancel.")
     if row.status not in PENDING:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Request cannot be cancelled.")
+    previous_status = row.status
+    location_id = (
+        row.requester_assignment.shift.location_id
+        if row.requester_assignment and row.requester_assignment.shift
+        else None
+    )
+    recipients = {row.initiated_by, row.target_user_id, row.pickup_user_id}
+    if previous_status == "PENDING_MANAGER" and location_id:
+        manager_links = await prisma.managerlocationassignment.find_many(where={"location_id": location_id})
+        recipients.update(link.manager_id for link in manager_links)
+    notification_type = "drop.cancelled" if row.type == "drop" else "swap.cancelled"
+    notification_payload = {"dropRequestId": row.id} if row.type == "drop" else {"swapRequestId": row.id}
+    notification_message = "Drop request was cancelled." if row.type == "drop" else "Swap request was cancelled."
+
+    persisted_notifications: list[object] = []
     async with prisma.tx() as tx:
-        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "CANCELLED", "resolved_at": datetime.now(tz=timezone.utc), "resolved_by": current_user.id, "resolution_note": body.note, "version": row.version + 1})
+        row = await tx.swaprequest.update(
+            where={"id": row.id},
+            data={
+                "status": "CANCELLED",
+                "resolved_at": datetime.now(tz=timezone.utc),
+                "resolved_by": current_user.id,
+                "resolution_note": body.note,
+                "version": row.version + 1,
+            },
+        )
         await create_audit_log(
             actor_id=current_user.id,
             action_type="swap.cancel",
             entity_type="swap_request",
             entity_id=row.id,
-            before_state={"status": "PENDING"},
+            location_id=location_id,
+            before_state={"status": previous_status},
             after_state={"status": "CANCELLED"},
             reason=body.note,
             db=tx,
         )
+        for user_id in sorted(user for user in recipients if user):
+            notif = await create_notification(
+                user_id=user_id,
+                notif_type=notification_type,
+                message=notification_message,
+                payload=notification_payload,
+                db=tx,
+                ws_manager=None,
+            )
+            persisted_notifications.append(notif)
     ws = request.app.state.ws_manager
-    recipients = [row.initiated_by] + ([row.target_user_id] if row.target_user_id else []) + ([row.pickup_user_id] if row.pickup_user_id else [])
-    await ws.emit_to_users(recipients, "swap.status_changed", {"swapRequestId": row.id, "newStatus": "CANCELLED"})
+    await emit_notifications(ws, persisted_notifications)
+    recipient_ids = [user_id for user_id in recipients if user_id]
+    if ws and recipient_ids:
+        await ws.emit_to_users(recipient_ids, "swap.status_changed", {"swapRequestId": row.id, "newStatus": "CANCELLED"})
     return to_resp(row)
 
 
@@ -934,7 +1027,10 @@ async def create_drop(payload: DropCreateRequest, request: Request, current_user
         Result typed as `SwapRequestResponse`.
     """
     await enforce_pending_limit(current_user.id)
-    a = await prisma.shiftassignment.find_unique(where={"id": payload.assignment_id}, include={"shift": True})
+    a = await prisma.shiftassignment.find_unique(
+        where={"id": payload.assignment_id},
+        include={"shift": {"include": {"location": True, "required_skill": True}}},
+    )
     if a is None or a.user_id != current_user.id or a.status != "assigned":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found.")
     if a.shift is None:
@@ -943,6 +1039,7 @@ async def create_drop(payload: DropCreateRequest, request: Request, current_user
     if expires_at <= datetime.now(tz=timezone.utc):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Drop already within expiry window.")
     manager_notifications: list[object] = []
+    qualified_notifications: list[object] = []
     async with prisma.tx() as tx:
         row = await tx.swaprequest.create(data={"type": "drop", "requester_assignment_id": a.id, "status": "OPEN", "initiated_by": current_user.id, "expires_at": expires_at})
         await create_audit_log(
@@ -960,7 +1057,16 @@ async def create_drop(payload: DropCreateRequest, request: Request, current_user
             {"dropRequestId": row.id},
             db=tx,
         )
-    await emit_notifications(request.app.state.ws_manager, manager_notifications)
+        qualified_notifications = await _create_drop_available_notifications(
+            drop_request_id=row.id,
+            initiator_id=current_user.id,
+            shift=a.shift,
+            db=tx,
+        )
+    await emit_notifications(
+        request.app.state.ws_manager,
+        manager_notifications + qualified_notifications,
+    )
     return to_resp(row)
 
 
@@ -1058,7 +1164,20 @@ async def pickup_drop(request_id: str, body: DropPickupRequest, request: Request
     manager_notifications: list[object] = []
     initiator_notification = None
     async with prisma.tx() as tx:
-        row = await tx.swaprequest.update(where={"id": row.id}, data={"status": "PENDING_MANAGER", "pickup_user_id": current_user.id, "resolution_note": body.note, "version": row.version + 1})
+        updated = await tx.swaprequest.update_many(
+            where={"id": row.id, "status": "OPEN", "version": row.version},
+            data={
+                "status": "PENDING_MANAGER",
+                "pickup_user_id": current_user.id,
+                "resolution_note": body.note,
+                "version": row.version + 1,
+            },
+        )
+        if updated.get("count", 0) != 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Drop request no longer open.",
+            )
         initiator_notification = await create_notification(
             user_id=row.initiated_by,
             notif_type="drop.picked_up",
@@ -1086,8 +1205,10 @@ async def pickup_drop(request_id: str, body: DropPickupRequest, request: Request
         )
     ws = request.app.state.ws_manager
     await emit_notifications(ws, manager_notifications + [initiator_notification])
-    await ws.emit_to_users([row.initiated_by, current_user.id], "swap.status_changed", {"swapRequestId": row.id, "newStatus": "PENDING_MANAGER"})
-    return to_resp(row)
+    if ws:
+        await ws.emit_to_users([row.initiated_by, current_user.id], "swap.status_changed", {"swapRequestId": row.id, "newStatus": "PENDING_MANAGER"})
+    response_row = await _load_swap_for_response(row.id)
+    return to_resp(response_row)
 
 
 async def approve_drop(request_id: str, body: SwapActionRequest, request: Request, current_user: CurrentUser = Depends(require_roles("admin", "manager"))) -> SwapRequestResponse:
@@ -1205,51 +1326,17 @@ async def notify_qualified_staff(
     a = row.requester_assignment
     if a is None or a.shift is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment/Shift context missing.")
+    if current_user.role == "manager":
+        ensure_manager_location_access(current_user, a.shift.location_id)
 
-    # Find all active staff candidates (certified + skilled)
-    skill_links = await prisma.userskill.find_many(where={"skill_id": a.shift.required_skill_id})
-    cert_links = await prisma.userlocationcertification.find_many(
-        where={"location_id": a.shift.location_id, "revoked_at": None}
-    )
-    skill_uids = {link.user_id for link in skill_links}
-    cert_uids = {link.user_id for link in cert_links}
-    candidate_ids = list(skill_uids.intersection(cert_uids))
-    
-    # Remove initiator
-    if row.initiated_by in candidate_ids:
-        candidate_ids.remove(row.initiated_by)
-
-    candidates = await prisma.user.find_many(
-        where={"id": {"in": candidate_ids}, "role": "staff", "is_active": True},
-        include={"user_skills": True, "user_location_certifications": True, "availability": True}
-    )
-
-    count = 0
-    ws = request.app.state.ws_manager
+    notifications: list[object] = []
     async with prisma.tx() as tx:
-        for u in candidates:
-            # Quick qualification check
-            res = evaluate_assignment(
-                shift_snapshot(a.shift),
-                user_snapshot(u),
-                await existing_assignments(u.id, {a.shift.id})
-            )
-            if res.valid and not res.requires_override:
-                notif = await create_notification(
-                    user_id=u.id,
-                    notif_type="drop.available",
-                    message=f"Urgent coverage needed for {a.shift.required_skill.name} at {a.shift.location.name}.",
-                    payload={"dropRequestId": row.id},
-                    db=tx,
-                    ws_manager=None
-                )
-                if ws:
-                    await ws.emit_to_user(u.id, "notification.new", {
-                        "notificationId": notif.id,
-                        "type": notif.type,
-                        "message": notif.message
-                    })
-                count += 1
-
-    return {"notified": count}
+        notifications = await _create_drop_available_notifications(
+            drop_request_id=row.id,
+            initiator_id=row.initiated_by,
+            shift=a.shift,
+            db=tx,
+        )
+    await emit_notifications(request.app.state.ws_manager, notifications)
+    return {"notified": len(notifications)}
 
