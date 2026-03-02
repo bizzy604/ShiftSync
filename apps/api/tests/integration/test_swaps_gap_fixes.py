@@ -96,6 +96,7 @@ async def test_cancel_swap_persists_notifications_for_participants_and_managers(
     monkeypatch.setattr(swaps, "prisma", fake_prisma)
     monkeypatch.setattr(swaps, "create_notification", fake_create_notification)
     monkeypatch.setattr(swaps, "create_audit_log", AsyncMock())
+    monkeypatch.setattr(swaps, "_load_swap_for_response", AsyncMock(return_value=updated_row))
 
     await swaps.cancel_swap(
         request_id="swap-1",
@@ -232,3 +233,75 @@ async def test_create_drop_triggers_automatic_qualified_staff_notification(monke
 
     auto_notify.assert_awaited_once()
     emit_notifications.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_cancel_swap_loads_requester_shift_context_before_access(monkeypatch) -> None:
+    base_row = SimpleNamespace(
+        id="swap-ctx-1",
+        type="swap",
+        status="PENDING_MANAGER",
+        initiated_by="staff-a",
+        target_user_id="staff-b",
+        pickup_user_id=None,
+        version=2,
+        requester_assignment=SimpleNamespace(
+            shift=SimpleNamespace(location_id="loc-1"),
+        ),
+    )
+    updated_row = SimpleNamespace(
+        id="swap-ctx-1",
+        type="swap",
+        status="CANCELLED",
+        requester_assignment_id="assign-1",
+        target_user_id="staff-b",
+        pickup_user_id=None,
+        candidate_assignment_id=None,
+        initiated_by="staff-a",
+        expires_at=None,
+        created_at=datetime.now(tz=timezone.utc),
+        resolved_at=datetime.now(tz=timezone.utc),
+        resolution_note="No longer needed",
+        requester_assignment=None,
+        target_user=None,
+        pickup_user=None,
+    )
+
+    tx_client = SimpleNamespace(
+        swaprequest=SimpleNamespace(update=AsyncMock(return_value=updated_row)),
+    )
+    fake_prisma = SimpleNamespace(
+        swaprequest=SimpleNamespace(find_unique=AsyncMock(return_value=base_row)),
+        managerlocationassignment=SimpleNamespace(find_many=AsyncMock(return_value=[])),
+        tx=lambda: _TxContext(tx_client),
+    )
+
+    monkeypatch.setattr(swaps, "prisma", fake_prisma)
+    monkeypatch.setattr(swaps, "create_audit_log", AsyncMock())
+    monkeypatch.setattr(
+        swaps,
+        "create_notification",
+        AsyncMock(
+            side_effect=lambda **kwargs: SimpleNamespace(
+                id=f"notif-{kwargs['user_id']}",
+                user_id=kwargs["user_id"],
+                type=kwargs["notif_type"],
+                message=kwargs["message"],
+            )
+        ),
+    )
+    monkeypatch.setattr(swaps, "emit_notifications", AsyncMock())
+    monkeypatch.setattr(swaps, "_load_swap_for_response", AsyncMock(return_value=updated_row))
+
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(ws_manager=None)))
+    response = await swaps.cancel_swap(
+        request_id="swap-ctx-1",
+        body=swaps.SwapActionRequest(note="No longer needed"),
+        request=request,
+        current_user=CurrentUser(id="staff-a", role="staff", location_ids=[]),
+    )
+
+    assert response.status == "CANCELLED"
+    find_kwargs = fake_prisma.swaprequest.find_unique.await_args.kwargs
+    assert "include" in find_kwargs
+    assert find_kwargs["include"]["requester_assignment"]["include"]["shift"] is True

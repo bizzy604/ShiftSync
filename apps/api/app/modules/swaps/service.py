@@ -76,7 +76,7 @@ async def expire_due_drop_requests_for_worker(
 def _safe_getattr(obj: object, attr: str):
     try:
         return getattr(obj, attr)
-    except DetachedInstanceError:
+    except (DetachedInstanceError, AttributeError):
         return None
 
 
@@ -599,7 +599,10 @@ async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request
     Returns:
         Result typed as `SwapRequestResponse`.
     """
-    row = await prisma.swaprequest.find_unique(where={"id": request_id})
+    row = await prisma.swaprequest.find_unique(
+        where={"id": request_id},
+        include={"requester_assignment": {"include": {"shift": True}}},
+    )
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")
     if current_user.role != "admin" and row.initiated_by != current_user.id:
@@ -658,7 +661,8 @@ async def cancel_swap(request_id: str, body: SwapActionRequest, request: Request
     recipient_ids = [user_id for user_id in recipients if user_id]
     if ws and recipient_ids:
         await ws.emit_to_users(recipient_ids, "swap.status_changed", {"swapRequestId": row.id, "newStatus": "CANCELLED"})
-    return to_resp(row)
+    response_row = await _load_swap_for_response(row.id)
+    return to_resp(response_row)
 
 
 async def approve_transfer(row: object, actor: CurrentUser, note: str | None, request: Request, drop: bool) -> tuple[object, list[object], str]:

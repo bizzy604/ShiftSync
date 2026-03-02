@@ -113,9 +113,13 @@ async def run_smoke() -> dict:
             f"/api/v1/users/{carlos_id}/availability",
             json={
                 "recurring": [
-                    {"day_of_week": 1, "start_clock_time": "09:00", "end_clock_time": "17:00"},
-                    {"day_of_week": 2, "start_clock_time": "09:00", "end_clock_time": "17:00"},
-                    {"day_of_week": 6, "start_clock_time": "17:00", "end_clock_time": "23:59"},
+                    {"day_of_week": 0, "start_clock_time": "08:00", "end_clock_time": "23:59"},
+                    {"day_of_week": 1, "start_clock_time": "08:00", "end_clock_time": "23:59"},
+                    {"day_of_week": 2, "start_clock_time": "08:00", "end_clock_time": "23:59"},
+                    {"day_of_week": 3, "start_clock_time": "08:00", "end_clock_time": "23:59"},
+                    {"day_of_week": 4, "start_clock_time": "08:00", "end_clock_time": "23:59"},
+                    {"day_of_week": 5, "start_clock_time": "08:00", "end_clock_time": "23:59"},
+                    {"day_of_week": 6, "start_clock_time": "08:00", "end_clock_time": "23:59"},
                 ],
                 "exceptions": [],
             },
@@ -143,8 +147,21 @@ async def run_smoke() -> dict:
         assert skills_response.status_code == 200, skills_response.text
         required_skill_id = skills_response.json()[0]["skill_id"]
 
-        # Phase 2 setup
-        monday = _next_monday(date.today())
+        # Phase 2 setup (pick an empty future week so repeated smoke runs do not overlap)
+        async def first_empty_week_start(start_from: date) -> date:
+            candidate = _next_monday(start_from)
+            for _ in range(26):
+                check = await manager.get(
+                    "/api/v1/shifts",
+                    params={"location_id": location_id, "week_start": candidate.isoformat()},
+                )
+                assert check.status_code == 200, check.text
+                if not check.json().get("shifts"):
+                    return candidate
+                candidate += timedelta(days=7)
+            raise RuntimeError("Could not find an empty future week for smoke shift creation.")
+
+        monday = await first_empty_week_start(date.today())
         day_1 = monday + timedelta(days=1)
         day_2 = monday + timedelta(days=2)
         day_3 = monday + timedelta(days=5)

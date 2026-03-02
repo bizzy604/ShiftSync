@@ -518,7 +518,9 @@ async def remove_user_certification(
             entity_type="certification",
             entity_id=user_id,
             location_id=location_id,
-            before_state={"revoked_at": record.revoked_at},
+            before_state={
+                "revoked_at": record.revoked_at.isoformat() if record.revoked_at is not None else None
+            },
             after_state={"revoked_at": revoked_at.isoformat()},
             db=tx,
         )
